@@ -1,62 +1,57 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path, package: &str) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path, package: &str) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
-    let mut original_maintainer = String::new();
-
-    // Only process the source paragraph
-    if let Some(mut source) = editor.source() {
-        if let Some(maintainer) = source.maintainer() {
-            let maintainer_str = maintainer.to_string();
-            if maintainer_str.trim_end().ends_with(',') {
-                // Store the original value for the issue info
-                original_maintainer = maintainer_str.clone();
-                // Remove the trailing comma
-                let new_value = maintainer_str.trim_end().trim_end_matches(',').trim_end();
-                source.set_maintainer(new_value);
-                made_changes = true;
-            }
-        }
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(maintainer) = source.as_deb822().get("Maintainer") else {
+        return Ok(Vec::new());
+    };
+    if !maintainer.trim_end().ends_with(',') {
+        return Ok(Vec::new());
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
+    let new_value = maintainer
+        .trim_end()
+        .trim_end_matches(',')
+        .trim_end()
+        .to_string();
 
     let mut issue = LintianIssue::source_with_info(
         "trailing-comma-in-maintainer-field",
-        vec![original_maintainer],
+        vec![maintainer.clone()],
     );
     issue.package = Some(package.to_string());
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Remove trailing comma from Maintainer field.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issue(issue)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove trailing comma from Maintainer field.",
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Maintainer".into(),
+            value: new_value,
+        })],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "trailing-comma-in-maintainer-field",
     tags: ["trailing-comma-in-maintainer-field"],
-    apply: |basedir, package, _version, _preferences| {
-        run(basedir, package)
+    diagnose: |basedir, package, _version, _preferences| {
+        detect(basedir, package)
     }
 }
 
@@ -64,8 +59,14 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_remove_trailing_comma() {
@@ -83,20 +84,16 @@ Description: Test package
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Remove trailing comma from Maintainer field."
         );
 
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Maintainer: John Doe <john@example.com>\n"));
-        assert!(!updated_content.contains("Maintainer: John Doe <john@example.com>,"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nMaintainer: John Doe <john@example.com>\n\nPackage: test-package\nDescription: Test package\n Test description\n",
+        );
     }
 
     #[test]
@@ -115,16 +112,10 @@ Description: Test package
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -143,34 +134,23 @@ Description: Test package
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nMaintainer: Jane Smith <jane@example.com>\n\nPackage: test-package\nDescription: Test package\n Test description\n",
         );
-
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Maintainer: Jane Smith <jane@example.com>\n"));
+        assert_eq!(
+            result.description,
+            "Remove trailing comma from Maintainer field."
+        );
     }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

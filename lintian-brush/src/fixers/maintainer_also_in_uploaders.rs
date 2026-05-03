@@ -1,80 +1,79 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let paragraph = source.as_deb822();
+    let (Some(maintainer), Some(uploaders)) =
+        (paragraph.get("Maintainer"), paragraph.get("Uploaders"))
+    else {
+        return Ok(Vec::new());
+    };
 
-    // Only process the source paragraph
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        // Check if both Maintainer and Uploaders fields exist
-        if let (Some(maintainer), Some(uploaders)) =
-            (paragraph.get("Maintainer"), paragraph.get("Uploaders"))
-        {
-            // Split uploaders by comma and check if maintainer is in the list
-            let uploaders_list: Vec<String> =
-                uploaders.split(',').map(|s| s.trim().to_string()).collect();
-
-            // Check if maintainer is in uploaders list
-            if uploaders_list.contains(&maintainer) {
-                // Remove maintainer from uploaders
-                let new_uploaders: Vec<String> = uploaders_list
-                    .into_iter()
-                    .filter(|u| u != &maintainer)
-                    .collect();
-
-                if new_uploaders.is_empty() {
-                    // If no uploaders left, remove the field entirely
-                    paragraph.remove("Uploaders");
-                } else {
-                    // Otherwise, update with the filtered list
-                    paragraph.set("Uploaders", &new_uploaders.join(", "));
-                }
-
-                made_changes = true;
-            }
-        }
+    let uploaders_list: Vec<String> = uploaders.split(',').map(|s| s.trim().to_string()).collect();
+    if !uploaders_list.contains(&maintainer) {
+        return Ok(Vec::new());
     }
+    let new_uploaders: Vec<String> = uploaders_list
+        .into_iter()
+        .filter(|u| u != &maintainer)
+        .collect();
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
+    let action = if new_uploaders.is_empty() {
+        Action::Deb822(Deb822Action::RemoveField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Uploaders".into(),
+        })
+    } else {
+        Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Uploaders".into(),
+            value: new_uploaders.join(", "),
+        })
+    };
 
     let issue = LintianIssue::source_with_info("maintainer-also-in-uploaders", vec![]);
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    editor.commit()?;
-
-    Ok(FixerResult::builder("Remove maintainer from uploaders.")
-        .fixed_issue(issue)
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove maintainer from uploaders.",
+        vec![action],
+    )])
 }
 
 declare_fixer! {
     name: "maintainer-also-in-uploaders",
     tags: ["maintainer-also-in-uploaders"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_maintainer_in_uploaders() {
@@ -90,12 +89,13 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(result.description, "Remove maintainer from uploaders.");
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        let expected = "Source: test\nMaintainer: John Doe <john@example.com>\nUploaders: Jane Smith <jane@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
-        assert_eq!(content, expected);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nMaintainer: John Doe <john@example.com>\nUploaders: Jane Smith <jane@example.com>\n\nPackage: test\nDescription: Test\n Test package\n",
+        );
     }
 
     #[test]
@@ -112,13 +112,13 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(result.description, "Remove maintainer from uploaders.");
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        // Uploaders field should be completely removed
-        let expected = "Source: test\nMaintainer: John Doe <john@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
-        assert_eq!(content, expected);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nMaintainer: John Doe <john@example.com>\n\nPackage: test\nDescription: Test\n Test package\n",
+        );
     }
 
     #[test]
@@ -129,14 +129,11 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: test\nMaintainer: John Doe <john@example.com>\nUploaders: Jane Smith <jane@example.com>\n\nPackage: test\nDescription: Test\n Test package\n",
-        )
-        .unwrap();
+        let original = "Source: test\nMaintainer: John Doe <john@example.com>\nUploaders: Jane Smith <jane@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
@@ -153,17 +150,16 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -180,11 +176,12 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(result.description, "Remove maintainer from uploaders.");
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        let expected = "Source: test\nMaintainer: Bob <bob@example.com>\nUploaders: Alice <alice@example.com>, Charlie <charlie@example.com>\n\nPackage: test\nDescription: Test\n Test package\n";
-        assert_eq!(content, expected);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nMaintainer: Bob <bob@example.com>\nUploaders: Alice <alice@example.com>, Charlie <charlie@example.com>\n\nPackage: test\nDescription: Test\n Test package\n",
+        );
     }
 }
