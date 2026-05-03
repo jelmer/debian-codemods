@@ -2,5 +2,5 @@ Tests: 4.08.1 ocaml-system
 Depends: @, ca-certificates
 Restrictions: isolation-container, allow-stderr
 
-Depends: ocaml-nox
 Tests: ocaml-system
+Depends: ocaml-nox
