@@ -1085,6 +1085,30 @@ pub fn data_file_path(
     None
 }
 
+/// Render the `Fixes:` and `See-also:` trailer block for a set of fixed Lintian issues.
+///
+/// One `Fixes:` line is emitted per issue (carrying package, type and info via
+/// [`LintianIssue`]'s `Display` impl). One `See-also:` line is emitted per unique
+/// tag, in the order the tag is first encountered.
+fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
+    let mut out = String::new();
+    for issue in issues {
+        out.push_str(&format!("Fixes: lintian: {}\n", issue));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for issue in issues {
+        if let Some(tag) = issue.tag.as_deref() {
+            if seen.insert(tag) {
+                out.push_str(&format!(
+                    "See-also: https://lintian.debian.org/tags/{}.html\n",
+                    tag
+                ));
+            }
+        }
+    }
+    out
+}
+
 /// Run a lintian fixer on a tree.
 ///
 /// # Arguments
@@ -1289,11 +1313,7 @@ pub fn run_lintian_fixer(
     let mut description = format!("{}\n", result.description);
     description.push('\n');
     description.push_str(format!("Changes-By: {}\n", changes_by).as_str());
-    for tag in result.fixed_lintian_tags() {
-        description.push_str(format!("Fixes: lintian: {}\n", tag).as_str());
-        description
-            .push_str(format!("See-also: https://lintian.debian.org/tags/{}.html\n", tag).as_str());
-    }
+    description.push_str(&render_lintian_trailers(&result.fixed_lintian_issues));
 
     let committer = committer.map_or_else(|| get_committer(local_tree), |c| c.to_string());
 
@@ -1860,6 +1880,141 @@ mod tests {
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
 
+    mod render_lintian_trailers_tests {
+        use super::*;
+
+        #[test]
+        fn empty_issues_renders_empty_string() {
+            assert_eq!(render_lintian_trailers(&[]), "");
+        }
+
+        #[test]
+        fn single_source_tag_without_info() {
+            let trailers = render_lintian_trailers(&[LintianIssue {
+                package: Some("blah".to_string()),
+                package_type: Some(PackageType::Source),
+                tag: Some("some-tag".to_string()),
+                info: None,
+            }]);
+            assert_eq!(
+                trailers,
+                "Fixes: lintian: blah source: some-tag\n\
+                 See-also: https://lintian.debian.org/tags/some-tag.html\n"
+            );
+        }
+
+        #[test]
+        fn info_string_is_preserved_in_fixes_line() {
+            let trailers = render_lintian_trailers(&[LintianIssue {
+                package: None,
+                package_type: Some(PackageType::Source),
+                tag: Some("globbing-patterns-out-of-order".to_string()),
+                info: Some("debian/*".to_string()),
+            }]);
+            assert_eq!(
+                trailers,
+                "Fixes: lintian: source: globbing-patterns-out-of-order debian/*\n\
+                 See-also: https://lintian.debian.org/tags/globbing-patterns-out-of-order.html\n"
+            );
+        }
+
+        #[test]
+        fn repeated_tag_keeps_each_fixes_but_dedupes_see_also() {
+            let issue = |info: &str| LintianIssue {
+                package: None,
+                package_type: Some(PackageType::Source),
+                tag: Some("globbing-patterns-out-of-order".to_string()),
+                info: Some(info.to_string()),
+            };
+            let trailers =
+                render_lintian_trailers(&[issue("debian/*"), issue("src/*"), issue("tests/*")]);
+            assert_eq!(
+                trailers,
+                "Fixes: lintian: source: globbing-patterns-out-of-order debian/*\n\
+                 Fixes: lintian: source: globbing-patterns-out-of-order src/*\n\
+                 Fixes: lintian: source: globbing-patterns-out-of-order tests/*\n\
+                 See-also: https://lintian.debian.org/tags/globbing-patterns-out-of-order.html\n"
+            );
+        }
+
+        #[test]
+        fn multiple_distinct_tags_each_get_one_see_also() {
+            let trailers = render_lintian_trailers(&[
+                LintianIssue {
+                    package: None,
+                    package_type: Some(PackageType::Source),
+                    tag: Some("tag-a".to_string()),
+                    info: None,
+                },
+                LintianIssue {
+                    package: None,
+                    package_type: Some(PackageType::Source),
+                    tag: Some("tag-b".to_string()),
+                    info: None,
+                },
+            ]);
+            assert_eq!(
+                trailers,
+                "Fixes: lintian: source: tag-a\n\
+                 Fixes: lintian: source: tag-b\n\
+                 See-also: https://lintian.debian.org/tags/tag-a.html\n\
+                 See-also: https://lintian.debian.org/tags/tag-b.html\n"
+            );
+        }
+
+        #[test]
+        fn see_also_order_follows_first_occurrence_of_tag() {
+            let issue = |tag: &str, info: &str| LintianIssue {
+                package: None,
+                package_type: Some(PackageType::Source),
+                tag: Some(tag.to_string()),
+                info: Some(info.to_string()),
+            };
+            let trailers = render_lintian_trailers(&[
+                issue("tag-b", "x"),
+                issue("tag-a", "y"),
+                issue("tag-b", "z"),
+            ]);
+            let see_also: Vec<&str> = trailers
+                .lines()
+                .filter(|l| l.starts_with("See-also:"))
+                .collect();
+            assert_eq!(
+                see_also,
+                vec![
+                    "See-also: https://lintian.debian.org/tags/tag-b.html",
+                    "See-also: https://lintian.debian.org/tags/tag-a.html",
+                ]
+            );
+        }
+
+        #[test]
+        fn binary_package_issue_includes_package_and_type() {
+            let trailers = render_lintian_trailers(&[LintianIssue {
+                package: Some("libfoo".to_string()),
+                package_type: Some(PackageType::Binary),
+                tag: Some("some-binary-tag".to_string()),
+                info: Some("/usr/bin/foo".to_string()),
+            }]);
+            assert_eq!(
+                trailers,
+                "Fixes: lintian: libfoo binary: some-binary-tag /usr/bin/foo\n\
+                 See-also: https://lintian.debian.org/tags/some-binary-tag.html\n"
+            );
+        }
+
+        #[test]
+        fn issue_without_tag_emits_fixes_but_no_see_also() {
+            let trailers = render_lintian_trailers(&[LintianIssue {
+                package: None,
+                package_type: Some(PackageType::Source),
+                tag: None,
+                info: Some("orphaned".to_string()),
+            }]);
+            assert_eq!(trailers, "Fixes: lintian: source: orphaned\n");
+        }
+    }
+
     mod test_run_lintian_fixer {
         use super::*;
 
@@ -2414,7 +2569,7 @@ Arch: all
                 .unwrap();
             assert_eq!(
                 rev.message,
-                "Created new file.\n\nChanges-By: lintian-brush\nFixes: lintian: some-tag\nSee-also: https://lintian.debian.org/tags/some-tag.html\n"
+                "Created new file.\n\nChanges-By: lintian-brush\nFixes: lintian: blah source: some-tag\nSee-also: https://lintian.debian.org/tags/some-tag.html\n"
             );
             assert_eq!(2, tree.branch().revno());
             let basis_tree = tree.branch().basis_tree().unwrap();
