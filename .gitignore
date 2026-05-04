@@ -13,3 +13,4 @@ Cargo.lock.saved
 Cargo.lock.upstream
 .mypy_cache/
 .pybuild/
+.*un~

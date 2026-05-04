@@ -9,7 +9,7 @@ repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 documentation = "https://docs.rs/lintian-brush"
 default-run = "lintian-brush"
-include = ["spdx.json"]
+include = ["spdx.json", "/src", "/tests", "build.rs", "README.md", "examples/*.rs", "spdx.json", "renamed-tags.json", "!*~"]
 
 [dependencies]
 pyo3 = { workspace = true, features = ["serde", "chrono"] }
