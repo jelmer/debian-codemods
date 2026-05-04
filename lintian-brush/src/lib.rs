@@ -20,10 +20,14 @@ use debian_analyzer::{
 };
 use debian_changelog::ChangeLog;
 
+/// Apply [`diagnostic::Action`]s to a working tree.
+pub mod appliers;
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
 /// Debian helper functions and types
 pub mod debhelper;
+/// Diagnostic and action types for the detector/applier split.
+pub mod diagnostic;
 #[macro_use]
 /// Macros for defining fixers
 pub mod macros;
