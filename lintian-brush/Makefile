@@ -22,3 +22,7 @@ check:: testsuite
 
 testsuite::
 	cargo test
+
+update-spdx:
+	python3 download-license-data.py > spdx.json
+	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
