@@ -259,7 +259,7 @@ fn generate_spdx_data(out_dir: &std::ffi::OsStr) {
 
     // Read the spdx.json file from the parent directory
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let spdx_path = Path::new(&manifest_dir).join("..").join("spdx.json");
+    let spdx_path = Path::new(&manifest_dir).join("spdx.json");
 
     let json_content = fs::read_to_string(&spdx_path)
         .expect("Failed to read spdx.json - make sure it exists in the parent directory");
