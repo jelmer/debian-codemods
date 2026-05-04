@@ -16,7 +16,17 @@ pub struct BuiltinFixerRegistration {
 
 inventory::collect!(BuiltinFixerRegistration);
 
-/// Trait for implementing a builtin fixer
+/// Trait for implementing a builtin fixer.
+///
+/// Implementations choose one of two strategies:
+///
+/// * Override [`apply`](Self::apply) directly. This is the legacy path used
+///   by every fixer that pre-dates the detector/applier split.
+/// * Override [`diagnostics`](Self::diagnostics) (and optionally
+///   [`describe`](Self::describe)) and let the default
+///   [`apply`](Self::apply) impl consume them. The default impl filters out
+///   diagnostics that fail certainty/override checks and applies the first
+///   plan of each surviving diagnostic via [`crate::appliers`].
 pub trait BuiltinFixer: Send + Sync {
     /// Name of the fixer
     fn name(&self) -> &'static str;
@@ -24,14 +34,181 @@ pub trait BuiltinFixer: Send + Sync {
     /// Lintian tags this fixer addresses
     fn lintian_tags(&self) -> &'static [&'static str];
 
-    /// Apply the fixer
+    /// Detect issues without modifying the tree.
+    ///
+    /// The default returns [`FixerError::NoChanges`] so legacy fixers that
+    /// only implement [`apply`](Self::apply) keep working unchanged. New
+    /// fixers should override this and rely on the default
+    /// [`apply`](Self::apply) impl.
+    fn diagnostics(
+        &self,
+        _basedir: &std::path::Path,
+        _package: &str,
+        _current_version: &Version,
+        _preferences: &FixerPreferences,
+    ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
+        Err(FixerError::NoChanges)
+    }
+
+    /// Build the description (used as the FixerResult / commit message)
+    /// from the diagnostics that actually fired and the actions that were
+    /// applied.
+    ///
+    /// The default deduplicates and joins the per-diagnostic messages,
+    /// which is the right answer for fixers whose diagnostics already carry
+    /// the final message text. Override this when the description is a
+    /// function of the *set* of issues / fields touched (e.g. "Set priority
+    /// for library packages X, Y to optional.").
+    fn describe(
+        &self,
+        fixed: &[crate::diagnostic::Diagnostic],
+        actions: &[crate::diagnostic::Action],
+    ) -> String {
+        default_describe(fixed, actions)
+    }
+
+    /// Apply the fixer.
+    ///
+    /// The default implementation calls [`diagnostics`](Self::diagnostics),
+    /// drops any diagnostic that is overridden by a lintian override or
+    /// whose certainty is below `preferences.minimum_certainty`, applies
+    /// the first plan of each remaining diagnostic, and uses
+    /// [`describe`](Self::describe) to build the result message. It returns
+    /// [`FixerError::NoChanges`] if no diagnostics were emitted, and
+    /// [`FixerError::NoChangesAfterOverrides`] if every emitted diagnostic
+    /// was filtered out by overrides.
     fn apply(
         &self,
         basedir: &std::path::Path,
         package: &str,
         current_version: &Version,
         preferences: &FixerPreferences,
-    ) -> Result<FixerResult, FixerError>;
+    ) -> Result<FixerResult, FixerError> {
+        let diagnostics = self.diagnostics(basedir, package, current_version, preferences)?;
+        apply_diagnostics_with(basedir, &diagnostics, preferences, &|fixed, actions| {
+            self.describe(fixed, actions)
+        })
+    }
+}
+
+/// Default describer used by [`BuiltinFixer::describe`] and
+/// [`apply_diagnostics`].
+///
+/// Deduplicates the diagnostics' per-issue messages and joins them with
+/// newlines.
+pub fn default_describe(
+    fixed: &[crate::diagnostic::Diagnostic],
+    _actions: &[crate::diagnostic::Action],
+) -> String {
+    let mut seen = std::collections::HashSet::new();
+    let unique: Vec<&str> = fixed
+        .iter()
+        .map(|d| d.message.as_str())
+        .filter(|m| seen.insert(*m))
+        .collect();
+    if unique.len() == 1 {
+        unique[0].to_string()
+    } else {
+        unique.join("\n")
+    }
+}
+
+/// Default driver for fixers that emit [`Diagnostic`](crate::diagnostic::Diagnostic)s.
+///
+/// Filters diagnostics by lintian overrides and `preferences.minimum_certainty`,
+/// then applies the first plan of each surviving diagnostic. The
+/// description is built via [`default_describe`].
+pub fn apply_diagnostics(
+    basedir: &std::path::Path,
+    diagnostics: &[crate::diagnostic::Diagnostic],
+    preferences: &FixerPreferences,
+) -> Result<FixerResult, FixerError> {
+    apply_diagnostics_with(basedir, diagnostics, preferences, &default_describe)
+}
+
+/// Like [`apply_diagnostics`], but lets the caller provide a custom
+/// describer. The describer receives the diagnostics that actually fired
+/// (after override / certainty filtering) and the flat list of actions
+/// that were applied, and must return the description string used in the
+/// resulting [`FixerResult`].
+pub fn apply_diagnostics_with(
+    basedir: &std::path::Path,
+    diagnostics: &[crate::diagnostic::Diagnostic],
+    preferences: &FixerPreferences,
+    describe: &dyn Fn(&[crate::diagnostic::Diagnostic], &[crate::diagnostic::Action]) -> String,
+) -> Result<FixerResult, FixerError> {
+    use debian_analyzer::certainty_sufficient;
+
+    if diagnostics.is_empty() {
+        return Err(FixerError::NoChanges);
+    }
+
+    let min_certainty = preferences.minimum_certainty;
+
+    let mut fixed: Vec<crate::diagnostic::Diagnostic> = Vec::new();
+    let mut overridden_issues = Vec::new();
+    let mut not_certain_enough: Vec<LintianIssue> = Vec::new();
+    let mut min_actual_certainty: Option<Certainty> = None;
+    let mut all_actions: Vec<crate::diagnostic::Action> = Vec::new();
+
+    for diag in diagnostics {
+        if let Some(issue) = &diag.issue {
+            if !issue.should_fix(basedir) {
+                overridden_issues.push(issue.clone());
+                continue;
+            }
+        }
+        let actual_certainty = diag.certainty.unwrap_or(Certainty::Certain);
+        if !certainty_sufficient(actual_certainty, min_certainty) {
+            if let Some(issue) = &diag.issue {
+                not_certain_enough.push(issue.clone());
+            }
+            continue;
+        }
+        let Some(plan) = diag.plans.first() else {
+            continue;
+        };
+        all_actions.extend(plan.actions.iter().cloned());
+        fixed.push(diag.clone());
+        min_actual_certainty = match (min_actual_certainty, diag.certainty) {
+            (None, c) => c,
+            (Some(prev), None) => Some(prev),
+            (Some(prev), Some(c)) => Some(prev.min(c)),
+        };
+    }
+
+    if all_actions.is_empty() {
+        if !overridden_issues.is_empty() && fixed.is_empty() {
+            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        }
+        if !not_certain_enough.is_empty() && fixed.is_empty() {
+            return Err(FixerError::NotCertainEnough(
+                Certainty::Possible,
+                min_certainty,
+                not_certain_enough,
+            ));
+        }
+        return Err(FixerError::NoChanges);
+    }
+
+    let changed = crate::appliers::apply_actions(basedir, &all_actions)?;
+    if changed.is_empty() {
+        // Detector said there was something to fix but applying produced no
+        // observable change. Treat as NoChanges to avoid an empty commit.
+        return Err(FixerError::NoChanges);
+    }
+
+    let description = describe(&fixed, &all_actions);
+    let fixed_issues: Vec<LintianIssue> = fixed.into_iter().filter_map(|d| d.issue).collect();
+
+    let mut builder = FixerResult::builder(description).fixed_issues(fixed_issues);
+    if let Some(cert) = min_actual_certainty {
+        builder = builder.certainty(cert);
+    }
+    if !overridden_issues.is_empty() {
+        builder = builder.overridden_issues(overridden_issues);
+    }
+    Ok(builder.build())
 }
 
 /// Wrapper to adapt BuiltinFixer trait to Fixer trait
@@ -969,5 +1146,170 @@ mod tests {
         // A should come before B
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[1].name, "fixer-b");
+    }
+
+    use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+    use std::fs;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    /// A fixer that overrides only `diagnostics`. The default `apply` impl
+    /// from the trait should consume the diagnostics, filter via overrides,
+    /// and apply the actions.
+    struct DiagFixer {
+        name: &'static str,
+        tags: &'static [&'static str],
+        diagnostics: Vec<Diagnostic>,
+    }
+
+    impl BuiltinFixer for DiagFixer {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+        fn lintian_tags(&self) -> &'static [&'static str] {
+            self.tags
+        }
+        fn diagnostics(
+            &self,
+            _basedir: &Path,
+            _package: &str,
+            _version: &Version,
+            _preferences: &FixerPreferences,
+        ) -> Result<Vec<Diagnostic>, FixerError> {
+            Ok(self.diagnostics.clone())
+        }
+    }
+
+    fn write_control(dir: &Path, content: &str) {
+        let debian = dir.join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("control"), content).unwrap();
+    }
+
+    #[test]
+    fn default_apply_runs_diagnostic_actions() {
+        let tmp = TempDir::new().unwrap();
+        write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
+
+        let fixer = DiagFixer {
+            name: "set-priority",
+            tags: &["recommended-field"],
+            diagnostics: vec![Diagnostic::with_actions(
+                LintianIssue::source("recommended-field"),
+                "Set Priority on source",
+                vec![Action::Deb822(Deb822Action::SetField {
+                    file: PathBuf::from("debian/control"),
+                    paragraph: ParagraphSelector::Source,
+                    field: "Priority".into(),
+                    value: "optional".into(),
+                })],
+            )
+            .with_certainty(Certainty::Confident)],
+        };
+
+        let version: Version = "1.0".parse().unwrap();
+        let result = fixer
+            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
+            .unwrap();
+
+        assert_eq!(result.description, "Set Priority on source");
+        assert_eq!(result.certainty, Some(Certainty::Confident));
+        assert_eq!(result.fixed_lintian_tags(), vec!["recommended-field"]);
+        assert!(result.overridden_lintian_issues.is_empty());
+
+        let after = fs::read_to_string(tmp.path().join("debian/control")).unwrap();
+        assert_eq!(after, "Source: foo\nPriority: optional\n\nPackage: foo\n");
+    }
+
+    #[test]
+    fn default_apply_returns_no_changes_for_empty_diagnostics() {
+        let tmp = TempDir::new().unwrap();
+        write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
+
+        let fixer = DiagFixer {
+            name: "noop",
+            tags: &["x"],
+            diagnostics: vec![],
+        };
+        let version: Version = "1.0".parse().unwrap();
+        let err = fixer
+            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
+            .unwrap_err();
+        assert!(matches!(err, FixerError::NoChanges));
+    }
+
+    #[test]
+    fn default_apply_skips_overridden_diagnostics() {
+        let tmp = TempDir::new().unwrap();
+        write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
+        // Override that suppresses the only diagnostic.
+        let source_dir = tmp.path().join("debian/source");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::write(source_dir.join("lintian-overrides"), "recommended-field\n").unwrap();
+
+        let fixer = DiagFixer {
+            name: "set-priority",
+            tags: &["recommended-field"],
+            diagnostics: vec![Diagnostic::with_actions(
+                LintianIssue::source("recommended-field"),
+                "Set Priority on source",
+                vec![Action::Deb822(Deb822Action::SetField {
+                    file: PathBuf::from("debian/control"),
+                    paragraph: ParagraphSelector::Source,
+                    field: "Priority".into(),
+                    value: "optional".into(),
+                })],
+            )],
+        };
+        let version: Version = "1.0".parse().unwrap();
+        let err = fixer
+            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
+            .unwrap_err();
+        match err {
+            FixerError::NoChangesAfterOverrides(issues) => {
+                assert_eq!(issues.len(), 1);
+                assert_eq!(issues[0].tag.as_deref(), Some("recommended-field"));
+            }
+            other => panic!("expected NoChangesAfterOverrides, got {:?}", other),
+        }
+        // Control file untouched.
+        assert_eq!(
+            fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
+            "Source: foo\n\nPackage: foo\n"
+        );
+    }
+
+    #[test]
+    fn default_apply_filters_below_minimum_certainty() {
+        let tmp = TempDir::new().unwrap();
+        write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
+
+        let fixer = DiagFixer {
+            name: "set-priority",
+            tags: &["recommended-field"],
+            diagnostics: vec![Diagnostic::with_actions(
+                LintianIssue::source("recommended-field"),
+                "Set Priority on source",
+                vec![Action::Deb822(Deb822Action::SetField {
+                    file: PathBuf::from("debian/control"),
+                    paragraph: ParagraphSelector::Source,
+                    field: "Priority".into(),
+                    value: "optional".into(),
+                })],
+            )
+            .with_certainty(Certainty::Possible)],
+        };
+        let mut prefs = FixerPreferences::default();
+        prefs.minimum_certainty = Some(Certainty::Confident);
+        let version: Version = "1.0".parse().unwrap();
+        let err = fixer
+            .apply(tmp.path(), "foo", &version, &prefs)
+            .unwrap_err();
+        assert!(matches!(err, FixerError::NotCertainEnough(..)));
+        // Control file untouched.
+        assert_eq!(
+            fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
+            "Source: foo\n\nPackage: foo\n"
+        );
     }
 }

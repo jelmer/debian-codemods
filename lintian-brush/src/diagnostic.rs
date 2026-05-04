@@ -1,0 +1,611 @@
+//! Diagnostic and action types for the detector/applier split.
+//!
+//! See `doc/detector-action-split.md` for the design rationale. A detector
+//! returns a list of [`Diagnostic`]s, each carrying one or more
+//! [`ActionPlan`]s; the driver picks a plan and applies its [`Action`]s.
+//!
+//! Actions are `serde`-serialisable so they can be sent over an LSP wire.
+
+use crate::{Certainty, LintianIssue};
+use std::path::PathBuf;
+
+/// A single issue found by a detector, together with the actions that would
+/// fix it.
+///
+/// `issue` is optional: a fixer that doesn't correspond to a lintian tag
+/// (declared with `tags: []`) emits diagnostics whose `issue` is `None`.
+/// The driver still applies their actions, but lintian-override filtering
+/// is skipped and the diagnostic does not surface in
+/// `FixerResult::fixed_lintian_issues`.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Diagnostic {
+    /// The lintian issue this diagnostic corresponds to, if any.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub issue: Option<LintianIssue>,
+    /// Human-readable summary, used for the commit message / LSP message.
+    pub message: String,
+    /// Certainty of the fix(es). Mirrors `FixerResult::certainty`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub certainty: Option<Certainty>,
+    /// Alternative action plans that fix this diagnostic. The first plan is
+    /// the default chosen by the batch driver; an LSP exposes all of them
+    /// as code actions.
+    pub plans: Vec<ActionPlan>,
+}
+
+impl Diagnostic {
+    /// Build a diagnostic with a single default plan and no label.
+    pub fn with_actions(
+        issue: LintianIssue,
+        message: impl Into<String>,
+        actions: Vec<Action>,
+    ) -> Self {
+        Self {
+            issue: Some(issue),
+            message: message.into(),
+            certainty: None,
+            plans: vec![ActionPlan {
+                label: None,
+                actions,
+            }],
+        }
+    }
+
+    /// Build a diagnostic that has no associated lintian issue.
+    ///
+    /// Used by fixers that aren't tied to a lintian tag (their `tags: []`
+    /// declaration). The driver still applies the actions but skips
+    /// override / tag bookkeeping.
+    pub fn untagged(message: impl Into<String>, actions: Vec<Action>) -> Self {
+        Self {
+            issue: None,
+            message: message.into(),
+            certainty: None,
+            plans: vec![ActionPlan {
+                label: None,
+                actions,
+            }],
+        }
+    }
+
+    /// Set the certainty of this diagnostic.
+    pub fn with_certainty(mut self, certainty: Certainty) -> Self {
+        self.certainty = Some(certainty);
+        self
+    }
+}
+
+/// One self-consistent set of actions that fixes a [`Diagnostic`].
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ActionPlan {
+    /// Label shown in an LSP code-action menu. `None` for the default plan.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub label: Option<String>,
+    /// Actions applied as a unit.
+    pub actions: Vec<Action>,
+}
+
+/// A change to apply to the working tree.
+///
+/// Dispatched on file kind: each per-file enum carries the actual operations.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Action {
+    /// An edit to a deb822 file (debian/control, debian/copyright, …).
+    Deb822(Deb822Action),
+    /// An edit to a systemd unit file (.service, .socket, .target, …).
+    Systemd(SystemdAction),
+    /// An edit to a freedesktop .desktop entry file.
+    DesktopIni(DesktopIniAction),
+    /// An edit to a YAML file.
+    Yaml(YamlAction),
+    /// An edit to a `debian/changelog` file.
+    Changelog(ChangelogAction),
+    /// A filesystem-level edit (chmod, write, delete, byte-range replace).
+    Filesystem(FilesystemAction),
+}
+
+/// Edits to a deb822 file.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum Deb822Action {
+    /// Set a field value, inserting it if missing.
+    SetField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Field name.
+        field: String,
+        /// New value.
+        value: String,
+    },
+    /// Remove a field if present.
+    RemoveField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Field name.
+        field: String,
+    },
+    /// Rename a field, preserving its value.
+    RenameField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Current field name.
+        from: String,
+        /// New field name.
+        to: String,
+    },
+    /// Remove the paragraph identified by `paragraph`.
+    RemoveParagraph {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to drop.
+        paragraph: ParagraphSelector,
+    },
+    /// Append a new paragraph at the end of the file with the given
+    /// (field, value) pairs in order.
+    AppendParagraph {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Fields to populate the new paragraph with.
+        fields: Vec<(String, String)>,
+        /// Continuation-line indent for multi-line values, in spaces.
+        /// `None` lets the deb822 renderer auto-align to the field-name
+        /// column (the default for debian/control). Use `Some(1)` for
+        /// debian/copyright, where DEP-5 mandates a single-space indent.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        indent: Option<usize>,
+    },
+}
+
+/// Edits to a systemd unit file.
+///
+/// Systemd unit files are sectioned ini-style files (`[Unit]`, `[Service]`,
+/// `[Install]`, …). Each variant identifies a single section by name and
+/// targets one entry within it.
+///
+/// Multi-valued fields (e.g. `Alias=`, `After=`) are handled by
+/// [`Add`](Self::Add) / [`RemoveValue`](Self::RemoveValue) — these append a
+/// new value or remove a specific one without touching siblings.
+/// [`SetField`](Self::SetField) replaces every occurrence of the key with a
+/// single value, which is the right thing for scalar fields like `PIDFile=`
+/// but the wrong thing for multi-valued ones.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum SystemdAction {
+    /// Set a scalar field. Replaces every existing entry with the given key.
+    SetField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Section name, e.g. "Service".
+        section: String,
+        /// Field name (no trailing `=`).
+        field: String,
+        /// New value.
+        value: String,
+    },
+    /// Remove every entry with the given key.
+    RemoveField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Section name.
+        section: String,
+        /// Field name.
+        field: String,
+    },
+    /// Rename every entry with `from` to `to`, preserving values.
+    RenameField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Section name.
+        section: String,
+        /// Current field name.
+        from: String,
+        /// New field name.
+        to: String,
+    },
+    /// Append a new entry. Use for multi-valued fields like `After=` or
+    /// `Alias=` to add another value without disturbing siblings.
+    Add {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Section name.
+        section: String,
+        /// Field name.
+        field: String,
+        /// Value to append.
+        value: String,
+    },
+    /// Remove a specific value from a multi-valued field. Other values for
+    /// the same key are preserved.
+    RemoveValue {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Section name.
+        section: String,
+        /// Field name.
+        field: String,
+        /// Value to drop.
+        value: String,
+    },
+}
+
+/// Edits to a freedesktop `.desktop` entry file.
+///
+/// Desktop entry files are sectioned ini-style files with `[Group]`
+/// headers and locale-tagged keys (e.g. `Name[de]=...`). Each variant
+/// identifies one group and one entry within it.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum DesktopIniAction {
+    /// Set a key. If `locale` is `None`, sets the unlocalised entry;
+    /// otherwise sets the entry tagged with `locale` (e.g. `de`).
+    SetField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Group name, e.g. "Desktop Entry".
+        group: String,
+        /// Key name.
+        field: String,
+        /// Locale tag, if any.
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        locale: Option<String>,
+        /// New value.
+        value: String,
+    },
+    /// Remove a key. If `locale` is `None`, removes the unlocalised entry
+    /// only; if a locale is given, removes only that locale variant. To
+    /// drop every locale variant of a key, use [`RemoveAll`](Self::RemoveAll).
+    RemoveField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Group name.
+        group: String,
+        /// Key name.
+        field: String,
+        /// Locale tag, if any.
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        locale: Option<String>,
+    },
+    /// Remove a key together with every locale variant.
+    RemoveAll {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Group name.
+        group: String,
+        /// Key name.
+        field: String,
+    },
+    /// Rename a key, preserving its value (and every locale variant).
+    RenameField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Group name.
+        group: String,
+        /// Current key name.
+        from: String,
+        /// New key name.
+        to: String,
+    },
+}
+
+/// Edits to a YAML file.
+///
+/// A YAML file is a tree of mappings, sequences and scalars; the
+/// `parent_path` field navigates from the top-level document down to the
+/// mapping that owns the key being edited. An empty `parent_path` means
+/// the top-level mapping (the common case for Debian's flat YAML files
+/// like `debian/upstream/metadata`).
+///
+/// Each path component is either a string (mapping key) or an index
+/// (sequence position).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum YamlAction {
+    /// Set a scalar value at `parent_path`'s mapping under `key`. Inserts
+    /// the key if missing.
+    SetField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path from the document root to the parent mapping.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        parent_path: Vec<YamlPathComponent>,
+        /// Key to set (string scalar).
+        key: String,
+        /// New value (string scalar).
+        value: String,
+    },
+    /// Remove a key from the mapping at `parent_path`.
+    RemoveField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path from the document root to the parent mapping.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        parent_path: Vec<YamlPathComponent>,
+        /// Key to remove.
+        key: String,
+    },
+    /// Rename a key in the mapping at `parent_path`, preserving its
+    /// value and position.
+    RenameField {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path from the document root to the parent mapping.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        parent_path: Vec<YamlPathComponent>,
+        /// Current key name.
+        from: String,
+        /// New key name.
+        to: String,
+    },
+}
+
+/// One step in a [`YamlAction`] path.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum YamlPathComponent {
+    /// A mapping key (string).
+    Key {
+        /// Key name.
+        key: String,
+    },
+    /// A sequence index (0-based).
+    Index {
+        /// Position.
+        index: usize,
+    },
+}
+
+/// Edits to a `debian/changelog`.
+///
+/// Operations target entries by their version, which is stable across
+/// minor edits. Change-line content is supplied verbatim — the applier
+/// preserves the changelog's existing indentation rules when re-rendering.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum ChangelogAction {
+    /// Replace the change lines of the entry with the given version. The
+    /// `lines` are stored verbatim with their leading `  *`/`    `
+    /// continuation prefix; the applier writes them as-is into the entry.
+    ReplaceEntryChanges {
+        /// File to edit, relative to the package root. Almost always
+        /// `debian/changelog`, but kept explicit for symmetry.
+        file: PathBuf,
+        /// Version string of the target entry (e.g. `2.6.0-1`).
+        version: String,
+        /// Replacement change lines (one per line, no trailing newline).
+        lines: Vec<String>,
+    },
+    /// Set the trailer datetime of the entry with the given version.
+    ///
+    /// The datetime is stored as an RFC 2822 string (`"Sun, 22 Apr 2018
+    /// 00:58:14 +0000"`) — what `chrono::DateTime::to_rfc2822` produces
+    /// and what changelog trailers use natively.
+    SetEntryDate {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Version string of the target entry.
+        version: String,
+        /// New datetime as an RFC 2822 string.
+        rfc2822: String,
+    },
+    /// Remove a bullet from the entry with the given version.
+    ///
+    /// The bullet is identified by its author attribution (the `[ Name ]`
+    /// header that introduces multi-author groups, or `None` for an entry
+    /// without one) and its body text (the bullet's lines joined with
+    /// `\n`, exactly as `debian_changelog`'s `Bullet::lines()` returns
+    /// them).
+    ///
+    /// `occurrence` is a 0-based index that disambiguates when several
+    /// bullets share the same `(author, text)` key: `0` removes the first
+    /// match, `1` the second, etc. The applier walks bullets in
+    /// `iter_changes_by_author` order. Whitespace between surviving
+    /// bullets is preserved.
+    RemoveBullet {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Version string of the target entry.
+        version: String,
+        /// Author header above the bullet, if any.
+        author: Option<String>,
+        /// Body text of the bullet (lines joined by `\n`).
+        text: String,
+        /// 0-based index among bullets sharing the same `(author, text)`
+        /// key. Defaults to `0` over the wire when omitted.
+        #[serde(default)]
+        occurrence: usize,
+    },
+    /// Replace the body lines of a bullet, identified the same way as in
+    /// [`RemoveBullet`](Self::RemoveBullet). `new_lines` are stored
+    /// without their `  *`/`    ` continuation prefix — the applier
+    /// passes them straight to `Bullet::replace_with`, which re-adds the
+    /// proper indentation.
+    ReplaceBullet {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Version string of the target entry.
+        version: String,
+        /// Author header above the bullet, if any.
+        author: Option<String>,
+        /// Current body text of the bullet (lines joined by `\n`).
+        text: String,
+        /// 0-based index among bullets sharing the same `(author, text)`
+        /// key.
+        #[serde(default)]
+        occurrence: usize,
+        /// Replacement body lines.
+        new_lines: Vec<String>,
+    },
+}
+
+/// Filesystem-level edits.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum FilesystemAction {
+    /// Set the file mode (e.g. mark a script executable).
+    SetMode {
+        /// File to chmod, relative to the package root.
+        file: PathBuf,
+        /// New mode bits.
+        mode: u32,
+    },
+    /// Delete a file.
+    Delete {
+        /// File to delete, relative to the package root.
+        file: PathBuf,
+    },
+    /// Move a file from one path to another, atomically when possible.
+    /// Creates the destination's parent directory if needed.
+    Rename {
+        /// Source path, relative to the package root.
+        file: PathBuf,
+        /// Destination path, relative to the package root.
+        to: PathBuf,
+    },
+    /// Remove a directory if it is empty. A no-op if the directory has
+    /// any remaining entries — useful as a follow-up to a `Delete` that
+    /// might have been the last file in its parent directory.
+    RemoveDirIfEmpty {
+        /// Directory to remove, relative to the package root. The
+        /// applier reuses the `file` field name for grouping purposes.
+        file: PathBuf,
+    },
+    /// Overwrite (or create) a file with the given content.
+    Write {
+        /// File to write, relative to the package root.
+        file: PathBuf,
+        /// Bytes to write.
+        content: Vec<u8>,
+    },
+    /// Replace a byte range in a file.
+    ReplaceText {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Range to replace.
+        range: TextRange,
+        /// Replacement text.
+        replacement: String,
+    },
+    /// Replace every occurrence of a literal string with another. Operates
+    /// on the file's textual content with no awareness of file structure.
+    Substitute {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// String to find (literal, not a regex).
+        from: String,
+        /// Replacement string.
+        to: String,
+    },
+}
+
+/// Identifies a paragraph in a deb822 file.
+///
+/// The variants are a union of file-format vocabularies. Each variant is
+/// labelled with the family of files it applies to; the applier validates
+/// that a selector matches the file it's targeting (e.g.
+/// [`Binary`](Self::Binary) on `debian/copyright` is an error).
+///
+/// File-format-agnostic selectors ([`Index`](Self::Index),
+/// [`ByKey`](Self::ByKey)) work on any deb822 file, including ones we
+/// don't have a typed wrapper for.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ParagraphSelector {
+    /// debian/control: the source paragraph.
+    Source,
+    /// debian/control: a binary paragraph identified by its `Package:` field.
+    Binary {
+        /// Package name.
+        package: String,
+    },
+    /// debian/copyright: the header paragraph (carrying `Format:`,
+    /// `Upstream-Name:`, etc.).
+    CopyrightHeader,
+    /// debian/copyright: the paragraph whose `Files:` field matches the
+    /// given glob string exactly.
+    CopyrightFiles {
+        /// Files-glob string, matched literally against the field value.
+        glob: String,
+    },
+    /// File-format-agnostic: the Nth paragraph (0-indexed). Use sparingly:
+    /// indices shift as paragraphs are inserted or removed.
+    Index {
+        /// Zero-based paragraph index.
+        index: usize,
+    },
+    /// File-format-agnostic: the first paragraph whose `field` has exactly
+    /// the given `value`.
+    ByKey {
+        /// Field name to match (case-sensitive, as deb822 keys are).
+        field: String,
+        /// Required value.
+        value: String,
+    },
+}
+
+/// A byte range in a file.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct TextRange {
+    /// Start byte offset (inclusive).
+    pub start: usize,
+    /// End byte offset (exclusive).
+    pub end: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn action_serializes_with_kind_tag() {
+        let action = Action::Deb822(Deb822Action::SetField {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Priority".into(),
+            value: "optional".into(),
+        });
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["kind"], "deb822");
+        assert_eq!(json["op"], "set_field");
+        assert_eq!(json["field"], "Priority");
+        assert_eq!(json["value"], "optional");
+        assert_eq!(json["paragraph"]["kind"], "binary");
+        assert_eq!(json["paragraph"]["package"], "foo");
+    }
+
+    #[test]
+    fn action_roundtrips_through_json() {
+        let original = Action::Filesystem(FilesystemAction::SetMode {
+            file: PathBuf::from("debian/rules"),
+            mode: 0o755,
+        });
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: Action = serde_json::from_str(&json).unwrap();
+        assert_eq!(original, parsed);
+    }
+
+    #[test]
+    fn diagnostic_with_actions_builds_single_default_plan() {
+        let diag = Diagnostic::with_actions(
+            LintianIssue::source("recommended-field"),
+            "Priority missing",
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: PathBuf::from("debian/control"),
+                paragraph: ParagraphSelector::Source,
+                field: "Priority".into(),
+                value: "optional".into(),
+            })],
+        );
+        assert_eq!(diag.plans.len(), 1);
+        assert!(diag.plans[0].label.is_none());
+        assert_eq!(diag.plans[0].actions.len(), 1);
+    }
+}
