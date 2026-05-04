@@ -27,14 +27,13 @@ lintian-tags:
 unsupported: lintian-tags lintian-brush-tags
 	awk 'NR==FNR{a[$$0]=1;next}!a[$$0]' lintian-brush-tags lintian-tags
 
-update-spdx:
-	python3 download-license-data.py > spdx.json
-	brz diff spdx.json || brz commit -m "Update SPDX license data" spdx.json
-
 update-renamed-tags:
 	$(MAKE) -C lintian-brush update-renamed-tags
 
 update: update-spdx update-lintian-brush-readme update-renamed-tags update-deps
+
+update-spdx:
+	$(MAKE) -C lintian-brush update-spdx
 
 update-lintian-brush-readme:
 	$(MAKE) -C lintian-brush README.md

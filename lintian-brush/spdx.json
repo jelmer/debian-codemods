@@ -33,6 +33,7 @@
         "GNOME-examples-exception",
         "GNU-compiler-exception",
         "gnu-javamail-exception",
+        "Google-Patent-WebM",
         "GPL-3.0-389-ds-base-exception",
         "GPL-3.0-interface-exception",
         "GPL-3.0-linking-exception",
@@ -68,10 +69,12 @@
         "Qwt-exception-1.0",
         "romic-exception",
         "RRDtool-FLOSS-exception-2.0",
+        "rsync-linking-exception",
         "SANE-exception",
         "SHL-2.0",
         "SHL-2.1",
         "Simple-Library-Usage-exception",
+        "sqlitestudio-OpenSSL-exception",
         "stunnel-exception",
         "SWI-exception",
         "Swift-exception",
@@ -237,6 +240,9 @@
         "Aspell-RU": {
             "name": "Aspell Russian License"
         },
+        "BOLA-1.1": {
+            "name": "Buena Onda License Agreement v1.1"
+        },
         "BSD-1-Clause": {
             "name": "BSD 1-Clause License"
         },
@@ -399,6 +405,9 @@
         "Brian-Gladman-3-Clause": {
             "name": "Brian Gladman 3-Clause License"
         },
+        "Brian-Gladman-3-Clause-no-conversion": {
+            "name": "Brian Gladman 3-Clause License (no conversion clause)"
+        },
         "Buddy": {
             "name": "Buddy License"
         },
@@ -410,6 +419,9 @@
         },
         "CAL-1.0-Combined-Work-Exception": {
             "name": "Cryptographic Autonomy License 1.0 (Combined Work Exception)"
+        },
+        "CAPEC-tou": {
+            "name": "Common Attack    Pattern Enumeration and Classification License"
         },
         "CATOSL-1.1": {
             "name": "Computer Associates Trusted Open Source License 1.1"
@@ -1083,6 +1095,9 @@
         "HPND-sell-variant-MIT-disclaimer-rev": {
             "name": "HPND sell variant with MIT disclaimer - reverse"
         },
+        "HPND-sell-variant-critical-systems": {
+            "name": "HPND - sell variant with safety critical systems clause"
+        },
         "HTMLTIDY": {
             "name": "HTML Tidy License"
         },
@@ -1338,6 +1353,9 @@
         "MMIXware": {
             "name": "MMIXware License"
         },
+        "MMPL-1.0.1": {
+            "name": "Minecraft Mod Public License v1.0.1"
+        },
         "MPEG-SSG": {
             "name": "MPEG Software Simulation"
         },
@@ -1364,6 +1382,9 @@
         },
         "MTLL": {
             "name": "Matrix Template Library License"
+        },
+        "MVT-1.1": {
+            "name": "MVT License 1.1"
         },
         "Mackerras-3-Clause": {
             "name": "Mackerras 3-Clause License"
@@ -1617,6 +1638,9 @@
         "OPUBL-1.0": {
             "name": "Open Publication License v1.0"
         },
+        "OSC-1.0": {
+            "name": "OSC License 1.0"
+        },
         "OSET-PL-2.1": {
             "name": "OSET Public License version 2.1"
         },
@@ -1637,6 +1661,9 @@
         },
         "OSSP": {
             "name": "OSSP License"
+        },
+        "OpenMDW-1.0": {
+            "name": "OpenMDW License Agreement v1.0"
         },
         "OpenPBS-2.3": {
             "name": "OpenPBS v2.3 Software License"
@@ -1667,6 +1694,9 @@
         },
         "PSF-2.0": {
             "name": "Python Software Foundation License 2.0"
+        },
+        "ParaType-Free-Font-1.3": {
+            "name": "ParaType Free Font Licensing Agreement v1.3"
         },
         "Parity-6.0.0": {
             "name": "The Parity Public License 6.0.0"
@@ -1929,6 +1959,9 @@
         "Ubuntu-font-1.0": {
             "name": "Ubuntu Font Licence v1.0"
         },
+        "UnRAR": {
+            "name": "UnRAR License"
+        },
         "Unicode-3.0": {
             "name": "Unicode License v3"
         },
@@ -1961,6 +1994,9 @@
         },
         "Vim": {
             "name": "Vim License"
+        },
+        "Vixie-Cron": {
+            "name": "Vixie Cron License"
         },
         "W3C": {
             "name": "W3C Software Notice and License (2002-12-31)"
