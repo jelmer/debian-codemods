@@ -82,7 +82,7 @@ fn main() {
     println!("cargo:rerun-if-changed=tests");
     println!("cargo:rerun-if-changed=renamed-tags.json");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/obsolete-sites/obsolete-sites");
-    println!("cargo:rerun-if-changed=../spdx.json");
+    println!("cargo:rerun-if-changed=spdx.json");
 }
 
 fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
