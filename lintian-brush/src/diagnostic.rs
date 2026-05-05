@@ -148,6 +148,9 @@ pub enum Action {
     /// An edit to a lintian-overrides file (`debian/source/lintian-overrides`
     /// or `debian/<pkg>.lintian-overrides`).
     LintianOverrides(LintianOverridesAction),
+    /// An edit to a `debian/debcargo.toml` file. Used for Rust crate
+    /// packages where the control file is generated.
+    Debcargo(DebcargoAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -1000,6 +1003,29 @@ pub enum LintianOverridesAction {
         selector: OverrideLineSelector,
         /// New info text. Empty string removes the info entirely.
         new_info: String,
+    },
+}
+
+/// Edits to a `debian/debcargo.toml` file.
+///
+/// Debcargo manages its own control file; we manipulate scalar fields under
+/// the `[source]` table directly. Only a small set of operations is needed
+/// in practice — the equivalent of typed setters on the generated control
+/// fields (Vcs-Git, Vcs-Browser, Standards-Version, Section).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum DebcargoAction {
+    /// Set a string field on the `[source]` table. Creates the table and/or
+    /// the field if absent. Overwrites any existing value.
+    SetSourceField {
+        /// File to edit, relative to the package root. Almost always
+        /// `debian/debcargo.toml`.
+        file: PathBuf,
+        /// Key inside `[source]` (e.g. `vcs_git`, `vcs_browser`,
+        /// `section`, `standards_version`).
+        field: String,
+        /// New string value.
+        value: String,
     },
 }
 

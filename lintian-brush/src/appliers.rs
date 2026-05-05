@@ -7,9 +7,9 @@
 //! on the source produces a single rewrite of `debian/control`.
 
 use crate::diagnostic::{
-    Action, ChangelogAction, Deb822Action, Dep3Action, DesktopIniAction, FilesystemAction,
-    LintianOverridesAction, MakefileAction, OverrideLineSelector, ParagraphSelector, SystemdAction,
-    WatchAction, YamlAction, YamlPathComponent,
+    Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
+    FilesystemAction, LintianOverridesAction, MakefileAction, OverrideLineSelector,
+    ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -130,6 +130,9 @@ fn action_file(action: &Action) -> &Path {
             | LintianOverridesAction::RenameTag { file, .. }
             | LintianOverridesAction::SetLineInfo { file, .. } => file,
         },
+        Action::Debcargo(a) => match a {
+            DebcargoAction::SetSourceField { file, .. } => file,
+        },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
             | FilesystemAction::Delete { file }
@@ -167,6 +170,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Makefile(_) => apply_makefile_group(base, rel, group),
         Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
+        Action::Debcargo(_) => apply_debcargo_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -2711,6 +2715,51 @@ fn apply_lintian_overrides_group(
         std::fs::write(&abs, new_content)?;
     }
     Ok(true)
+}
+
+fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "debcargo action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let mut doc: toml_edit::DocumentMut = content
+        .parse()
+        .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Debcargo(deb) = action else {
+            unreachable!("apply_debcargo_group called with non-debcargo action");
+        };
+        match deb {
+            DebcargoAction::SetSourceField { field, value, .. } => {
+                use toml_edit::{table, value as toml_value};
+                let source = doc
+                    .entry("source")
+                    .or_insert_with(table)
+                    .as_table_mut()
+                    .ok_or_else(|| FixerError::Other("[source] is not a table".to_string()))?;
+                let new = toml_value(value.as_str());
+                let changed = match source.get(field.as_str()) {
+                    Some(existing) => existing.to_string() != new.to_string(),
+                    None => true,
+                };
+                if changed {
+                    source.insert(field.as_str(), new);
+                    any_change = true;
+                }
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, doc.to_string())?;
+    }
+    Ok(any_change)
 }
 
 fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
