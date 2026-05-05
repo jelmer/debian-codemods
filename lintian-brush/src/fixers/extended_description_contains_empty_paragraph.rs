@@ -1,203 +1,170 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut made_changes = false;
+    let editor = TemplatedControlEditor::open(&control_abs)?;
+    let mut diagnostics = Vec::new();
 
-    // Process binary packages
-    for mut binary in editor.binaries() {
-        // Check if Description field exists
-        if let Some(description) = binary.description() {
-            // Split into lines but preserve the line endings
-            let lines: Vec<&str> = description.split('\n').collect();
-
-            // Check if we have at least 2 lines and the second line is "."
-            // (which represents an empty paragraph in debian control files)
-            // Note: The leading space is stripped by the deb822 parser
-            if lines.len() > 1 && lines[1] == "." {
-                if let Some(package_name) = binary.name() {
-                    let issue = LintianIssue::binary_with_info(
-                        package_name,
-                        "extended-description-contains-empty-paragraph",
-                        vec![],
-                    );
-
-                    if issue.should_fix(base_path) {
-                        // Reconstruct the description without the empty paragraph at the start
-                        let mut new_lines = Vec::new();
-                        new_lines.push(lines[0]); // Keep the short description
-
-                        // Skip the empty paragraph (line 1) and add the rest
-                        for line in lines.iter().skip(2) {
-                            new_lines.push(line);
-                        }
-
-                        // Join with newlines
-                        let new_description = new_lines.join("\n");
-
-                        binary.set_description(Some(&new_description));
-                        made_changes = true;
-                        fixed_issues.push(issue);
-                    } else {
-                        overridden_issues.push(issue);
-                    }
-                }
-            }
+    for binary in editor.binaries() {
+        let Some(description) = binary.description() else {
+            continue;
+        };
+        let lines: Vec<&str> = description.split('\n').collect();
+        // Empty paragraph at start: short description, then "." continuation,
+        // then the rest. The deb822 parser strips the leading space from
+        // continuation lines, so a `.` on its own marks the empty paragraph.
+        if lines.len() <= 1 || lines[1] != "." {
+            continue;
         }
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
+
+        let mut new_lines: Vec<&str> = Vec::with_capacity(lines.len() - 1);
+        new_lines.push(lines[0]);
+        new_lines.extend(lines.iter().skip(2));
+        let new_description = new_lines.join("\n");
+
+        let issue = LintianIssue::binary_with_info(
+            &package_name,
+            "extended-description-contains-empty-paragraph",
+            vec![],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Remove empty leading paragraph in Description.",
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package_name,
+                },
+                field: "Description".into(),
+                value: new_description,
+            })],
+        ));
     }
 
-    if !made_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Remove empty leading paragraph in Description.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "extended-description-contains-empty-paragraph",
     tags: ["extended-description-contains-empty-paragraph"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_empty_paragraph_at_start() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
         fs::write(
-            &control_path,
+            &control,
             "Source: test\n\nPackage: test\nDescription: This is a package\n .\n But it starts with an empty paragraph.\n .\n And then more.\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Remove empty leading paragraph in Description."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        let expected = "Source: test\n\nPackage: test\nDescription: This is a package\n But it starts with an empty paragraph.\n .\n And then more.\n";
-        assert_eq!(content, expected);
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test\n\nPackage: test\nDescription: This is a package\n But it starts with an empty paragraph.\n .\n And then more.\n",
+        );
     }
 
     #[test]
     fn test_no_empty_paragraph() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &control_path,
+            debian.join("control"),
             "Source: test\n\nPackage: test\nDescription: This is a package\n With a normal extended description.\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_empty_paragraph_not_at_start() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let original = "Source: test\n\nPackage: test\nDescription: This is a package\n With some text.\n .\n And then more after a separator.\n";
+        fs::write(debian.join("control"), original).unwrap();
 
-        let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: test\n\nPackage: test\nDescription: This is a package\n With some text.\n .\n And then more after a separator.\n",
-        )
-        .unwrap();
-
-        let result = run(base_path);
-        // Should not change anything since the empty paragraph is not at the start
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Verify file hasn't changed
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(content, "Source: test\n\nPackage: test\nDescription: This is a package\n With some text.\n .\n And then more after a separator.\n");
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            original
+        );
     }
 
     #[test]
     fn test_no_description_field() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, "Source: test\n\nPackage: test\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(debian.join("control"), "Source: test\n\nPackage: test\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_multiple_packages_with_empty_paragraph() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
         fs::write(
-            &control_path,
+            &control,
             "Source: test\n\nPackage: test1\nDescription: First package\n .\n Extended description.\n\nPackage: test2\nDescription: Second package\n .\n Another extended description.\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Remove empty leading paragraph in Description."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        let expected = "Source: test\n\nPackage: test1\nDescription: First package\n Extended description.\n\nPackage: test2\nDescription: Second package\n Another extended description.\n";
-        assert_eq!(content, expected);
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test\n\nPackage: test1\nDescription: First package\n Extended description.\n\nPackage: test2\nDescription: Second package\n Another extended description.\n",
+        );
     }
 }

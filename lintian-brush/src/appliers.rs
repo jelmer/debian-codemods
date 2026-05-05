@@ -60,7 +60,8 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::RemoveField { file, .. }
             | Deb822Action::RenameField { file, .. }
             | Deb822Action::RemoveParagraph { file, .. }
-            | Deb822Action::AppendParagraph { file, .. } => file,
+            | Deb822Action::AppendParagraph { file, .. }
+            | Deb822Action::NormalizeFieldSpacing { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -152,7 +153,8 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             Deb822Action::SetField { paragraph, .. }
             | Deb822Action::RemoveField { paragraph, .. }
             | Deb822Action::RenameField { paragraph, .. }
-            | Deb822Action::RemoveParagraph { paragraph, .. } => Some(paragraph),
+            | Deb822Action::RemoveParagraph { paragraph, .. }
+            | Deb822Action::NormalizeFieldSpacing { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } => None,
         };
     }
@@ -217,6 +219,13 @@ fn apply_control_deb822_group(
                     "deb822 AppendParagraph not supported on debian/control via the typed editor"
                         .into(),
                 ));
+            }
+            Deb822Action::NormalizeFieldSpacing {
+                paragraph, field, ..
+            } => {
+                if normalize_deb822_field_spacing(&editor, paragraph, field)? {
+                    any_change = true;
+                }
             }
         }
     }
@@ -309,6 +318,18 @@ fn apply_generic_deb822_group(
                     p.set_with_indent_pattern(k, v, pattern.as_ref(), None);
                 }
                 any_change = true;
+            }
+            Deb822Action::NormalizeFieldSpacing {
+                paragraph, field, ..
+            } => {
+                let Some(p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if let Some(mut entry) = p.get_entry(field) {
+                    if entry.normalize_field_spacing() {
+                        any_change = true;
+                    }
+                }
             }
         }
     }
@@ -464,6 +485,42 @@ fn remove_deb822_field(
         }
         other => Err(FixerError::Other(format!(
             "deb822 RemoveField does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn normalize_deb822_field_spacing(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            let p = source.as_mut_deb822();
+            let Some(mut entry) = p.get_entry(field) else {
+                return Ok(false);
+            };
+            Ok(entry.normalize_field_spacing())
+        }
+        ParagraphSelector::Binary { package } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(package.as_str()) {
+                    continue;
+                }
+                let Some(mut entry) = p.get_entry(field) else {
+                    return Ok(false);
+                };
+                return Ok(entry.normalize_field_spacing());
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 NormalizeFieldSpacing does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -1150,6 +1207,52 @@ mod tests {
             paragraph: ParagraphSelector::Source,
             field: "Priority".into(),
             value: "optional".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_normalize_field_spacing_on_binary() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: bar\nRecommends:  baz\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::NormalizeFieldSpacing {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Recommends".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: bar\nRecommends: baz\n",
+        );
+    }
+
+    #[test]
+    fn deb822_normalize_field_spacing_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: bar\nRecommends: baz\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::NormalizeFieldSpacing {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Recommends".into(),
         });
         let changed = apply_action(tmp.path(), &action).unwrap();
         assert!(!changed);

@@ -161,6 +161,19 @@ pub enum Deb822Action {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         indent: Option<usize>,
     },
+    /// Normalize the whitespace around a field's separator (`:` and the
+    /// continuation indent). The deb822 spec allows arbitrary spacing
+    /// after the colon, but the convention is exactly one space; this
+    /// action collapses unusual spacing without otherwise touching the
+    /// value. A no-op if the field already has canonical spacing.
+    NormalizeFieldSpacing {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Field name.
+        field: String,
+    },
 }
 
 /// Edits to a systemd unit file.
