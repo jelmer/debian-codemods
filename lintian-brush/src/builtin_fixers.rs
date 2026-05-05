@@ -199,6 +199,7 @@ pub fn apply_diagnostics_with(
     }
 
     let description = describe(&fixed, &all_actions);
+    let patch_name = fixed.iter().find_map(|d| d.patch_name.clone());
     let fixed_issues: Vec<LintianIssue> = fixed.into_iter().filter_map(|d| d.issue).collect();
 
     let mut builder = FixerResult::builder(description).fixed_issues(fixed_issues);
@@ -207,6 +208,9 @@ pub fn apply_diagnostics_with(
     }
     if !overridden_issues.is_empty() {
         builder = builder.overridden_issues(overridden_issues);
+    }
+    if let Some(name) = patch_name {
+        builder = builder.patch_name(name);
     }
     Ok(builder.build())
 }
