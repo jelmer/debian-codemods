@@ -57,6 +57,7 @@ fn action_file(action: &Action) -> &Path {
     match action {
         Action::Deb822(a) => match a {
             Deb822Action::SetField { file, .. }
+            | Deb822Action::SetFieldWithIndent { file, .. }
             | Deb822Action::RemoveField { file, .. }
             | Deb822Action::RenameField { file, .. }
             | Deb822Action::RemoveParagraph { file, .. }
@@ -185,6 +186,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
         };
         return match deb {
             Deb822Action::SetField { paragraph, .. }
+            | Deb822Action::SetFieldWithIndent { paragraph, .. }
             | Deb822Action::RemoveField { paragraph, .. }
             | Deb822Action::RenameField { paragraph, .. }
             | Deb822Action::RemoveParagraph { paragraph, .. }
@@ -227,7 +229,18 @@ fn apply_control_deb822_group(
                 value,
                 ..
             } => {
-                if set_deb822_field(&editor, paragraph, field, value)? {
+                if set_deb822_field(&editor, paragraph, field, value, None)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::SetFieldWithIndent {
+                paragraph,
+                field,
+                value,
+                indent,
+                ..
+            } => {
+                if set_deb822_field(&editor, paragraph, field, value, Some(indent))? {
                     any_change = true;
                 }
             }
@@ -390,6 +403,26 @@ fn apply_generic_deb822_group(
                     continue;
                 }
                 p.set(field, value);
+                any_change = true;
+            }
+            Deb822Action::SetFieldWithIndent {
+                paragraph,
+                field,
+                value,
+                indent,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    return Err(FixerError::Other(format!(
+                        "deb822 SetFieldWithIndent on {}: no paragraph matching {:?}",
+                        rel.display(),
+                        paragraph
+                    )));
+                };
+                if p.get(field).as_deref() == Some(value.as_str()) {
+                    continue;
+                }
+                p.set_with_indent_pattern(field, value, Some(&indent.to_deb822()), None);
                 any_change = true;
             }
             Deb822Action::RemoveField {
@@ -672,10 +705,15 @@ fn set_deb822_field(
     paragraph: &ParagraphSelector,
     field: &str,
     value: &str,
+    indent: Option<&crate::diagnostic::IndentPattern>,
 ) -> Result<bool, FixerError> {
-    // Source::set / Binary::set apply the canonical debian/control field
-    // ordering, so a newly-introduced field lands at a sensible position
-    // (e.g. Priority after Section, before Description).
+    // When `indent` is None we use Source::set / Binary::set on the typed
+    // editor, which applies the canonical debian/control field ordering
+    // (e.g. Priority lands after Section, before Description). When it's
+    // Some we fall through to set_with_indent_pattern on the underlying
+    // deb822 paragraph, which preserves position but skips the typed
+    // editor's reordering — that's acceptable for fields like
+    // Description that are already in canonical position when set.
     match paragraph {
         ParagraphSelector::Source => {
             let Some(mut source) = editor.source() else {
@@ -686,7 +724,16 @@ fn set_deb822_field(
             if source.as_deb822().get(field).as_deref() == Some(value) {
                 return Ok(false);
             }
-            source.set(field, value);
+            if let Some(pattern) = indent {
+                source.as_mut_deb822().set_with_indent_pattern(
+                    field,
+                    value,
+                    Some(&pattern.to_deb822()),
+                    None,
+                );
+            } else {
+                source.set(field, value);
+            }
             Ok(true)
         }
         ParagraphSelector::Binary { package } => {
@@ -700,7 +747,16 @@ fn set_deb822_field(
                 if binary.as_deb822().get(field).as_deref() == Some(value) {
                     break;
                 }
-                binary.set(field, value);
+                if let Some(pattern) = indent {
+                    binary.as_mut_deb822().set_with_indent_pattern(
+                        field,
+                        value,
+                        Some(&pattern.to_deb822()),
+                        None,
+                    );
+                } else {
+                    binary.set(field, value);
+                }
                 changed = true;
                 break;
             }
