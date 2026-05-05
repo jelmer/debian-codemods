@@ -1,107 +1,80 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
 const KNOWN_SECURE_HOSTS: &[&str] = &["code.launchpad.net", "launchpad.net", "ftp.gnu.org"];
 
-pub fn run(
-    base_path: &Path,
-    package: &str,
-    upstream_version: &str,
-    net_access: bool,
-) -> Result<FixerResult, FixerError> {
-    let watch_path = base_path.join("debian/watch");
-
-    if !watch_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/watch");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&watch_path)?;
-
-    let watch_file = debian_watch::parse::parse(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
-
-    // Check if any entry uses http://
-    let has_http = watch_file.entries().any(|entry| {
-        let url = entry.url();
-        url.starts_with("http://")
-    });
-
-    if !has_http {
-        return Err(FixerError::NoChanges);
-    }
-
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    // Modify entries to use https:// for known hosts
-    for mut entry in watch_file.entries() {
-        let url = entry.url();
-        if url.starts_with("http://") {
-            let mut new_url = url.clone();
-
-            // Apply stock replacements for known hosts
-            for hostname in KNOWN_SECURE_HOSTS {
-                let http_url = format!("http://{}/", hostname);
-                let https_url = format!("https://{}/", hostname);
-                if new_url.contains(&http_url) {
-                    new_url = new_url.replace(&http_url, &https_url);
-                }
-            }
-
-            if new_url != url {
-                let line_number = entry.line() + 1;
-                let issue = LintianIssue::source_with_info(
-                    "debian-watch-uses-insecure-uri",
-                    vec![format!("{} [debian/watch:{}]", url, line_number)],
-                );
-
-                if issue.should_fix(base_path) {
-                    entry.set_url(&new_url);
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            }
-        }
-    }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    // Write back the modified watch file
-    fs::write(&watch_path, watch_file.to_string())?;
-
-    let certainty = if net_access {
-        match crate::watch::verify_watch_entry_discovers_version(
-            &watch_path,
-            package,
-            upstream_version,
-        ) {
-            Some(true) => Certainty::Certain,
-            Some(false) => Certainty::Likely,
-            None => Certainty::Likely,
-        }
-    } else {
-        Certainty::Confident
+    let content = std::fs::read_to_string(&abs)?;
+    let watch_file = match debian_watch::parse::parse(&content) {
+        Ok(w) => w,
+        Err(_) => return Ok(Vec::new()),
     };
 
-    Ok(FixerResult::builder("Use secure URI in debian/watch.")
-        .certainty(certainty)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    let mut diagnostics = Vec::new();
+    let mut seen_substitutions: std::collections::HashSet<(String, String)> =
+        std::collections::HashSet::new();
+
+    for entry in watch_file.entries() {
+        let url = entry.url();
+        if !url.starts_with("http://") {
+            continue;
+        }
+        let mut new_url = url.clone();
+        for hostname in KNOWN_SECURE_HOSTS {
+            let http_url = format!("http://{}/", hostname);
+            let https_url = format!("https://{}/", hostname);
+            if new_url.contains(&http_url) {
+                new_url = new_url.replace(&http_url, &https_url);
+            }
+        }
+        if new_url == url {
+            continue;
+        }
+
+        let line_number = entry.line() + 1;
+        let issue = LintianIssue::source_with_info(
+            "debian-watch-uses-insecure-uri",
+            vec![format!("{} [debian/watch:{}]", url, line_number)],
+        );
+
+        let mut actions = Vec::new();
+        for hostname in KNOWN_SECURE_HOSTS {
+            let http_url = format!("http://{}/", hostname);
+            let https_url = format!("https://{}/", hostname);
+            if !url.contains(&http_url) {
+                continue;
+            }
+            let key = (http_url.clone(), https_url.clone());
+            if seen_substitutions.insert(key) {
+                actions.push(Action::Filesystem(FilesystemAction::Substitute {
+                    file: rel.clone(),
+                    from: http_url,
+                    to: https_url,
+                }));
+            }
+        }
+
+        diagnostics.push(
+            Diagnostic::with_actions(issue, "Use secure URI in debian/watch.", actions)
+                .with_certainty(Certainty::Confident),
+        );
+    }
+
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-watch-uses-insecure-uri",
     tags: ["debian-watch-uses-insecure-uri"],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -109,88 +82,82 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_replace_insecure_uri() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let watch = debian.join("watch");
+        fs::write(
+            &watch,
+            "version=4\nhttp://ftp.gnu.org/foo/foo-(.*).tar.gz\n",
+        )
+        .unwrap();
 
-        let watch_content = "version=4\nhttp://ftp.gnu.org/foo/foo-(.*).tar.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert!(updated_content.contains("https://ftp.gnu.org/"));
-        assert!(!updated_content.contains("http://ftp.gnu.org/"));
+        run_apply(tmp.path()).unwrap();
+        let content = fs::read_to_string(&watch).unwrap();
+        assert!(content.contains("https://ftp.gnu.org/"));
+        assert!(!content.contains("http://ftp.gnu.org/"));
     }
 
     #[test]
     fn test_replace_launchpad_uri() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let watch = debian.join("watch");
+        fs::write(
+            &watch,
+            "version=4\nhttp://code.launchpad.net/foo/foo-(.*).tar.gz\n",
+        )
+        .unwrap();
 
-        let watch_content = "version=4\nhttp://code.launchpad.net/foo/foo-(.*).tar.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert!(updated_content.contains("https://code.launchpad.net/"));
-        assert!(!updated_content.contains("http://code.launchpad.net/"));
+        run_apply(tmp.path()).unwrap();
+        let content = fs::read_to_string(&watch).unwrap();
+        assert!(content.contains("https://code.launchpad.net/"));
+        assert!(!content.contains("http://code.launchpad.net/"));
     }
 
     #[test]
     fn test_no_change_when_already_https() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttps://ftp.gnu.org/foo/foo-(.*).tar.gz\n",
+        )
+        .unwrap();
 
-        let watch_content = "version=4\nhttps://ftp.gnu.org/foo/foo-(.*).tar.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_watch_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_for_unknown_host() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttp://example.com/foo/foo-(.*).tar.gz\n",
+        )
+        .unwrap();
 
-        let watch_content = "version=4\nhttp://example.com/foo/foo-(.*).tar.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

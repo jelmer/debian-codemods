@@ -1,136 +1,123 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::{Certainty, FixerError, LintianIssue};
 use regex::Regex;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path, package: &str) -> Result<FixerResult, FixerError> {
-    let changelog_path = base_path.join("debian/changelog");
-
-    if !changelog_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path, package: &str) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/changelog");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&changelog_path)?;
-
-    // Create regex to match and remove the add-log-mailing-address line
+    let content = std::fs::read_to_string(&abs)?;
     let re = Regex::new(r"add-log-mailing-address: .*\n").unwrap();
 
-    let Some(mat) = re.find(&content) else {
-        return Err(FixerError::NoChanges);
-    };
-
-    // Calculate line number (1-indexed)
-    let line_number = content[..mat.start()].matches('\n').count() + 1;
-
-    let issue = LintianIssue::source_with_info(
-        "debian-changelog-file-contains-obsolete-user-emacs-settings",
-        vec![format!(
-            "[usr/share/doc/{}/changelog.Debian.gz:{}]",
-            package, line_number
-        )],
-    );
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    // Collect matches in reverse order so byte offsets remain stable as
+    // earlier ReplaceText actions are applied.
+    let matches: Vec<_> = re.find_iter(&content).collect();
+    if matches.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Remove the add-log-mailing-address line
-    let new_content = re.replace_all(&content, "");
+    let mut diagnostics = Vec::new();
+    for mat in matches.iter().rev() {
+        let line_number = content[..mat.start()].matches('\n').count() + 1;
+        let issue = LintianIssue::source_with_info(
+            "debian-changelog-file-contains-obsolete-user-emacs-settings",
+            vec![format!(
+                "[usr/share/doc/{}/changelog.Debian.gz:{}]",
+                package, line_number
+            )],
+        );
 
-    if new_content == content {
-        return Err(FixerError::NoChanges);
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                "Drop no longer supported add-log-mailing-address setting from debian/changelog.",
+                vec![Action::Filesystem(FilesystemAction::ReplaceText {
+                    file: rel.clone(),
+                    range: TextRange {
+                        start: mat.start(),
+                        end: mat.end(),
+                    },
+                    replacement: "".into(),
+                })],
+            )
+            .with_certainty(Certainty::Certain),
+        );
     }
 
-    fs::write(&changelog_path, new_content.as_ref())?;
-
-    Ok(FixerResult::builder(
-        "Drop no longer supported add-log-mailing-address setting from debian/changelog.",
-    )
-    .fixed_issues(vec![issue])
-    .certainty(crate::Certainty::Certain)
-    .build())
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-changelog-file-contains-obsolete-user-emacs-settings",
     tags: ["debian-changelog-file-contains-obsolete-user-emacs-settings"],
-    apply: |basedir, package, _version, _preferences| {
-        run(basedir, package)
+    diagnose: |basedir, package, _version, _preferences| {
+        detect(basedir, package)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path, package: &str) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, package, &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_add_log_mailing_address() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let changelog = debian.join("changelog");
+        fs::write(&changelog,
+            "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nadd-log-mailing-address: \"joe@example.com\"\nEnd:\n",
+        ).unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nadd-log-mailing-address: \"joe@example.com\"\nEnd:\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let result = run(base_path, "libjcode-perl").unwrap();
+        let result = run_apply(tmp.path(), "libjcode-perl").unwrap();
         assert_eq!(
             result.description,
             "Drop no longer supported add-log-mailing-address setting from debian/changelog."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        let new_content = fs::read_to_string(&changelog_path).unwrap();
-        assert!(!new_content.contains("add-log-mailing-address"));
-        assert!(new_content.contains("Local variables:"));
-        assert!(new_content.contains("mode: debian-changelog"));
-        assert!(new_content.contains("End:"));
-
-        let expected = "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nEnd:\n";
-        assert_eq!(new_content, expected);
+        assert_eq!(
+            fs::read_to_string(&changelog).unwrap(),
+            "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nEnd:\n",
+        );
     }
 
     #[test]
     fn test_no_add_log_mailing_address() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(debian.join("changelog"),
+            "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nEnd:\n",
+        ).unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n\nLocal variables:\nmode: debian-changelog\nEnd:\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let result = run(base_path, "libjcode-perl");
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_no_local_variables() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        let content = "libjcode-perl (2.8-1) frozen unstable; urgency=low\n\n  * Upstream version.\n\n -- Blah <joe@example.com>  Thu, 15 Oct 1998 09:21:48 +0900\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let result = run(base_path, "libjcode-perl");
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), "libjcode-perl"),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_changelog_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path, "libjcode-perl");
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), "libjcode-perl"),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

@@ -1,216 +1,155 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_dir = base_path.join("debian");
-
     if !debian_dir.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut made_changes = false;
+    let mut entries: Vec<_> = std::fs::read_dir(&debian_dir)?
+        .filter_map(|e| e.ok())
+        .collect();
+    entries.sort_by_key(|e| e.file_name());
 
-    // Find all .desktop files in the debian directory
-    let entries = fs::read_dir(&debian_dir)?;
+    let mut diagnostics = Vec::new();
     for entry in entries {
-        let entry = entry?;
         let path = entry.path();
-
-        // Only process .desktop files
         if path.extension().and_then(|s| s.to_str()) != Some("desktop") {
             continue;
         }
 
-        // Read the file as bytes to preserve exact binary content
-        let content = fs::read(&path)?;
-
-        // Check if there are any CR characters
+        let content = std::fs::read(&path)?;
         if !content.contains(&b'\r') {
             continue;
         }
 
-        let filename = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| FixerError::Other("Invalid filename".to_string()))?;
-
-        // Build the installed path (assuming debian/<package>.desktop -> /usr/share/applications/<package>.desktop)
+        let filename = match path.file_name().and_then(|s| s.to_str()) {
+            Some(f) => f.to_string(),
+            None => continue,
+        };
         let installed_path = format!("usr/share/applications/{}", filename);
+        let rel = PathBuf::from("debian").join(&filename);
 
-        // Process line by line to track which lines have CRs
-        let lines: Vec<&[u8]> = content.split(|&b| b == b'\n').collect();
-        let mut lines_to_fix = Vec::new();
-
-        for (line_idx, line) in lines.iter().enumerate() {
-            if line.contains(&b'\r') {
-                let line_no = line_idx + 1;
-                let issue = LintianIssue::source_with_info(
-                    "desktop-entry-file-has-crs",
-                    vec![format!("[{}:{}]", installed_path, line_no)],
-                );
-
-                if issue.should_fix(base_path) {
-                    lines_to_fix.push(line_idx);
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
+        for (line_idx, line) in content.split(|&b| b == b'\n').enumerate() {
+            if !line.contains(&b'\r') {
+                continue;
             }
-        }
-
-        // Only modify the file if there are lines to fix
-        if !lines_to_fix.is_empty() {
-            // Build new content, removing CRs only from lines that should be fixed
-            let mut new_content = Vec::new();
-            for (line_idx, line) in lines.iter().enumerate() {
-                if lines_to_fix.contains(&line_idx) {
-                    // Remove CRs from this line
-                    let cleaned: Vec<u8> = line.iter().copied().filter(|&b| b != b'\r').collect();
-                    new_content.extend_from_slice(&cleaned);
-                } else {
-                    // Keep the line as-is (including any CRs if they exist and are overridden)
-                    new_content.extend_from_slice(line);
-                }
-
-                // Add back the newline separator (except after the last line if it didn't have one)
-                // Note: split creates an empty last element when content ends with \n
-                if line_idx < lines.len() - 1 {
-                    new_content.push(b'\n');
-                } else if content.ends_with(b"\n") && !line.is_empty() {
-                    // Only add final newline if the last line is not empty
-                    // (empty last line means content already ended with \n)
-                    new_content.push(b'\n');
-                }
-            }
-
-            fs::write(&path, new_content)?;
-            made_changes = true;
+            let issue = LintianIssue::source_with_info(
+                "desktop-entry-file-has-crs",
+                vec![format!("[{}:{}]", installed_path, line_idx + 1)],
+            );
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    "Remove CRs from desktop files.",
+                    vec![Action::Filesystem(FilesystemAction::Substitute {
+                        file: rel.clone(),
+                        from: "\r".into(),
+                        to: "".into(),
+                    })],
+                )
+                .with_certainty(Certainty::Certain),
+            );
         }
     }
 
-    if !made_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    Ok(FixerResult::builder("Remove CRs from desktop files.")
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .certainty(crate::Certainty::Certain)
-        .build())
+fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    "Remove CRs from desktop files.".to_string()
 }
 
 declare_fixer! {
     name: "desktop-entry-file-has-crs",
     tags: ["desktop-entry-file-has-crs"],
-    // Must normalize line endings before whitespace cleanup to avoid corrupting content
     before: ["file-contains-trailing-whitespace"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_crs_from_desktop_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let p = debian.join("test.desktop");
+        fs::write(&p, b"[Desktop Entry]\r\nType=Application\r\nName=Test\r\n").unwrap();
 
-        let desktop_path = debian_dir.join("test.desktop");
-        // Write content with CRLF line endings
-        fs::write(
-            &desktop_path,
-            b"[Desktop Entry]\r\nType=Application\r\nName=Test\r\n",
-        )
-        .unwrap();
-
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Remove CRs from desktop files.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that CRs were removed
-        let content = fs::read(&desktop_path).unwrap();
-        assert!(!content.contains(&b'\r'));
-        assert_eq!(content, b"[Desktop Entry]\nType=Application\nName=Test\n");
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert_eq!(
+            fs::read(&p).unwrap(),
+            b"[Desktop Entry]\nType=Application\nName=Test\n"
+        );
     }
 
     #[test]
     fn test_multiple_desktop_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
 
-        // Create multiple desktop files, some with CRs, some without
-        let desktop1_path = debian_dir.join("app1.desktop");
-        let desktop2_path = debian_dir.join("app2.desktop");
-        let non_desktop_path = debian_dir.join("control");
+        let d1 = debian.join("app1.desktop");
+        let d2 = debian.join("app2.desktop");
+        let other = debian.join("control");
+        fs::write(&d1, b"[Desktop Entry]\r\nType=Application\r\n").unwrap();
+        fs::write(&d2, b"[Desktop Entry]\nType=Service\n").unwrap();
+        fs::write(&other, b"Source: test\r\n").unwrap();
 
-        fs::write(&desktop1_path, b"[Desktop Entry]\r\nType=Application\r\n").unwrap();
-        fs::write(&desktop2_path, b"[Desktop Entry]\nType=Service\n").unwrap(); // No CRs
-        fs::write(&non_desktop_path, b"Source: test\r\n").unwrap(); // Non-desktop file with CRs
-
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that CRs were removed from desktop files only
-        let content1 = fs::read(&desktop1_path).unwrap();
-        assert!(!content1.contains(&b'\r'));
-
-        let content2 = fs::read(&desktop2_path).unwrap();
-        assert!(!content2.contains(&b'\r')); // Already didn't have CRs
-
-        let control_content = fs::read(&non_desktop_path).unwrap();
-        assert!(control_content.contains(&b'\r')); // Should be unchanged
+        run_apply(tmp.path()).unwrap();
+        assert!(!fs::read(&d1).unwrap().contains(&b'\r'));
+        assert!(!fs::read(&d2).unwrap().contains(&b'\r'));
+        assert!(fs::read(&other).unwrap().contains(&b'\r'));
     }
 
     #[test]
     fn test_no_desktop_files_with_crs() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("test.desktop"),
+            b"[Desktop Entry]\nType=Application\n",
+        )
+        .unwrap();
 
-        let desktop_path = debian_dir.join("test.desktop");
-        // Write content with LF line endings only
-        fs::write(&desktop_path, b"[Desktop Entry]\nType=Application\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_desktop_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(debian.join("control"), b"Source: test\r\n").unwrap();
 
-        // Only non-desktop files
-        fs::write(debian_dir.join("control"), b"Source: test\r\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
