@@ -990,6 +990,17 @@ pub enum LintianOverridesAction {
         /// New tag name.
         to_tag: String,
     },
+    /// Rewrite the info text on the first line that matches `selector`.
+    /// Only the info portion changes — the package spec, tag, and
+    /// surrounding whitespace are preserved.
+    SetLineInfo {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which override line to update.
+        selector: OverrideLineSelector,
+        /// New info text. Empty string removes the info entirely.
+        new_info: String,
+    },
 }
 
 /// Filesystem-level edits.

@@ -127,7 +127,8 @@ fn action_file(action: &Action) -> &Path {
         },
         Action::LintianOverrides(a) => match a {
             LintianOverridesAction::DropLine { file, .. }
-            | LintianOverridesAction::RenameTag { file, .. } => file,
+            | LintianOverridesAction::RenameTag { file, .. }
+            | LintianOverridesAction::SetLineInfo { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -2667,6 +2668,30 @@ fn apply_lintian_overrides_group(
                     } else {
                         None
                     }
+                });
+            }
+            LintianOverridesAction::SetLineInfo {
+                selector, new_info, ..
+            } => {
+                let mut applied = false;
+                overrides = lintian_overrides::map_overrides(&overrides, |line| {
+                    if applied {
+                        return None;
+                    }
+                    if !override_line_matches(line, selector) {
+                        return None;
+                    }
+                    applied = true;
+                    let package_spec = line.package_spec();
+                    let package = package_spec.as_ref().and_then(|s| s.package_name());
+                    let package_type = package_spec.as_ref().and_then(|s| s.package_type());
+                    let tag = line.tag()?.text().to_string();
+                    let info = if new_info.is_empty() {
+                        None
+                    } else {
+                        Some(new_info.clone())
+                    };
+                    Some((package, package_type, tag, info))
                 });
             }
         }
