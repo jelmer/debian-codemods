@@ -1,114 +1,106 @@
-use crate::{FixerError, FixerResult, LintianIssue, PackageType};
-use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{FixerError, LintianIssue, PackageType};
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let options_path = base_path.join("debian/source/options");
+const SEP: char = '\t';
 
-    if !options_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let options_rel = PathBuf::from("debian/source/options");
+    let options_abs = base_path.join(&options_rel);
+    if !options_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&options_path)?;
+    let content = std::fs::read_to_string(&options_abs)?;
     let oldlines: Vec<&str> = content.lines().collect();
 
-    let mut dropped: HashSet<String> = HashSet::new();
     let mut newlines: Vec<String> = Vec::new();
-    let mut fixed_issues = Vec::new();
+    let mut dropped: BTreeSet<String> = BTreeSet::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     for (lineno, line) in oldlines.iter().enumerate() {
-        // Keep comment lines initially
         if line.trim_start().starts_with('#') {
             newlines.push(line.to_string());
             continue;
         }
-
-        // Try to split on '='
-        if let Some(eq_pos) = line.find('=') {
-            let key = line[..eq_pos].trim();
-
-            match key {
-                "compression" => {
-                    let issue = LintianIssue {
-                        package: None,
-                        package_type: Some(PackageType::Source),
-                        tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(format!("{} (line {})", line, lineno + 1)),
-                    };
-
-                    if !issue.should_fix(base_path) {
-                        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-                    }
-
-                    // Drop prior comments
-                    while !newlines.is_empty()
-                        && newlines.last().unwrap().trim_start().starts_with('#')
-                    {
-                        newlines.pop();
-                    }
-
-                    dropped.insert("custom source compression".to_string());
-                    fixed_issues.push(issue);
-                    continue;
+        let key = line.find('=').map(|p| line[..p].trim()).unwrap_or("");
+        match key {
+            "compression" | "compression-level" => {
+                let issue = LintianIssue {
+                    package: None,
+                    package_type: Some(PackageType::Source),
+                    tag: Some("custom-compression-in-debian-source-options".to_string()),
+                    info: Some(format!("{} (line {})", line, lineno + 1)),
+                };
+                // Drop any preceding contiguous comment lines.
+                while !newlines.is_empty() && newlines.last().unwrap().trim_start().starts_with('#')
+                {
+                    newlines.pop();
                 }
-                "compression-level" => {
-                    let issue = LintianIssue {
-                        package: None,
-                        package_type: Some(PackageType::Source),
-                        tag: Some("custom-compression-in-debian-source-options".to_string()),
-                        info: Some(format!("{} (line {})", line, lineno + 1)),
-                    };
-
-                    if !issue.should_fix(base_path) {
-                        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-                    }
-
-                    // Drop prior comments
-                    while !newlines.is_empty()
-                        && newlines.last().unwrap().trim_start().starts_with('#')
-                    {
-                        newlines.pop();
-                    }
-
-                    dropped.insert("custom source compression level".to_string());
-                    fixed_issues.push(issue);
-                    continue;
-                }
-                _ => {}
+                let label = if key == "compression-level" {
+                    "custom source compression level"
+                } else {
+                    "custom source compression"
+                };
+                dropped.insert(label.to_string());
+                // The action set is filled in below (after we know the
+                // final file content).
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    format!("drop{}{}", SEP, label),
+                    Vec::new(),
+                ));
             }
+            _ => newlines.push(line.to_string()),
         }
-
-        newlines.push(line.to_string());
     }
 
-    if dropped.is_empty() {
-        return Err(FixerError::NoChanges);
+    if diagnostics.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Write back or delete the file
-    if !newlines.is_empty() {
-        let new_content = newlines.join("\n") + "\n";
-        fs::write(&options_path, new_content)?;
+    // Decide whether the file should be deleted (became empty) or
+    // rewritten with the surviving lines. Attach the resulting action
+    // set to the first diagnostic.
+    let action = if newlines.is_empty() {
+        Action::Filesystem(FilesystemAction::Delete { file: options_rel })
     } else {
-        fs::remove_file(&options_path)?;
-    }
+        let mut new_content = newlines.join("\n");
+        new_content.push('\n');
+        Action::Filesystem(FilesystemAction::Write {
+            file: options_rel,
+            content: new_content.into_bytes(),
+        })
+    };
+    diagnostics[0].plans[0].actions.push(action);
 
-    let mut sorted_dropped: Vec<_> = dropped.into_iter().collect();
-    sorted_dropped.sort();
+    Ok(diagnostics)
+}
 
-    Ok(
-        FixerResult::builder(format!("Drop {}.", sorted_dropped.join(", ")))
-            .fixed_issues(fixed_issues)
-            .build(),
-    )
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut labels: Vec<String> = fixed
+        .iter()
+        .filter_map(|d| {
+            d.message
+                .split_once(SEP)
+                .filter(|(tag, _)| *tag == "drop")
+                .map(|(_, lab)| lab.to_string())
+        })
+        .collect();
+    labels.sort();
+    labels.dedup();
+    format!("Drop {}.", labels.join(", "))
 }
 
 declare_fixer! {
     name: "debian-source-options-has-custom-compression-settings",
     tags: ["custom-compression-in-debian-source-options"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -116,114 +108,78 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_removes_compression() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let source = tmp.path().join("debian/source");
+        fs::create_dir_all(&source).unwrap();
+        let options = source.join("options");
+        fs::write(&options, "compression = xz\n").unwrap();
 
-        let options_content = "compression = xz\n";
-        let options_path = source_dir.join("options");
-        fs::write(&options_path, options_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // File should be deleted since it's now empty
-        assert!(!options_path.exists());
+        run_apply(tmp.path()).unwrap();
+        assert!(!options.exists());
     }
 
     #[test]
     fn test_removes_compression_level() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let source = tmp.path().join("debian/source");
+        fs::create_dir_all(&source).unwrap();
+        let options = source.join("options");
+        fs::write(&options, "compression-level = 9\n").unwrap();
 
-        let options_content = "compression-level = 9\n";
-        let options_path = source_dir.join("options");
-        fs::write(&options_path, options_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        assert!(!options_path.exists());
+        run_apply(tmp.path()).unwrap();
+        assert!(!options.exists());
     }
 
     #[test]
     fn test_keeps_other_options() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let source = tmp.path().join("debian/source");
+        fs::create_dir_all(&source).unwrap();
+        let options = source.join("options");
+        fs::write(&options, "compression = xz\nother-option = value\n").unwrap();
 
-        let options_content = "compression = xz\nother-option = value\n";
-        let options_path = source_dir.join("options");
-        fs::write(&options_path, options_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // File should still exist with other-option
-        let updated_content = fs::read_to_string(&options_path).unwrap();
-        assert!(updated_content.contains("other-option"));
-        assert!(!updated_content.contains("compression"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&options).unwrap(),
+            "other-option = value\n"
+        );
     }
 
     #[test]
     fn test_removes_prior_comments() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let source = tmp.path().join("debian/source");
+        fs::create_dir_all(&source).unwrap();
+        let options = source.join("options");
+        fs::write(&options, "# Comment about compression\ncompression = xz\n").unwrap();
 
-        let options_content = "# Comment about compression\ncompression = xz\n";
-        let options_path = source_dir.join("options");
-        fs::write(&options_path, options_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // Both the comment and the compression line should be removed
-        assert!(!options_path.exists());
+        run_apply(tmp.path()).unwrap();
+        assert!(!options.exists());
     }
 
     #[test]
     fn test_no_change_when_no_custom_compression() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
-
-        let options_content = "other-option = value\n";
-        let options_path = source_dir.join("options");
-        fs::write(&options_path, options_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let source = tmp.path().join("debian/source");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("options"), "other-option = value\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
