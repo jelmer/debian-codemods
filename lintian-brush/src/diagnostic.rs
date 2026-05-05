@@ -643,6 +643,17 @@ pub enum MakefileAction {
         /// whitespace itself.
         new_recipe: String,
     },
+    /// Remove the first recipe whose text exactly matches `recipe` from the
+    /// rule whose primary target is `target`. A no-op if no rule or recipe
+    /// matches.
+    RemoveRecipe {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule containing the recipe.
+        target: String,
+        /// Recipe text, matched verbatim (including indentation).
+        recipe: String,
+    },
     /// Replace the value of the first variable definition for `name`.
     /// A no-op if no such variable exists.
     SetVariable {
@@ -707,6 +718,14 @@ pub enum MakefileAction {
         file: PathBuf,
         /// Target name to add to `.PHONY`.
         target: String,
+    },
+    /// Add an `include <path>` directive. A no-op if the file is already
+    /// included.
+    AddInclude {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path to include (e.g. `/usr/share/dpkg/pkg-info.mk`).
+        path: String,
     },
 }
 

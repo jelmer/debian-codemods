@@ -1,101 +1,69 @@
-use crate::{FixerError, FixerResult, LintianIssue, PackageType};
-use debian_analyzer::control::TemplatedControlEditor;
-use debversion::Version;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
+use crate::{FixerError, LintianIssue, PackageType, Version};
+use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 const MINIMUM_DEBHELPER_VERSION: &str = "9.20160114";
 
-fn check_cdbs(base_path: &Path) -> Result<bool, FixerError> {
+fn check_cdbs(base_path: &Path) -> bool {
     let rules_path = base_path.join("debian/rules");
     if !rules_path.exists() {
-        return Ok(false);
+        return false;
     }
-
-    let content = fs::read_to_string(&rules_path)?;
-    Ok(content.contains("/usr/share/cdbs/"))
+    std::fs::read_to_string(&rules_path)
+        .map(|c| c.contains("/usr/share/cdbs/"))
+        .unwrap_or(false)
 }
 
-pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-    let rules_path = base_path.join("debian/rules");
-
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
 
-    // Find -dbg packages in debian/control and check if they should be removed
-    let mut editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut packages_to_remove = Vec::new();
-
-    for binary in editor.binaries() {
-        let paragraph = binary.as_deb822();
-        if let Some(package) = paragraph.get("Package") {
-            let package = package.trim();
-            if package.ends_with("-dbg") {
-                // Skip python*-dbg packages
-                if package.starts_with("python") {
-                    continue;
-                }
-
-                let line_number = paragraph.line() + 1; // Convert to 1-indexed
-                let issue = LintianIssue {
-                    package: Some(package.to_string()),
-                    package_type: Some(PackageType::Binary),
-                    tag: Some("debian-control-has-obsolete-dbg-package".to_string()),
-                    info: Some(format!(
-                        "(in section for {}) Package [debian/control:{}]",
-                        package, line_number
-                    )),
-                };
-
-                if issue.should_fix(base_path) {
-                    packages_to_remove.push(package.to_string());
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            }
+    let mut dbg_packages: Vec<String> = Vec::new();
+    let mut issues: Vec<LintianIssue> = Vec::new();
+    for binary in control.binaries() {
+        let Some(name) = binary.name() else {
+            continue;
+        };
+        if !name.ends_with("-dbg") {
+            continue;
         }
-    }
-
-    if packages_to_remove.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        if name.starts_with("python") {
+            continue;
         }
-        return Err(FixerError::NoChanges);
-    }
-
-    let dbg_packages: HashSet<String> = packages_to_remove.iter().cloned().collect();
-
-    // Remove the binaries
-    for package in &packages_to_remove {
-        if !editor.remove_binary(package) {
-            return Err(FixerError::Other(format!(
-                "Failed to remove binary: {}",
-                package
-            )));
-        }
-    }
-
-    // Ensure minimum debhelper version
-    if let Some(mut source) = editor.source() {
-        let mut build_depends = source.build_depends().unwrap_or_else(|| {
-            use debian_control::lossless::relations::Relations;
-            Relations::new()
+        let line_number = binary.as_deb822().line() + 1;
+        issues.push(LintianIssue {
+            package: Some(name.clone()),
+            package_type: Some(PackageType::Binary),
+            tag: Some("debian-control-has-obsolete-dbg-package".to_string()),
+            info: Some(format!(
+                "(in section for {}) Package [debian/control:{}]",
+                name, line_number
+            )),
         });
-
-        let minimum_version: debversion::Version = MINIMUM_DEBHELPER_VERSION.parse().unwrap();
-        build_depends.ensure_minimum_version("debhelper", &minimum_version);
-
-        source.set_build_depends(&build_depends);
+        dbg_packages.push(name);
     }
 
-    // Get current version for migration
+    if dbg_packages.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let rules_rel = PathBuf::from("debian/rules");
+    let rules_abs = base_path.join(&rules_rel);
+    if !rules_abs.exists() {
+        return Ok(Vec::new());
+    }
+
     let current_version_str = current_version.to_string();
     let migrate_version = if current_version_str.ends_with('~') {
         format!("<< {}", current_version_str)
@@ -103,198 +71,181 @@ pub fn run(base_path: &Path, current_version: &Version) -> Result<FixerResult, F
         format!("<< {}~", current_version_str)
     };
 
-    // Update debian/rules
-    if !rules_path.exists() {
-        return Err(FixerError::Other(
-            "debian/rules not found, but -dbg packages were removed".to_string(),
-        ));
-    }
-
-    let content = fs::read_to_string(&rules_path)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let rules_content = std::fs::read_to_string(&rules_abs)?;
+    let makefile = Makefile::read_relaxed(rules_content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    let mut dbg_migration_done = HashSet::new();
+    let mut recipe_actions: Vec<Action> = Vec::new();
+    let mut migrated: HashSet<String> = HashSet::new();
     let mut rules_uses_variables = false;
-
-    for mut rule in makefile.rules() {
-        let mut commands_to_update = Vec::new();
-
-        for (i, recipe) in rule.recipes().enumerate() {
-            let recipe_str = recipe.trim();
-
-            if recipe_str.starts_with("dh_strip ") || recipe_str.starts_with("dh ") {
-                let mut new_recipe = recipe.to_string();
-
-                for dbg_pkg in &dbg_packages {
-                    let old_arg = format!("--dbg-package={}", dbg_pkg);
-                    let new_arg = format!("--dbgsym-migration='{} ({})'", dbg_pkg, migrate_version);
-
-                    if new_recipe.contains(&old_arg) {
-                        new_recipe = new_recipe.replace(&old_arg, &new_arg);
-                        dbg_migration_done.insert(dbg_pkg.clone());
-                    }
-                }
-
-                if new_recipe.contains('$') {
-                    rules_uses_variables = true;
-                }
-
-                if new_recipe != recipe {
-                    commands_to_update.push((i, new_recipe));
+    for rule in makefile.rules() {
+        let Some(target) = rule.targets().next() else {
+            continue;
+        };
+        for recipe_node in rule.recipe_nodes() {
+            let recipe = recipe_node.text();
+            let trimmed = recipe.trim();
+            if !trimmed.starts_with("dh_strip ") && !trimmed.starts_with("dh ") {
+                continue;
+            }
+            let mut new_recipe = recipe.to_string();
+            for dbg in &dbg_packages {
+                let old = format!("--dbg-package={}", dbg);
+                let new = format!("--dbgsym-migration='{} ({})'", dbg, migrate_version);
+                if new_recipe.contains(&old) {
+                    new_recipe = new_recipe.replace(&old, &new);
+                    migrated.insert(dbg.clone());
                 }
             }
-        }
-
-        for (i, new_recipe) in commands_to_update {
-            rule.replace_command(i, &new_recipe);
+            if new_recipe.contains('$') {
+                rules_uses_variables = true;
+            }
+            if new_recipe == recipe {
+                continue;
+            }
+            recipe_actions.push(Action::Makefile(MakefileAction::ReplaceRecipe {
+                file: rules_rel.clone(),
+                target: target.clone(),
+                recipe: recipe.to_string(),
+                new_recipe,
+            }));
         }
     }
 
-    // Check if all packages were migrated
-    let difference: HashSet<_> = dbg_packages
-        .symmetric_difference(&dbg_migration_done)
-        .collect();
-
-    if !difference.is_empty() {
-        if check_cdbs(base_path)? {
-            return Err(FixerError::Other("package uses cdbs".to_string()));
+    let needed: HashSet<String> = dbg_packages.iter().cloned().collect();
+    if needed != migrated {
+        if check_cdbs(base_path) {
+            return Ok(Vec::new()); // CDBS uses different mechanisms
         }
         if rules_uses_variables {
-            return Err(FixerError::Other(
-                "rules uses variables, cannot determine how to migrate".to_string(),
-            ));
+            return Ok(Vec::new()); // Can't safely transform variable-based invocations
         }
-        return Err(FixerError::Other(format!(
-            "packages missing migration: {:?}",
-            difference
-        )));
+        return Ok(Vec::new()); // Some packages couldn't be migrated
     }
 
-    // Write back the modified rules file
-    fs::write(&rules_path, makefile.to_string())?;
+    let mut all_actions: Vec<Action> = Vec::new();
+    all_actions.extend(recipe_actions);
+    for pkg in &dbg_packages {
+        all_actions.push(Action::Deb822(Deb822Action::RemoveParagraph {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Binary {
+                package: pkg.clone(),
+            },
+        }));
+    }
+    all_actions.push(Action::Deb822(Deb822Action::EnsureRelation {
+        file: control_rel,
+        paragraph: ParagraphSelector::Source,
+        field: "Build-Depends".into(),
+        entry: format!("debhelper (>= {})", MINIMUM_DEBHELPER_VERSION),
+    }));
 
-    // Commit the control file changes
-    editor.commit()?;
-
-    let package_list: Vec<_> = dbg_packages.iter().map(|s| s.as_str()).collect();
-    let description = if dbg_packages.len() > 1 {
+    let summary = if dbg_packages.len() > 1 {
         format!(
             "Transition to automatic debug packages (from: {}).",
-            package_list.join(", ")
+            dbg_packages.join(", ")
         )
     } else {
         format!(
             "Transition to automatic debug package (from: {}).",
-            package_list.join(", ")
+            dbg_packages.join(", ")
         )
     };
 
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for (i, issue) in issues.into_iter().enumerate() {
+        let plan_actions = if i == 0 {
+            all_actions.clone()
+        } else {
+            Vec::new()
+        };
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            summary.clone(),
+            plan_actions,
+        ));
+    }
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-control-has-obsolete-dbg-package",
     tags: ["debian-control-has-obsolete-dbg-package"],
-    apply: |basedir, _package, version, _preferences| {
-        run(basedir, version)
+    diagnose: |basedir, _package, version, _preferences| {
+        detect(basedir, version)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::FixerPreferences;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path, version: &str) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = version.parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_dbg_package() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9)\n\nPackage: mypackage\nArchitecture: any\nDescription: test\n test\n\nPackage: mypackage-dbg\nArchitecture: any\nSection: debug\nDescription: dbg\n test\n",
+        )
+        .unwrap();
+        let rules = debian.join("rules");
+        fs::write(
+            &rules,
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n\noverride_dh_strip:\n\tdh_strip --dbg-package=mypackage-dbg\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9)
-
-Package: mypackage
-Architecture: any
-
-Package: mypackage-dbg
-Architecture: any
-Section: debug
-"#;
-
-        let rules_content = r#"#!/usr/bin/make -f
-
-%:
-	dh $@
-
-override_dh_strip:
-	dh_strip --dbg-package=mypackage-dbg
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        let version: debversion::Version = "1.0-1".parse().unwrap();
-        let result = run(base_path, &version);
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_control = fs::read_to_string(debian_dir.join("control")).unwrap();
+        run_apply(tmp.path(), "1.0-1").unwrap();
+        let updated_control = fs::read_to_string(&control).unwrap();
         assert!(!updated_control.contains("mypackage-dbg"));
+        assert!(updated_control.contains("debhelper (>= 9.20160114)"));
 
-        let updated_rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        let updated_rules = fs::read_to_string(&rules).unwrap();
         assert!(updated_rules.contains("--dbgsym-migration='mypackage-dbg (<< 1.0-1~)'"));
         assert!(!updated_rules.contains("--dbg-package=mypackage-dbg"));
     }
 
     #[test]
     fn test_no_dbg_packages() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9)
-
-Package: mypackage
-Architecture: any
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let version: debversion::Version = "1.0-1".parse().unwrap();
-        let result = run(base_path, &version);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9)\n\nPackage: mypackage\nArchitecture: any\nDescription: test\n test\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0-1"),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_skip_python_dbg() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9)
-
-Package: mypackage
-Architecture: any
-
-Package: python3-mypackage-dbg
-Architecture: any
-Section: debug
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let version: debversion::Version = "1.0-1".parse().unwrap();
-        let result = run(base_path, &version);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9)\n\nPackage: mypackage\nArchitecture: any\nDescription: test\n test\n\nPackage: python3-mypackage-dbg\nArchitecture: any\nSection: debug\nDescription: pkg\n test\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0-1"),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

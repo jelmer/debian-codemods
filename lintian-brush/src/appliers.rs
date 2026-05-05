@@ -102,13 +102,15 @@ fn action_file(action: &Action) -> &Path {
         },
         Action::Makefile(a) => match a {
             MakefileAction::ReplaceRecipe { file, .. }
+            | MakefileAction::RemoveRecipe { file, .. }
             | MakefileAction::SetVariable { file, .. }
             | MakefileAction::RemoveVariable { file, .. }
             | MakefileAction::RemoveRule { file, .. }
             | MakefileAction::RemovePhonyTarget { file, .. }
             | MakefileAction::RenameRuleTarget { file, .. }
             | MakefileAction::AddRule { file, .. }
-            | MakefileAction::AddPhonyTarget { file, .. } => file,
+            | MakefileAction::AddPhonyTarget { file, .. }
+            | MakefileAction::AddInclude { file, .. } => file,
         },
         Action::Dep3(a) => match a {
             Dep3Action::SetField { file, .. }
@@ -209,7 +211,7 @@ fn apply_control_deb822_group(
             rel.display()
         )));
     }
-    let editor = TemplatedControlEditor::open(&abs)?;
+    let mut editor = TemplatedControlEditor::open(&abs)?;
     let mut any_change = false;
 
     for action in group {
@@ -245,10 +247,16 @@ fn apply_control_deb822_group(
                 }
             }
             Deb822Action::RemoveParagraph { paragraph, .. } => {
-                return Err(FixerError::Other(format!(
-                    "deb822 RemoveParagraph not supported on debian/control via the typed editor (selector: {:?})",
-                    paragraph
-                )));
+                if let ParagraphSelector::Binary { package } = paragraph {
+                    if editor.remove_binary(package) {
+                        any_change = true;
+                    }
+                } else {
+                    return Err(FixerError::Other(format!(
+                        "deb822 RemoveParagraph not supported on debian/control for selector {:?}",
+                        paragraph
+                    )));
+                }
             }
             Deb822Action::AppendParagraph { .. } => {
                 return Err(FixerError::Other(
@@ -1881,6 +1889,23 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                     break;
                 }
             }
+            MakefileAction::RemoveRecipe { target, recipe, .. } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| &t == target) {
+                        continue;
+                    }
+                    let recipe_index = rule
+                        .recipe_nodes()
+                        .position(|r| r.text() == recipe.as_str());
+                    let Some(idx) = recipe_index else {
+                        continue;
+                    };
+                    if rule.remove_command(idx) {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
             MakefileAction::SetVariable { name, value, .. } => {
                 if let Some(mut var) = makefile
                     .variable_definitions()
@@ -1964,6 +1989,43 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 makefile
                     .add_phony_target(target)
                     .map_err(|e| FixerError::Other(format!("Failed to add phony target: {}", e)))?;
+                rules = makefile.rules().collect();
+                any_change = true;
+            }
+            MakefileAction::AddInclude { path, .. } => {
+                if makefile.included_files().any(|f| &f == path) {
+                    continue;
+                }
+                // String-level insertion: place the include directive
+                // after the leading shebang/comment/blank-line block, so
+                // the shebang stays first. Splicing into the syntax tree
+                // via `add_include`/`insert_include` doesn't preserve that
+                // visual separation.
+                let current = makefile.code();
+                let mut split = 0usize;
+                let mut saw_non_comment = false;
+                for line in current.split_inclusive('\n') {
+                    let trimmed = line.trim_end_matches(['\r', '\n']);
+                    let is_shebang = split == 0 && trimmed.starts_with("#!");
+                    let is_comment = trimmed.starts_with('#') && !is_shebang;
+                    let is_blank = trimmed.is_empty();
+                    if is_shebang || is_comment || is_blank {
+                        split += line.len();
+                        continue;
+                    }
+                    saw_non_comment = true;
+                    break;
+                }
+                let insertion = format!("include {}\n", path);
+                let new_content = if saw_non_comment {
+                    format!("{}{}{}", &current[..split], insertion, &current[split..])
+                } else {
+                    format!("{}{}", &current[..split], insertion)
+                };
+                makefile = makefile_lossless::Makefile::read_relaxed(new_content.as_bytes())
+                    .map_err(|e| {
+                        FixerError::Other(format!("Failed to reparse {}: {}", rel.display(), e))
+                    })?;
                 rules = makefile.rules().collect();
                 any_change = true;
             }
