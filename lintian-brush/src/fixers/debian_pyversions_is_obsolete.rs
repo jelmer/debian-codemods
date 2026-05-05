@@ -1,16 +1,18 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, LintianIssue};
-use std::fs;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let pyversions = PathBuf::from("debian/pyversions");
-    let abs = base_path.join(&pyversions);
-    if !abs.exists() {
+    let Some(bytes) = ws.read_file(Path::new("debian/pyversions"))? else {
         return Ok(Vec::new());
-    }
-
-    let content = fs::read_to_string(&abs)?;
+    };
+    let content = String::from_utf8(bytes).map_err(|_| FixerError::NoChanges)?;
     if !content.trim().starts_with("2.") {
         return Ok(Vec::new());
     }
@@ -29,24 +31,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-pyversions-is-obsolete",
     tags: ["debian-pyversions-is-obsolete"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]

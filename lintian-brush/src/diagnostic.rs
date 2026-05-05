@@ -1141,6 +1141,18 @@ pub enum FilesystemAction {
         /// Replacement string.
         to: String,
     },
+    /// Normalise the file's line endings to LF (i.e. convert any CRLF
+    /// sequences to LF). Carries no payload other than the path: each
+    /// applier reads the current file, performs the conversion, and
+    /// writes back. Modelling this as its own variant (rather than as a
+    /// `Write` carrying the converted bytes) keeps the diagnostic stream
+    /// declarative — anyone reading it sees the *intent* and not a byte
+    /// blob — and lets an LSP host emit a structural `TextEdit` derived
+    /// from the open buffer rather than from a possibly-stale snapshot.
+    NormalizeLineEndings {
+        /// File to convert, relative to the package root.
+        file: PathBuf,
+    },
 }
 
 /// Identifies a paragraph in a deb822 file.

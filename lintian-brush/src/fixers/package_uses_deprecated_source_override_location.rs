@@ -1,69 +1,69 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
-use std::fs;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let old_rel = PathBuf::from("debian/source.lintian-overrides");
     let new_rel = PathBuf::from("debian/source/lintian-overrides");
 
-    let old_abs = base_path.join(&old_rel);
-    if !old_abs.exists() {
+    let Some(old_bytes) = ws.read_file(&old_rel)? else {
         return Ok(Vec::new());
-    }
-    let new_abs = base_path.join(&new_rel);
+    };
+    let old_content = String::from_utf8(old_bytes).map_err(|e| FixerError::Other(e.to_string()))?;
+
+    let merged_content = if let Some(existing_bytes) = ws.read_file(&new_rel)? {
+        let mut existing =
+            String::from_utf8(existing_bytes).map_err(|e| FixerError::Other(e.to_string()))?;
+        existing.push_str(&old_content);
+        existing
+    } else {
+        old_content
+    };
 
     let issue = LintianIssue::source_with_info(
         "old-source-override-location",
         vec!["debian/source.lintian-overrides".to_string()],
     );
 
-    // If the target already exists, merge the old file's content into it
-    // and delete the old. Otherwise an atomic rename does the job.
-    let actions = if new_abs.exists() {
-        let old_content = fs::read_to_string(&old_abs)?;
-        let mut merged = fs::read_to_string(&new_abs)?;
-        merged.push_str(&old_content);
-        vec![
-            Action::Filesystem(FilesystemAction::Write {
-                file: new_rel,
-                content: merged.into_bytes(),
-            }),
-            Action::Filesystem(FilesystemAction::Delete { file: old_rel }),
-        ]
-    } else {
-        vec![Action::Filesystem(FilesystemAction::Rename {
-            file: old_rel,
-            to: new_rel,
-        })]
-    };
-
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Move source package lintian overrides to debian/source.",
-        actions,
+        vec![
+            Action::Filesystem(FilesystemAction::Write {
+                file: new_rel,
+                content: merged_content.into_bytes(),
+            }),
+            Action::Filesystem(FilesystemAction::Delete { file: old_rel }),
+        ],
     )
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "package-uses-deprecated-source-override-location",
     tags: ["old-source-override-location"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
