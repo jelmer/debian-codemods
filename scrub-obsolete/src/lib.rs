@@ -182,12 +182,13 @@ fn update_depends(
     keep_minimum_versions: bool,
 ) -> Vec<Action> {
     filter_relations(base, field, |oldrelation: &mut Entry| {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(drop_obsolete_depends(
-            oldrelation,
-            checker,
-            keep_minimum_versions,
-        ))
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(drop_obsolete_depends(
+                oldrelation,
+                checker,
+                keep_minimum_versions,
+            ))
+        })
         .unwrap()
     })
 }
@@ -225,9 +226,11 @@ fn update_conflicts(
     checker: &dyn PackageChecker,
 ) -> Vec<Action> {
     filter_relations(base, field, |oldrelation: &mut Entry| -> Vec<Action> {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(drop_obsolete_conflicts(checker, oldrelation))
-            .unwrap()
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(drop_obsolete_conflicts(checker, oldrelation))
+        })
+        .unwrap()
     })
 }
 
@@ -358,8 +361,10 @@ fn update_maintscripts(
             allow_reformatting,
         )?;
         let mut can_drop = |p: &str, v: &Version| -> bool {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let compat_version = rt.block_on(checker.package_version(p)).unwrap();
+            let compat_version = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(checker.package_version(p))
+            })
+            .unwrap();
             compat_version.map(|cv| &cv > v).unwrap_or(false)
         };
 
