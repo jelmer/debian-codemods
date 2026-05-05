@@ -1172,6 +1172,13 @@ pub enum ParagraphSelector {
         /// Files-glob string, matched literally against the field value.
         glob: String,
     },
+    /// debian/copyright: a standalone License paragraph (no `Files:` field)
+    /// whose License synopsis equals `name`.
+    CopyrightLicense {
+        /// License short-name as it appears on the first line of the
+        /// `License:` field (e.g. `GPL-2+`).
+        name: String,
+    },
     /// File-format-agnostic: the Nth paragraph (0-indexed). Use sparingly:
     /// indices shift as paragraphs are inserted or removed.
     Index {
