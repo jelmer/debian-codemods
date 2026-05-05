@@ -5,7 +5,10 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::str::FromStr;
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn run(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_path = base_path.join("debian/control");
 
     if !control_path.exists() {
@@ -42,7 +45,9 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagn
                     vec![format!("debian/control Source Priority")],
                 );
                 let plans = vec![ActionPlan {
-                    label: Some("Remove redundant Priority: optional from source stanza.".to_string()),
+                    label: Some(
+                        "Remove redundant Priority: optional from source stanza.".to_string(),
+                    ),
                     actions: vec![Action::Deb822(Deb822Action::RemoveField {
                         file: control_path.clone(),
                         paragraph: ParagraphSelector::Source,
@@ -52,7 +57,8 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagn
                 let diagnostic = Diagnostic {
                     issue: Some(issue),
                     message: "Priority: optional in source stanza is redundant with dpkg >= 1.
-22.13 and can be removed.".to_string(),
+22.13 and can be removed."
+                        .to_string(),
                     plans,
                     certainty: Some(crate::Certainty::Confident),
                 };
@@ -89,7 +95,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagn
     if binary_priorities.len() == 1 {
         let common_priority = binary_priorities.iter().next().unwrap().clone();
 
-        // If we added it implicitly to all missing ones, it's as if they were explicit 
+        // If we added it implicitly to all missing ones, it's as if they were explicit
         // if we are going to write it to source anyway.
         // But wait! If none had it explicitly, we only write to source if we actually needed to add it (i.e. !default_priority_is_optional).
         if any_explicit || !default_priority_is_optional {
@@ -103,7 +109,11 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagn
 
                 let binaries: Vec<_> = editor.binaries().collect();
                 for binary in binaries {
-                    let package_name = binary.as_deb822().get("Package").unwrap_or_default().to_string();
+                    let package_name = binary
+                        .as_deb822()
+                        .get("Package")
+                        .unwrap_or_default()
+                        .to_string();
                     if binary.as_deb822().get("Priority").is_some() {
                         actions.push(Action::Deb822(Deb822Action::RemoveField {
                             file: control_path.clone(),
@@ -125,19 +135,24 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagn
                 };
 
                 let plans = vec![ActionPlan {
-                    label: Some("Set priority in source stanza, since it is the same for all packages.".to_string()),
+                    label: Some(
+                        "Set priority in source stanza, since it is the same for all packages."
+                            .to_string(),
+                    ),
                     actions,
                 }];
 
                 diagnostics.push(Diagnostic {
                     issue,
-                    message: "Set priority in source stanza, since it is the same for all packages.".to_string(),
+                    message:
+                        "Set priority in source stanza, since it is the same for all packages."
+                            .to_string(),
                     plans,
                     certainty: Some(crate::Certainty::Confident),
                 });
             }
         }
-    } 
+    }
 
     if diagnostics.is_empty() && !default_priority_is_optional {
         // We couldn't move it to source, so we must add it to the binaries that are missing it
