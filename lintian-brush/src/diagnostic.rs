@@ -101,6 +101,8 @@ pub enum Action {
     Yaml(YamlAction),
     /// An edit to a `debian/changelog` file.
     Changelog(ChangelogAction),
+    /// An edit to a `debian/watch` file.
+    Watch(WatchAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -213,6 +215,24 @@ pub enum Deb822Action {
         field: String,
         /// Substvar to drop, including the surrounding `${...}`.
         substvar: String,
+    },
+    /// Ensure a relation entry is present in a relations field, creating
+    /// the field if necessary. `entry` is a literal relation entry string
+    /// (e.g. `python3-poetry-core` or `debhelper-compat (= 13)`).
+    ///
+    /// If `entry` carries no version constraint the action is a no-op
+    /// when any relation with the same package name is already present.
+    /// If `entry` has an exact version, the action upgrades any existing
+    /// relation to that exact version.
+    EnsureRelation {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Build-Depends`).
+        field: String,
+        /// Literal relation entry to ensure.
+        entry: String,
     },
 }
 
@@ -496,6 +516,28 @@ pub enum ChangelogAction {
         new_lines: Vec<String>,
     },
 }
+/// Edits to a `debian/watch` file.
+///
+/// Watch files are line-oriented, with each non-comment line describing a
+/// release-monitor entry: a URL, a matching regexp for the version, and
+/// optional `opts=...` flags. We address an entry by its current URL,
+/// which is unique across the watch files we routinely fix.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum WatchAction {
+    /// Replace the matching pattern (the regexp following the URL) of the
+    /// entry whose current URL is `url`. A no-op if no entry matches.
+    SetEntryMatchingPattern {
+        /// File to edit, relative to the package root. Almost always
+        /// `debian/watch`.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// New matching pattern.
+        new_pattern: String,
+    },
+}
+
 /// Filesystem-level edits.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
