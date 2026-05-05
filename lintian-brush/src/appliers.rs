@@ -8,7 +8,8 @@
 
 use crate::diagnostic::{
     Action, ChangelogAction, Deb822Action, Dep3Action, DesktopIniAction, FilesystemAction,
-    MakefileAction, ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    LintianOverridesAction, MakefileAction, OverrideLineSelector, ParagraphSelector, SystemdAction,
+    WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -124,6 +125,10 @@ fn action_file(action: &Action) -> &Path {
             | Dep3Action::RemoveField { file, .. }
             | Dep3Action::RenameField { file, .. } => file,
         },
+        Action::LintianOverrides(a) => match a {
+            LintianOverridesAction::DropLine { file, .. }
+            | LintianOverridesAction::RenameTag { file, .. } => file,
+        },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
             | FilesystemAction::Delete { file }
@@ -160,6 +165,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Watch(_) => apply_watch_group(base, rel, group),
         Action::Makefile(_) => apply_makefile_group(base, rel, group),
         Action::Dep3(_) => apply_dep3_group(base, rel, group),
+        Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -2427,6 +2433,102 @@ fn apply_dep3_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
     }
     let new_content = format!("{}{}", header, body);
     std::fs::write(&abs, new_content)?;
+    Ok(true)
+}
+
+fn override_line_matches(
+    line: &lintian_overrides::OverrideLine,
+    selector: &OverrideLineSelector,
+) -> bool {
+    if line.is_comment() || line.is_empty() {
+        return false;
+    }
+    let Some(tag) = line.tag() else {
+        return false;
+    };
+    if tag.text() != selector.tag {
+        return false;
+    }
+    let line_info = line.info();
+    let line_info_norm = line_info.as_deref().map(str::trim).unwrap_or("");
+    let selector_info = selector.info.as_deref().unwrap_or("");
+    if line_info_norm != selector_info {
+        return false;
+    }
+    let line_pkg = line.package_spec().and_then(|s| s.package_name());
+    if line_pkg.as_deref() != selector.package.as_deref() {
+        return false;
+    }
+    true
+}
+
+fn apply_lintian_overrides_group(
+    base: &Path,
+    rel: &Path,
+    group: &[&Action],
+) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Ok(false);
+    }
+
+    let content = std::fs::read_to_string(&abs)?;
+    let parsed = lintian_overrides::LintianOverrides::parse(&content);
+    let mut overrides = parsed.ok().map_err(|errs| {
+        FixerError::Other(format!(
+            "Failed to parse {}: {}",
+            rel.display(),
+            errs.join(", ")
+        ))
+    })?;
+
+    let original = overrides.text();
+    for action in group {
+        let Action::LintianOverrides(a) = action else {
+            unreachable!("apply_lintian_overrides_group called with non-overrides action");
+        };
+        match a {
+            LintianOverridesAction::DropLine { selector, .. } => {
+                let mut dropped = false;
+                overrides = lintian_overrides::filter_overrides(&overrides, |line| {
+                    if dropped {
+                        return true;
+                    }
+                    if override_line_matches(line, selector) {
+                        dropped = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+            }
+            LintianOverridesAction::RenameTag {
+                from_tag, to_tag, ..
+            } => {
+                overrides = lintian_overrides::rename_tags(&overrides, |tag| {
+                    if tag == from_tag {
+                        Some(to_tag.clone())
+                    } else {
+                        None
+                    }
+                });
+            }
+        }
+    }
+
+    let new_content = overrides.text();
+    if new_content == original {
+        return Ok(false);
+    }
+    // If the file has nothing meaningful left, remove it. The driver
+    // already handles partial deletes for us — emit the same behaviour
+    // the legacy fixers had.
+    let has_content = overrides.lines().any(|l| !l.is_comment() && !l.is_empty());
+    if !has_content {
+        std::fs::remove_file(&abs)?;
+    } else {
+        std::fs::write(&abs, new_content)?;
+    }
     Ok(true)
 }
 
