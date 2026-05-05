@@ -27,6 +27,12 @@ pub struct Diagnostic {
     /// Certainty of the fix(es). Mirrors `FixerResult::certainty`.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub certainty: Option<Certainty>,
+    /// Quilt patch name used when this diagnostic's actions touch
+    /// upstream files, surfacing as `FixerResult::patch_name`. The
+    /// applier picks the first non-`None` value across the diagnostics
+    /// it fires.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub patch_name: Option<String>,
     /// Alternative action plans that fix this diagnostic. The first plan is
     /// the default chosen by the batch driver; an LSP exposes all of them
     /// as code actions.
@@ -44,6 +50,7 @@ impl Diagnostic {
             issue: Some(issue),
             message: message.into(),
             certainty: None,
+            patch_name: None,
             plans: vec![ActionPlan {
                 label: None,
                 actions,
@@ -61,6 +68,7 @@ impl Diagnostic {
             issue: None,
             message: message.into(),
             certainty: None,
+            patch_name: None,
             plans: vec![ActionPlan {
                 label: None,
                 actions,
@@ -71,6 +79,13 @@ impl Diagnostic {
     /// Set the certainty of this diagnostic.
     pub fn with_certainty(mut self, certainty: Certainty) -> Self {
         self.certainty = Some(certainty);
+        self
+    }
+
+    /// Set the quilt patch name to use when this diagnostic's actions
+    /// produce a patch.
+    pub fn with_patch_name(mut self, name: impl Into<String>) -> Self {
+        self.patch_name = Some(name.into());
         self
     }
 }
@@ -708,6 +723,16 @@ pub enum WatchAction {
         url: String,
         /// New URL.
         new_url: String,
+    },
+    /// Convert the v5 entry whose current URL is `url` to its template
+    /// form (Template:/Owner:/Project: for GitHub, Template:/Dist: for
+    /// CPAN/PyPI, etc.). A no-op if the entry is already a template,
+    /// no template matches the URL/pattern, or no entry has that URL.
+    ConvertEntryToTemplate {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
     },
 }
 

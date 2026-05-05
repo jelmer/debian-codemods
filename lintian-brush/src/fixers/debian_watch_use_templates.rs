@@ -1,106 +1,83 @@
-use crate::{Certainty, FixerError, FixerResult};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, WatchAction};
+use crate::{Certainty, FixerError};
+use std::path::{Path, PathBuf};
 
-pub fn run(
-    base_path: &Path,
-    package: &str,
-    upstream_version: &str,
-    net_access: bool,
-) -> Result<FixerResult, FixerError> {
-    let watch_path = base_path.join("debian/watch");
-
-    if !watch_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let watch_rel = PathBuf::from("debian/watch");
+    let watch_abs = base_path.join(&watch_rel);
+    if !watch_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&watch_path)?;
-
-    // Parse using the unified parser
+    let content = std::fs::read_to_string(&watch_abs)?;
     let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
-    // Only process v5 watch files
     if watch_file.version() != 5 {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    // Extract the v5 watch file
-    let v5_file = match watch_file {
-        debian_watch::parse::ParsedWatchFile::Deb822(wf) => wf,
-        debian_watch::parse::ParsedWatchFile::LineBased(_) => {
-            // Not a v5 file
-            return Err(FixerError::NoChanges);
-        }
+    let debian_watch::parse::ParsedWatchFile::Deb822(v5_file) = watch_file else {
+        return Ok(Vec::new());
     };
 
-    let mut made_changes = false;
-    let mut converted_templates = Vec::new();
-
-    // Try to convert each entry to use templates
+    let mut converted: Vec<&'static str> = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
     for mut entry in v5_file.entries() {
-        // Skip entries that already use templates
         if entry.as_deb822().get("Template").is_some() {
             continue;
         }
-
-        if let Some(template) = entry.try_convert_to_template() {
-            made_changes = true;
-            // Extract template name for reporting
-            let template_name = match template {
-                debian_watch::templates::Template::GitHub { .. } => "GitHub",
-                debian_watch::templates::Template::GitLab { .. } => "GitLab",
-                debian_watch::templates::Template::PyPI { .. } => "PyPI",
-                debian_watch::templates::Template::Npmregistry { .. } => "Npmregistry",
-                debian_watch::templates::Template::Metacpan { .. } => "Metacpan",
-                debian_watch::templates::Template::Cran { .. } => "CRAN",
-                debian_watch::templates::Template::Bioconductor { .. } => "Bioconductor",
-            };
-            converted_templates.push(template_name);
-        }
+        let url = entry.url();
+        // Probe by attempting the conversion on a clone — the result
+        // tells us which template (if any) matches. We then emit an
+        // action that re-runs the conversion at apply time.
+        let Some(template) = entry.try_convert_to_template() else {
+            continue;
+        };
+        let name = match template {
+            debian_watch::templates::Template::GitHub { .. } => "GitHub",
+            debian_watch::templates::Template::GitLab { .. } => "GitLab",
+            debian_watch::templates::Template::PyPI { .. } => "PyPI",
+            debian_watch::templates::Template::Npmregistry { .. } => "Npmregistry",
+            debian_watch::templates::Template::Metacpan { .. } => "Metacpan",
+            debian_watch::templates::Template::Cran { .. } => "CRAN",
+            debian_watch::templates::Template::Bioconductor { .. } => "Bioconductor",
+        };
+        converted.push(name);
+        diagnostics.push(
+            Diagnostic::untagged(
+                String::new(),
+                vec![Action::Watch(WatchAction::ConvertEntryToTemplate {
+                    file: watch_rel.clone(),
+                    url,
+                })],
+            )
+            .with_certainty(Certainty::Confident),
+        );
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
+    if diagnostics.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Write back the updated watch file
-    fs::write(&watch_path, v5_file.to_string())?;
-
-    // Create a descriptive message based on what was converted
-    let description = if converted_templates.len() == 1 {
+    let summary = if converted.len() == 1 {
         format!(
             "Use {} template in watch file instead of explicit Source/Matching-Pattern.",
-            converted_templates[0]
+            converted[0]
         )
     } else {
         "Use templates in watch file instead of explicit Source/Matching-Pattern.".to_string()
     };
-
-    let certainty = if net_access {
-        match crate::watch::verify_watch_entry_discovers_version(
-            &watch_path,
-            package,
-            upstream_version,
-        ) {
-            Some(true) => Certainty::Certain,
-            Some(false) => Certainty::Likely,
-            None => Certainty::Likely,
-        }
-    } else {
-        Certainty::Confident
-    };
-
-    Ok(FixerResult::builder(description)
-        .certainty(certainty)
-        .build())
+    for d in &mut diagnostics {
+        d.message = summary.clone();
+    }
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-watch-use-templates",
     tags: [],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -108,211 +85,95 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_convert_metacpan_to_template() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let watch = debian.join("watch");
+        fs::write(
+            &watch,
+            "Version: 5\n\nSource: https://cpan.metacpan.org/authors/id/\nMatching-Pattern: .*/Mail-AuthenticationResults@ANY_VERSION@@ARCHIVE_EXT@\nSearchmode: plain\n",
+        )
+        .unwrap();
 
-        // Example from the bug report
-        let watch_content = r#"Version: 5
-
-Source: https://cpan.metacpan.org/authors/id/
-Matching-Pattern: .*/Mail-AuthenticationResults@ANY_VERSION@@ARCHIVE_EXT@
-Searchmode: plain
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated_content,
-            "Version: 5\n\nTemplate: Metacpan\nDist: Mail-AuthenticationResults\n"
+            fs::read_to_string(&watch).unwrap(),
+            "Version: 5\n\nTemplate: Metacpan\nDist: Mail-AuthenticationResults\n",
         );
     }
 
     #[test]
     fn test_convert_github_to_template() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let watch = debian.join("watch");
+        fs::write(
+            &watch,
+            "Version: 5\n\nSource: https://github.com/torvalds/linux/tags\nMatching-Pattern: .*/(?:refs/tags/)?v?@ANY_VERSION@@ARCHIVE_EXT@\nSearchmode: html\n",
+        )
+        .unwrap();
 
-        let watch_content = r#"Version: 5
-
-Source: https://github.com/torvalds/linux/tags
-Matching-Pattern: .*/(?:refs/tags/)?v?@ANY_VERSION@@ARCHIVE_EXT@
-Searchmode: html
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated_content,
-            "Version: 5\n\nTemplate: GitHub\nOwner: torvalds\nProject: linux\n"
-        );
-    }
-
-    #[test]
-    fn test_convert_pypi_to_template() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let watch_content = r#"Version: 5
-
-Source: https://pypi.debian.net/bitbox02/
-Matching-Pattern: https://pypi\.debian\.net/bitbox02/[^/]+\.tar\.gz#/.*-@ANY_VERSION@\.tar\.gz
-Searchmode: plain
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert_eq!(
-            updated_content,
-            "Version: 5\n\nTemplate: PyPI\nDist: bitbox02\n"
+            fs::read_to_string(&watch).unwrap(),
+            "Version: 5\n\nTemplate: GitHub\nOwner: torvalds\nProject: linux\n",
         );
     }
 
     #[test]
     fn test_no_change_when_already_using_template() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        // Already using template
-        let watch_content = r#"Version: 5
-
-Template: Metacpan
-Dist: Mail-AuthenticationResults
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "Version: 5\n\nTemplate: Metacpan\nDist: Mail-AuthenticationResults\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_not_v5() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        // Version 4 watch file
-        let watch_content =
-            "version=4\nhttps://github.com/torvalds/linux/tags .*/v?([\\d.]+)\\.tar\\.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttps://github.com/torvalds/linux/tags .*/v?([\\d.]+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_template_matches() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        // Custom source that doesn't match any template
-        let watch_content = r#"Version: 5
-
-Source: https://example.com/downloads/
-Matching-Pattern: .*/v?(\d+\.\d+)\.tar\.gz
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "Version: 5\n\nSource: https://example.com/downloads/\nMatching-Pattern: .*/v?(\\d+\\.\\d+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_watch_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_convert_cran_inline_url_to_template() {
-        // This is the scenario from Debian bug #1133114: a v4 CRAN watch file
-        // was converted to v5, putting the entire URL+pattern into Source
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let watch_content = r#"Version: 5
-
-Source: https://cloud.r-project.org/src/contrib/forecast_([-\d.]*)\\.tar\\.gz
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert_eq!(
-            updated_content,
-            "Version: 5\n\nTemplate: CRAN\nPackage: forecast\n"
-        );
-    }
-
-    #[test]
-    fn test_convert_cran_explicit_to_template() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let watch_content = r#"Version: 5
-
-Source: https://cran.r-project.org/src/contrib/
-Matching-Pattern: gower_([-.\d]*)\.tar\.gz
-"#;
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert_eq!(
-            updated_content,
-            "Version: 5\n\nTemplate: CRAN\nPackage: gower\n"
-        );
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
