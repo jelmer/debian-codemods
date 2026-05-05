@@ -1,158 +1,141 @@
-use crate::{FixerError, FixerResult};
-use debian_changelog::iter_changes_by_author;
-use debian_changelog::ChangeLog;
-use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::FixerError;
+use debian_changelog::{iter_changes_by_author, ChangeLog};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let changelog_path = base_path.join("debian/changelog");
-
-    if !changelog_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let changelog_rel = PathBuf::from("debian/changelog");
+    let abs = base_path.join(&changelog_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&changelog_path)?;
-    let changelog: ChangeLog = ChangeLog::read_relaxed(content.as_bytes())
+    let content = std::fs::read_to_string(&abs)?;
+    let changelog = ChangeLog::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
-    // Get the first (topmost) entry
-    let mut entries = changelog.iter();
-    let first_entry = if let Some(e) = entries.next() {
-        e
-    } else {
-        return Err(FixerError::NoChanges);
+    let Some(first_entry) = changelog.iter().next() else {
+        return Ok(Vec::new());
     };
-
-    // Only process UNRELEASED entries
     if first_entry.is_unreleased() != Some(true) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Get all changes from the changelog
-    let all_changes = iter_changes_by_author(&changelog);
+    let first_package = first_entry.package();
+    let Some(first_version) = first_entry.version() else {
+        return Ok(Vec::new());
+    };
+    let first_version_str = first_version.to_string();
 
-    let first_entry_package = first_entry.package();
-    let first_entry_version = first_entry.version();
-
-    let mut seen: HashSet<(Option<String>, String)> = HashSet::new();
-    let mut made_changes = false;
-
-    for change in all_changes.into_iter() {
-        // Only process changes from the first entry
-        if change.package() == first_entry_package && change.version() == first_entry_version {
-            // Split this change into individual bullet points
-            let bullets = change.split_into_bullets();
-
-            for bullet in bullets {
-                let author = bullet.author().map(|s| s.to_string());
-                let bullet_text = bullet.lines().join("\n");
-                let key = (author, bullet_text);
-
-                if !seen.insert(key) {
-                    // insert() returns false if the key was already present - it's a duplicate
-                    bullet.remove();
-                    made_changes = true;
-                }
+    // Track how many times we've seen each (author, text) key. The first
+    // occurrence (count 0) is kept; subsequent ones (count 1, 2, …) are
+    // emitted as RemoveBullet actions whose `occurrence` matches their
+    // position in the bullet stream.
+    let mut counts: HashMap<(Option<String>, String), usize> = HashMap::new();
+    let mut diagnostics = Vec::new();
+    for change in iter_changes_by_author(&changelog) {
+        if change.package() != first_package
+            || change.version().map(|v| v.to_string()) != Some(first_version_str.clone())
+        {
+            continue;
+        }
+        for bullet in change.split_into_bullets() {
+            let author = bullet.author().map(|s| s.to_string());
+            let text = bullet.lines().join("\n");
+            let key = (author.clone(), text.clone());
+            let count = counts.entry(key).or_insert(0);
+            if *count > 0 {
+                let action = Action::Changelog(ChangelogAction::RemoveBullet {
+                    file: changelog_rel.clone(),
+                    version: first_version_str.clone(),
+                    author,
+                    text,
+                    occurrence: *count,
+                });
+                diagnostics.push(Diagnostic::untagged(
+                    "Remove duplicate line from changelog.",
+                    vec![action],
+                ));
             }
+            *count += 1;
         }
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Write the updated changelog
-    let new_content = changelog.to_string();
-    fs::write(&changelog_path, new_content)?;
-
-    Ok(FixerResult::builder("Remove duplicate line from changelog.").build())
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "changelog-has-duplicate-line",
     tags: [],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple_duplicate() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("changelog");
+        fs::write(
+            &path,
+            "blah (5.42+dfsg1-2) UNRELEASED; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n  * New upstream release.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n\nblah (5.42+dfsg1-1) unstable; urgency=medium\n\n  * Initial Release.\n  * Initial Release.\n\n -- Somebody <somebody@example.com>  Fri, 25 Jan 2019 00:15:07 +0100\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "blah (5.42+dfsg1-2) UNRELEASED; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n  * New upstream release.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n\nblah (5.42+dfsg1-1) unstable; urgency=medium\n\n  * Initial Release.\n  * Initial Release.\n\n -- Somebody <somebody@example.com>  Fri, 25 Jan 2019 00:15:07 +0100\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Remove duplicate line from changelog.");
-
-        let new_content = fs::read_to_string(&changelog_path).unwrap();
-
-        // Check that the duplicate in the UNRELEASED section was removed
-        // Parse to get just the first entry (up to the signature line)
-        let first_entry_text: Vec<&str> = new_content
-            .lines()
-            .take_while(|l| !l.starts_with("blah (5.42+dfsg1-1)"))
-            .filter(|l| l.trim().starts_with("*"))
-            .collect();
-
-        assert_eq!(first_entry_text.len(), 2); // Should have only 2 entries, not 3
-
-        // The released section should remain unchanged
-        assert!(new_content.contains("blah (5.42+dfsg1-1) unstable"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "blah (5.42+dfsg1-2) UNRELEASED; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n\nblah (5.42+dfsg1-1) unstable; urgency=medium\n\n  * Initial Release.\n  * Initial Release.\n\n -- Somebody <somebody@example.com>  Fri, 25 Jan 2019 00:15:07 +0100\n",
+        );
     }
 
     #[test]
     fn test_already_released() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("changelog");
         let content = "blah (5.42+dfsg1-2) unstable; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n  * New upstream release.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
+        fs::write(&path, content).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Content should be unchanged
-        let new_content = fs::read_to_string(&changelog_path).unwrap();
-        assert_eq!(new_content, content);
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
     }
 
     #[test]
     fn test_no_duplicates() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("changelog"),
+            "blah (5.42+dfsg1-2) UNRELEASED; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "blah (5.42+dfsg1-2) UNRELEASED; urgency=medium\n\n  * New upstream release.\n  * Fix day-of-week for changelog entry 4.23-1.\n\n -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 30 Dec 2019 15:25:35 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changelog() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

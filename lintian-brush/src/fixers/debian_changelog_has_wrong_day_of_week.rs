@@ -1,118 +1,100 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::{FixerError, LintianIssue};
 use chrono::Datelike;
 use debian_changelog::ChangeLog;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let changelog_path = base_path.join("debian/changelog");
-
-    if !changelog_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let changelog_rel = PathBuf::from("debian/changelog");
+    let abs = base_path.join(&changelog_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&changelog_path)?;
-    let changelog: ChangeLog = ChangeLog::read_relaxed(content.as_bytes())
+    let content = std::fs::read_to_string(&abs)?;
+    let changelog = ChangeLog::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
-    let mut fixed_versions = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics = Vec::new();
 
-    for mut entry in changelog.iter() {
-        // Get the timestamp string
-        let date_str = match entry.timestamp() {
-            Some(s) => s,
-            None => continue,
+    for entry in changelog.iter() {
+        let Some(date_str) = entry.timestamp() else {
+            continue;
+        };
+        let Some(version) = entry.version() else {
+            continue;
         };
 
-        // The format is: "Day, DD Mon YYYY HH:MM:SS +ZZZZ"
-        // We need to parse this leniently, ignoring the day-of-week
-        // Extract the date parts after the first comma
         let parts: Vec<&str> = date_str.splitn(2, ", ").collect();
         if parts.len() != 2 {
             continue;
         }
-
         let orig_day_of_week = parts[0];
         let date_time_part = parts[1];
 
-        // Parse using strptime-like format, ignoring the day-of-week
-        // Format: "DD Mon YYYY HH:MM:SS +ZZZZ"
-        let parsed_date =
-            match chrono::DateTime::parse_from_str(date_time_part, "%d %b %Y %H:%M:%S %z") {
-                Ok(dt) => dt,
-                Err(_) => {
-                    // If we can't parse the date, skip it
-                    continue;
-                }
-            };
+        let Ok(parsed_date) =
+            chrono::DateTime::parse_from_str(date_time_part, "%d %b %Y %H:%M:%S %z")
+        else {
+            continue;
+        };
 
-        // Format the date back with the correct day-of-week
         let new_date_str = parsed_date.to_rfc2822();
-
-        // Extract the day-of-week from the formatted string
         let new_day_of_week = new_date_str.split(',').next().unwrap_or("");
-
-        // Check if the day-of-week changed
-        if new_day_of_week != orig_day_of_week {
-            let issue = LintianIssue::source_with_info(
-                "debian-changelog-has-wrong-day-of-week",
-                vec![format!(
-                    "{:04}-{:02}-{:02} is a {}",
-                    parsed_date.year(),
-                    parsed_date.month(),
-                    parsed_date.day(),
-                    parsed_date.format("%A")
-                )],
-            );
-
-            if issue.should_fix(base_path) {
-                // Update the date - set_datetime takes a DateTime object
-                entry.set_datetime(parsed_date);
-                if let Some(version) = entry.version() {
-                    fixed_versions.push(version.to_string());
-                }
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+        if new_day_of_week == orig_day_of_week {
+            continue;
         }
+
+        let issue = LintianIssue::source_with_info(
+            "debian-changelog-has-wrong-day-of-week",
+            vec![format!(
+                "{:04}-{:02}-{:02} is a {}",
+                parsed_date.year(),
+                parsed_date.month(),
+                parsed_date.day(),
+                parsed_date.format("%A")
+            )],
+        );
+        let version_str = version.to_string();
+        let action = Action::Changelog(ChangelogAction::SetEntryDate {
+            file: changelog_rel.clone(),
+            version: version_str.clone(),
+            rfc2822: new_date_str,
+        });
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("fixed\t{}", version_str),
+            vec![action],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    // Write back the modified changelog
-    fs::write(&changelog_path, changelog.to_string())?;
-
-    let message = if fixed_versions.len() == 1 {
-        format!(
-            "Fix day-of-week for changelog entry {}.",
-            fixed_versions.join(", ")
-        )
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut versions: Vec<&str> = fixed
+        .iter()
+        .filter_map(|d| d.message.strip_prefix("fixed\t"))
+        .collect();
+    versions.sort();
+    versions.dedup();
+    if versions.len() == 1 {
+        format!("Fix day-of-week for changelog entry {}.", versions[0])
     } else {
         format!(
             "Fix day-of-week for changelog entries {}.",
-            fixed_versions.join(", ")
+            versions.join(", ")
         )
-    };
-
-    Ok(FixerResult::builder(&message)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    }
 }
 
 declare_fixer! {
     name: "debian-changelog-has-wrong-day-of-week",
     tags: ["debian-changelog-has-wrong-day-of-week"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -120,54 +102,48 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "foo", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_fix_wrong_day_of_week() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("changelog");
+        fs::write(
+            &path,
+            "foo (1.0) unstable; urgency=medium\n\n  * Initial release.\n\n -- John Doe <john@example.com>  Mon, 22 Apr 2018 00:58:14 +0000\n",
+        )
+        .unwrap();
 
-        // April 22, 2018 was a Sunday, not Monday
-        let changelog_content = r#"foo (1.0) unstable; urgency=medium
-
-  * Initial release.
-
- -- John Doe <john@example.com>  Mon, 22 Apr 2018 00:58:14 +0000
-"#;
-        let changelog_path = debian_dir.join("changelog");
-        fs::write(&changelog_path, changelog_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &Default::default());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&changelog_path).unwrap();
-        assert!(updated_content.contains("Sun, 22 Apr 2018"));
-        assert!(!updated_content.contains("Mon, 22 Apr 2018"));
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Fix day-of-week for changelog entry 1.0."
+        );
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "foo (1.0) unstable; urgency=medium\n\n  * Initial release.\n\n -- John Doe <john@example.com>  Sun, 22 Apr 2018 00:58:14 +0000\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_day_correct() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("changelog");
+        let content = "foo (1.0) unstable; urgency=medium\n\n  * Initial release.\n\n -- John Doe <john@example.com>  Sun, 22 Apr 2018 00:58:14 +0000\n";
+        fs::write(&path, content).unwrap();
 
-        // April 22, 2018 was a Sunday - this is correct
-        let changelog_content = r#"foo (1.0) unstable; urgency=medium
-
-  * Initial release.
-
- -- John Doe <john@example.com>  Sun, 22 Apr 2018 00:58:14 +0000
-"#;
-        let changelog_path = debian_dir.join("changelog");
-        fs::write(&changelog_path, changelog_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
     }
 }

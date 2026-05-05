@@ -1,82 +1,74 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue, PackageType};
 use debian_changelog::parseaddr;
-use std::path::Path;
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
 const TESTSUITE_VALUE: &str = "autopkgtest-pkg-perl";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Check if debian/tests/control exists - if so, the Testsuite header is redundant
+    // If debian/tests/control exists, the Testsuite header is redundant.
     // See https://bugs.debian.org/982871
-    let tests_control_path = base_path.join("debian/tests/control");
-    if tests_control_path.exists() {
-        return Err(FixerError::NoChanges);
+    if base_path.join("debian/tests/control").exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
 
-    let source = editor.source().ok_or(FixerError::NoChanges)?;
-
-    // Get the maintainer field
-    let maintainer = source
-        .as_deb822()
-        .get("Maintainer")
-        .ok_or(FixerError::NoChanges)?;
-
-    // Parse the email from the maintainer field
+    let Some(maintainer) = source.as_deb822().get("Maintainer") else {
+        return Ok(Vec::new());
+    };
     let (_name, email) = parseaddr(&maintainer);
-
-    // Check if it's a pkg-perl maintained package
     if email != PKG_PERL_EMAIL {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Check if Testsuite is already set correctly
-    if let Some(existing_testsuite) = source.as_deb822().get("Testsuite") {
-        if existing_testsuite.trim() == TESTSUITE_VALUE {
-            return Err(FixerError::NoChanges);
-        }
+    if source
+        .as_deb822()
+        .get("Testsuite")
+        .as_deref()
+        .map(str::trim)
+        == Some(TESTSUITE_VALUE)
+    {
+        return Ok(Vec::new());
     }
 
-    // Check if there's an override for this issue
     let issue = LintianIssue {
         package: None,
-        package_type: Some(crate::PackageType::Source),
+        package_type: Some(PackageType::Source),
         tag: Some("team/pkg-perl/testsuite/no-testsuite-header".to_string()),
         info: Some("autopkgtest".to_string()),
     };
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Set the Testsuite field
-    if let Some(mut source) = editor.source() {
-        source.as_mut_deb822().set("Testsuite", TESTSUITE_VALUE);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Set Testsuite header for perl package.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issue(issue)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Set Testsuite header for perl package.",
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Testsuite".into(),
+            value: TESTSUITE_VALUE.into(),
+        })],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "pkg-perl-testsuite",
     tags: ["team/pkg-perl/testsuite/no-testsuite-header"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -84,8 +76,14 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_sets_testsuite_for_pkg_perl() {
@@ -93,22 +91,20 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\n\nPackage: libfoo-perl\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(result.description, "Set Testsuite header for perl package.");
+
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nTestsuite: autopkgtest-pkg-perl\n\nPackage: libfoo-perl\nDescription: test\n",
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Testsuite: autopkgtest-pkg-perl"));
     }
 
     #[test]
@@ -117,19 +113,17 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nTestsuite: autopkgtest-pkg-perl\n\nPackage: libfoo-perl\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nTestsuite: autopkgtest-pkg-perl\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -138,33 +132,25 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Someone Else <someone@example.com>\n\nPackage: libfoo-perl\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: libfoo-perl\nMaintainer: Someone Else <someone@example.com>\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_change_when_no_control() {
         let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

@@ -1,9 +1,12 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use deb822_lossless::Deb822;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+/// Old → new field renames in the copyright header. The third tuple
+/// element is `true` for fields that can carry multiple values; for
+/// those, if the new name already exists, we append rather than rename.
 const RENAMES: &[(&str, &str, bool)] = &[
     ("Name", "Upstream-Name", false),
     ("Contact", "Upstream-Contact", true),
@@ -12,201 +15,201 @@ const RENAMES: &[(&str, &str, bool)] = &[
     ("Format-Specification", "Format", false),
 ];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let content = fs::read_to_string(&copyright_path)?;
-
-    // Check if it's a machine-readable copyright file
+    let content = std::fs::read_to_string(&abs)?;
     if !content.starts_with("Format:") && !content.starts_with("Format-Specification:") {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
     let deb822 = match Deb822::from_str(&content) {
         Ok(d) => d,
-        Err(_) => {
-            // Not a valid deb822 file
-            return Err(FixerError::NoChanges);
-        }
+        Err(_) => return Ok(Vec::new()),
+    };
+    let Some(header) = deb822.paragraphs().next() else {
+        return Ok(Vec::new());
     };
 
-    let mut paragraphs = deb822.paragraphs();
-    let Some(mut header) = paragraphs.next() else {
-        return Err(FixerError::NoChanges);
-    };
-
-    let mut applied_renames = Vec::new();
-    let mut changed = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
+    let mut diagnostics = Vec::new();
     for &(old_name, new_name, multi_line) in RENAMES {
-        if let Some(entry) = header.get_entry(old_name) {
-            let value = entry.value();
-            if !value.trim().is_empty() {
-                // Get line number (1-indexed)
-                let line_num = entry.line();
-
-                let issue = LintianIssue::source_with_info(
-                    "obsolete-field-in-dep5-copyright",
-                    vec![format!(
-                        "{} {} [debian/copyright:{}]",
-                        old_name, new_name, line_num
-                    )],
-                );
-
-                if !issue.should_fix(base_path) {
-                    overridden_issues.push(issue);
-                    continue;
-                }
-
-                if multi_line {
-                    // For multi-line fields, append to existing value
-                    if let Some(existing) = header.get(new_name) {
-                        let combined = format!("{}\n{}", existing.trim(), value.trim());
-                        header.set(new_name, &combined);
-                        header.remove(old_name);
-                    } else {
-                        header.rename(old_name, new_name);
-                    }
-                } else {
-                    // For single-line fields, just rename to preserve position
-                    header.rename(old_name, new_name);
-                }
-                applied_renames.push((old_name, new_name));
-                fixed_issues.push(issue);
-                changed = true;
-            } else {
-                header.remove(old_name);
-            }
+        let Some(entry) = header.get_entry(old_name) else {
+            continue;
+        };
+        let value = entry.value();
+        if value.trim().is_empty() {
+            // Empty values are dropped silently — no diagnostic, no
+            // user-visible message. Match the original behaviour by
+            // emitting a remove-only action with no LintianIssue.
+            diagnostics.push(crate::diagnostic::Diagnostic::untagged(
+                format!("drop\t{}", old_name),
+                vec![Action::Deb822(Deb822Action::RemoveField {
+                    file: copyright_rel.clone(),
+                    paragraph: ParagraphSelector::CopyrightHeader,
+                    field: old_name.into(),
+                })],
+            ));
+            continue;
         }
+
+        let line_num = entry.line();
+        let issue = LintianIssue::source_with_info(
+            "obsolete-field-in-dep5-copyright",
+            vec![format!(
+                "{} {} [debian/copyright:{}]",
+                old_name, new_name, line_num
+            )],
+        );
+
+        // For multi-valued fields where the new name already carries a
+        // value, merge the two on the new field rather than letting
+        // RenameField clobber.
+        let actions = if multi_line && header.get(new_name).is_some() {
+            let existing = header.get(new_name).unwrap();
+            let combined = format!("{}\n{}", existing.trim(), value.trim());
+            vec![
+                Action::Deb822(Deb822Action::SetField {
+                    file: copyright_rel.clone(),
+                    paragraph: ParagraphSelector::CopyrightHeader,
+                    field: new_name.into(),
+                    value: combined,
+                }),
+                Action::Deb822(Deb822Action::RemoveField {
+                    file: copyright_rel.clone(),
+                    paragraph: ParagraphSelector::CopyrightHeader,
+                    field: old_name.into(),
+                }),
+            ]
+        } else {
+            vec![Action::Deb822(Deb822Action::RenameField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::CopyrightHeader,
+                from: old_name.into(),
+                to: new_name.into(),
+            })]
+        };
+
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("rename\t{} ⇒ {}", old_name, new_name),
+            actions,
+        ));
     }
 
-    if !changed {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    fs::write(&copyright_path, deb822.to_string())?;
-
-    let rename_str = applied_renames
+/// Aggregate the per-rename diagnostics into the historical
+/// "Update copyright file header to use current field names (X ⇒ Y, ...)"
+/// description. Drop-only diagnostics (empty-value removals) don't
+/// surface in the description.
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let pairs: Vec<&str> = fixed
         .iter()
-        .map(|(old, new)| format!("{} ⇒ {}", old, new))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    Ok(FixerResult::builder(format!(
+        .filter_map(|d| d.message.strip_prefix("rename\t"))
+        .collect();
+    format!(
         "Update copyright file header to use current field names ({})",
-        rename_str
-    ))
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
+        pairs.join(", "),
+    )
 }
 
 declare_fixer! {
     name: "obsolete-field-in-dep5-copyright",
     tags: ["obsolete-field-in-dep5-copyright"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            &copyright_path,
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nContact: Jelmer <jelmer@samba.org>\nName: lintian-brush\n\nFiles: *\nLicense: GPL\nCopyright: 2012...\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        // Description order follows RENAMES array order, not file order
+        let result = run_apply(tmp.path()).unwrap();
+        // RENAMES order: Name first, then Contact.
         assert_eq!(
             result.description,
             "Update copyright file header to use current field names (Name ⇒ Upstream-Name, Contact ⇒ Upstream-Contact)"
         );
 
-        let content = fs::read_to_string(&copyright_path).unwrap();
-        // Note: rename() preserves field order, so Contact->Upstream-Contact stays in position,
-        // and Name->Upstream-Name stays in position
+        // Both renames preserve position.
         assert_eq!(
-            content,
+            fs::read_to_string(&path).unwrap(),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Contact: Jelmer <jelmer@samba.org>\nUpstream-Name: lintian-brush\n\nFiles: *\nLicense: GPL\nCopyright: 2012...\n"
         );
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &copyright_path,
+            debian.join("copyright"),
             "This is not a machine-readable copyright file.\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_multi_line_append() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            &copyright_path,
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Contact: Existing <existing@example.com>\nContact: New <new@example.com>\n\nFiles: *\nLicense: GPL\nCopyright: 2012...\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Update copyright file header to use current field names (Contact ⇒ Upstream-Contact)"
         );
 
-        let content = fs::read_to_string(&copyright_path).unwrap();
-        // deb822-lossless aligns continuation lines
+        // Existing Upstream-Contact value gets the Contact value appended;
+        // Contact is removed. Position of Upstream-Contact is preserved.
         assert_eq!(
-            content,
+            fs::read_to_string(&path).unwrap(),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Contact: Existing <existing@example.com>\n                  New <new@example.com>\n\nFiles: *\nLicense: GPL\nCopyright: 2012...\n"
         );
     }

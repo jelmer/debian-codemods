@@ -1,90 +1,105 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue, PackageType};
+use debian_control::lossless::Control;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-
-    // Get all source fields and their values
-    let source_fields: HashMap<String, String> = if let Some(source) = editor.source() {
-        source
-            .as_deb822()
-            .keys()
-            .map(|k| {
-                (
-                    k.to_string(),
-                    source.as_deb822().get(&k).unwrap().to_string(),
-                )
-            })
-            .collect()
-    } else {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
     };
 
-    let mut removed: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let source_fields: BTreeMap<String, String> = source
+        .as_deb822()
+        .keys()
+        .map(|k| {
+            (
+                k.to_string(),
+                source.as_deb822().get(&k).unwrap_or_default(),
+            )
+        })
+        .collect();
 
-    // Process all binary packages
-    let binaries: Vec<_> = editor.binaries().collect();
-    for mut binary in binaries {
+    let mut diagnostics = Vec::new();
+
+    for binary in control.binaries() {
         let line_no = binary.as_deb822().line() + 1;
-        let paragraph = binary.as_mut_deb822();
-        let package_name = paragraph.get("Package").unwrap_or_default().to_string();
+        let paragraph = binary.as_deb822();
+        let Some(package_name) = binary.name() else {
+            continue;
+        };
 
-        // Check all fields in the binary package
-        let fields_to_check: Vec<(String, String)> = paragraph
-            .keys()
-            .map(|k| (k.to_string(), paragraph.get(&k).unwrap().to_string()))
-            .collect();
-
-        for (field, value) in fields_to_check {
-            if let Some(source_value) = source_fields.get(&field) {
-                if source_value == &value {
-                    // This field in the binary package duplicates the source
-                    let issue = LintianIssue {
-                        package: Some(package_name.clone()),
-                        package_type: Some(crate::PackageType::Binary),
-                        tag: Some("installable-field-mirrors-source".to_string()),
-                        info: Some(format!("{} [debian/control:{}]", field, line_no)),
-                    };
-
-                    if issue.should_fix(base_path) {
-                        paragraph.remove(&field);
-                        removed
-                            .entry(field.clone())
-                            .or_default()
-                            .insert(package_name.clone());
-                        fixed_issues.push(issue);
-                    } else {
-                        overridden_issues.push(issue);
-                    }
-                }
+        for key in paragraph.keys() {
+            let Some(value) = paragraph.get(&key) else {
+                continue;
+            };
+            let Some(source_value) = source_fields.get(key.as_str()) else {
+                continue;
+            };
+            if source_value != &value {
+                continue;
             }
+
+            let issue = LintianIssue {
+                package: Some(package_name.clone()),
+                package_type: Some(PackageType::Binary),
+                tag: Some("installable-field-mirrors-source".to_string()),
+                info: Some(format!("{} [debian/control:{}]", key, line_no)),
+            };
+
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                format!(
+                    "Remove field {} from binary package {} that duplicates source.",
+                    key, package_name
+                ),
+                vec![Action::Deb822(Deb822Action::RemoveField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: package_name.clone(),
+                    },
+                    field: key.to_string(),
+                })],
+            ));
         }
     }
 
-    if removed.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+    Ok(diagnostics)
+}
+
+/// Aggregate "field X on packages A, B" or, when several distinct fields
+/// are involved, the bullet-list form the original fixer used.
+fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+    // field -> sorted unique package names that had it removed
+    let mut by_field: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for action in actions {
+        if let Action::Deb822(Deb822Action::RemoveField {
+            paragraph: ParagraphSelector::Binary { package },
+            field,
+            ..
+        }) = action
+        {
+            by_field
+                .entry(field.as_str())
+                .or_default()
+                .push(package.as_str());
         }
-        return Err(FixerError::NoChanges);
     }
-
-    editor.commit()?;
-
-    // Build the result message
-    let message = if removed.len() == 1 {
-        let (field, binary_packages) = removed.iter().next().unwrap();
-        let mut packages: Vec<_> = binary_packages.iter().cloned().collect();
+    for packages in by_field.values_mut() {
         packages.sort();
+        packages.dedup();
+    }
+
+    if by_field.len() == 1 {
+        let (field, packages) = by_field.iter().next().unwrap();
         format!(
             "Remove field {} on binary package{} {} that duplicates source.",
             field,
@@ -92,32 +107,24 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             packages.join(", ")
         )
     } else {
-        let mut message = "Remove fields on binary packages that duplicate source.".to_string();
-        let mut sorted_fields: Vec<_> = removed.iter().collect();
-        sorted_fields.sort_by_key(|(field, _)| field.as_str());
-
-        for (field, packages) in sorted_fields {
-            let mut package_list: Vec<_> = packages.iter().cloned().collect();
-            package_list.sort();
-            for package in package_list {
-                message.push_str(&format!("\n+ Field {} from {}.", field, package));
+        let mut msg = String::from("Remove fields on binary packages that duplicate source.");
+        for (field, packages) in &by_field {
+            for package in packages {
+                msg.push_str(&format!("\n+ Field {} from {}.", field, package));
             }
         }
-        message
-    };
-
-    let mut result = FixerResult::builder(&message).fixed_issues(fixed_issues);
-    if !overridden_issues.is_empty() {
-        result = result.overridden_issues(overridden_issues);
+        msg
     }
-    Ok(result.build())
 }
 
 declare_fixer! {
     name: "binary-control-field-duplicates-source",
     tags: ["installable-field-mirrors-source"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -125,8 +132,14 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "blah", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_removes_duplicate_priority() {
@@ -134,26 +147,23 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: vcs\nPriority: optional\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: vcs\nPriority: optional\nDescription: test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
-        assert!(result.is_ok());
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Remove field Priority on binary package blah that duplicates source."
+        );
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        // Priority should be removed from binary package
-        let lines: Vec<&str> = updated_content.lines().collect();
-        let package_start = lines.iter().position(|&l| l == "Package: blah").unwrap();
-        assert!(!lines[package_start..]
-            .iter()
-            .any(|l| l.starts_with("Priority:")));
-        // But Section should still be there (it's different)
-        assert!(lines[package_start..]
-            .iter()
-            .any(|l| l.starts_with("Section: vcs")));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: vcs\nDescription: test\n",
+        );
     }
 
     #[test]
@@ -162,22 +172,24 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: net\nPriority: optional\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: net\nPriority: optional\nDescription: test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
-        assert!(result.is_ok());
+        let result = run_apply(temp_dir.path()).unwrap();
+        // Two distinct fields removed -> bullet-list form.
+        assert_eq!(
+            result.description,
+            "Remove fields on binary packages that duplicate source.\n+ Field Priority from blah.\n+ Field Section from blah.",
+        );
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        // Both Priority and Section should be removed from binary package
-        let lines: Vec<&str> = updated_content.lines().collect();
-        let package_start = lines.iter().position(|&l| l == "Package: blah").unwrap();
-        assert!(!lines[package_start..]
-            .iter()
-            .any(|l| l.starts_with("Priority:") || l.starts_with("Section:")));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nDescription: test\n",
+        );
     }
 
     #[test]
@@ -186,29 +198,23 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content =
-            "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: vcs\nPriority: extra\nDescription: test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        let original = "Source: blah\nSection: net\nPriority: optional\n\nPackage: blah\nSection: vcs\nPriority: extra\nDescription: test\n";
+        fs::write(&control_path, original).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "blah", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 
     #[test]
     fn test_no_change_when_no_file() {
         let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

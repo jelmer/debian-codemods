@@ -443,7 +443,6 @@ pub enum ChangelogAction {
         new_lines: Vec<String>,
     },
 }
-
 /// Filesystem-level edits.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]

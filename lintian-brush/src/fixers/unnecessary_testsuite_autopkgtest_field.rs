@@ -1,71 +1,75 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let paragraph = source.as_deb822();
 
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        if let Some(testsuite) = paragraph.get("Testsuite") {
-            if testsuite == "autopkgtest" {
-                let line_number = paragraph
-                    .get_entry("Testsuite")
-                    .map(|e| e.line() + 1)
-                    .unwrap_or(1);
-
-                let issue = LintianIssue::source_with_info(
-                    "unnecessary-testsuite-autopkgtest-field",
-                    vec![format!("[debian/control:{}]", line_number)],
-                );
-
-                if !issue.should_fix(base_path) {
-                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-                }
-
-                paragraph.remove("Testsuite");
-                editor.commit()?;
-
-                return Ok(FixerResult::builder(
-                    "Remove unnecessary 'Testsuite: autopkgtest' header.",
-                )
-                .fixed_issue(issue)
-                .build());
-            }
-        }
+    if paragraph.get("Testsuite").as_deref() != Some("autopkgtest") {
+        return Ok(Vec::new());
     }
 
-    Err(FixerError::NoChanges)
+    let line_number = paragraph
+        .get_entry("Testsuite")
+        .map(|e| e.line() + 1)
+        .unwrap_or(1);
+
+    let issue = LintianIssue::source_with_info(
+        "unnecessary-testsuite-autopkgtest-field",
+        vec![format!("[debian/control:{}]", line_number)],
+    );
+
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove unnecessary 'Testsuite: autopkgtest' header.",
+        vec![Action::Deb822(Deb822Action::RemoveField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Testsuite".into(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "unnecessary-testsuite-autopkgtest-field",
     tags: ["unnecessary-testsuite-autopkgtest-field"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -82,19 +86,16 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Remove unnecessary 'Testsuite: autopkgtest' header."
         );
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("Testsuite:"));
-        assert!(updated_content.contains("Source: lintian-brush"));
-        assert!(updated_content.contains("Package: lintian-brush"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        );
     }
 
     #[test]
@@ -111,8 +112,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -123,17 +123,10 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         let control_path = debian_dir.join("control");
-        fs::write(
-            &control_path,
-            "Source: lintian-brush\nTestsuite: other-value\n\nPackage: lintian-brush\n",
-        )
-        .unwrap();
+        let original = "Source: lintian-brush\nTestsuite: other-value\n\nPackage: lintian-brush\n";
+        fs::write(&control_path, original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Verify the field was not removed
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(content.contains("Testsuite: other-value"));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&control_path).unwrap(), original);
     }
 }

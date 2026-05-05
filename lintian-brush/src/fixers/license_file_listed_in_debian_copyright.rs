@@ -1,161 +1,141 @@
-use crate::{FixerError, FixerPreferences, FixerResult};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue, PackageType};
+use debian_copyright::lossless::Copyright;
 use regex::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(
-    basedir: &Path,
-    _package_name: &str,
-    preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    use debian_copyright::lossless::Copyright;
-
-    let copyright_path = basedir.join("debian/copyright");
-
-    // Check minimum certainty
-    let certainty = crate::Certainty::Certain;
-    if !crate::certainty_sufficient(certainty, preferences.minimum_certainty) {
-        return Err(FixerError::NotCertainEnough(
-            certainty,
-            preferences.minimum_certainty,
-            vec![],
-        ));
-    }
-
-    let content = match std::fs::read_to_string(&copyright_path) {
-        Ok(content) => content,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Err(FixerError::NoChanges);
-        }
-        Err(e) => return Err(e.into()),
-    };
-    let mut copyright: Copyright = match content.parse() {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
-            return Err(FixerError::NoChanges);
-        }
-    };
-
-    // Regex taken from /usr/share/lintian/checks/debian/copyright.pm
-    let re_license = Regex::new(r"(^|/)(COPYING[^/]*|LICENSE)$").unwrap();
-
-    let mut deleted = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut patterns_to_remove = Vec::new();
-
-    // Iterate through all files paragraphs
-    for mut para in copyright.iter_files() {
-        let files = para.files();
-        let mut kept_files = Vec::new();
-
-        for file_pattern in &files {
-            if re_license.is_match(file_pattern) {
-                let issue = crate::LintianIssue {
-                    package: None,
-                    package_type: Some(crate::PackageType::Source),
-                    tag: Some("license-file-listed-in-debian-copyright".to_string()),
-                    info: Some(format!("{} [debian/copyright]", file_pattern)),
-                };
-
-                if issue.should_fix(basedir) {
-                    deleted.push(file_pattern.clone());
-                } else {
-                    overridden_issues.push(issue);
-                    kept_files.push(file_pattern.as_str());
-                }
-            } else {
-                kept_files.push(file_pattern.as_str());
-            }
-        }
-
-        if kept_files.is_empty() {
-            // Mark all files from this paragraph for removal
-            // We'll use remove_files_by_pattern to remove the paragraph
-            for pattern in &files {
-                patterns_to_remove.push(pattern.clone());
-            }
-        } else if kept_files.len() != files.len() {
-            // Update the paragraph with only kept files
-            para.set_files(&kept_files);
-        }
-    }
-
-    // Remove paragraphs that have no files left
-    for pattern in &patterns_to_remove {
-        copyright.remove_files_by_pattern(pattern);
-    }
-
-    if deleted.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    // Write the updated copyright file
-    std::fs::write(&copyright_path, copyright.to_string())?;
-
-    let deleted_str = deleted.join(", ");
-    let mut result = FixerResult::builder(format!(
-        "Remove listed license files ({}) from copyright.",
-        deleted_str
-    ))
-    .certainty(certainty);
-
-    // Add fixed tags for each deleted file
-    for file in &deleted {
-        result = result.fixed_issue(crate::LintianIssue {
-            package: None,
-            package_type: Some(crate::PackageType::Source),
-            tag: Some("license-file-listed-in-debian-copyright".to_string()),
-            info: Some(format!("{} [debian/copyright]", file)),
-        });
-    }
-
-    Ok(result.build())
+/// Regex taken from /usr/share/lintian/checks/debian/copyright.pm.
+fn license_file_re() -> Regex {
+    Regex::new(r"(^|/)(COPYING[^/]*|LICENSE)$").unwrap()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use tempfile::TempDir;
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let copyright: Copyright = match content.parse() {
+        Ok(c) => c,
+        Err(_) => return Ok(Vec::new()),
+    };
 
-    #[test]
-    fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+    let re = license_file_re();
+    let mut diagnostics = Vec::new();
 
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, "test-package", &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+    for para in copyright.iter_files() {
+        let files = para.files();
+        let kept: Vec<&String> = files.iter().filter(|f| !re.is_match(f)).collect();
+        let dropped: Vec<&String> = files.iter().filter(|f| re.is_match(f)).collect();
+        if dropped.is_empty() {
+            continue;
+        }
+
+        let raw_files = para.as_deb822().get("Files").unwrap_or_default();
+
+        // One diagnostic per dropped glob — granular for LSP and for
+        // override matching.
+        for file_pattern in &dropped {
+            let issue = LintianIssue {
+                package: None,
+                package_type: Some(PackageType::Source),
+                tag: Some("license-file-listed-in-debian-copyright".to_string()),
+                info: Some(format!("{} [debian/copyright]", file_pattern)),
+            };
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    format!("dropped\t{}", file_pattern),
+                    // Action set is shared across the per-glob diagnostics:
+                    // applying one of them is enough; the rest are no-ops.
+                    if kept.is_empty() {
+                        vec![Action::Deb822(Deb822Action::RemoveParagraph {
+                            file: copyright_rel.clone(),
+                            paragraph: ParagraphSelector::CopyrightFiles {
+                                glob: raw_files.clone(),
+                            },
+                        })]
+                    } else {
+                        // Files: globs are space-separated, matching
+                        // debian-copyright's set_files semantics.
+                        let new_value = kept
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        vec![Action::Deb822(Deb822Action::SetField {
+                            file: copyright_rel.clone(),
+                            paragraph: ParagraphSelector::CopyrightFiles {
+                                glob: raw_files.clone(),
+                            },
+                            field: "Files".into(),
+                            value: new_value,
+                        })]
+                    },
+                )
+                .with_certainty(Certainty::Certain),
+            );
+        }
     }
 
-    #[test]
-    fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+    Ok(diagnostics)
+}
 
-        fs::write(
-            debian_dir.join("copyright"),
-            "This is not a machine-readable copyright file.\n",
-        )
-        .unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, "test-package", &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let dropped: Vec<&str> = fixed
+        .iter()
+        .filter_map(|d| d.message.strip_prefix("dropped\t"))
+        .collect();
+    format!(
+        "Remove listed license files ({}) from copyright.",
+        dropped.join(", "),
+    )
 }
 
 declare_fixer! {
     name: "license-file-listed-in-debian-copyright",
     tags: ["license-file-listed-in-debian-copyright"],
-    apply: |basedir, package, _version, preferences| {
-        run(basedir, package, preferences)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
+
+    #[test]
+    fn test_no_copyright_file() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_not_machine_readable() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            "This is not a machine-readable copyright file.\n",
+        )
+        .unwrap();
+
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
