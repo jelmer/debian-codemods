@@ -1,18 +1,16 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use lazy_static::lazy_static;
-use makefile_lossless::{Makefile, MakefileItem};
+use makefile_lossless::Makefile;
 use regex::Regex;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const ARCHITECTURE_MK_PATH: &str = "/usr/share/dpkg/architecture.mk";
 
 lazy_static! {
     static ref DPKG_ARCH_VARIABLES: HashSet<String> = {
         let mut vars = HashSet::new();
-        // These are the variables defined in /usr/share/dpkg/architecture.mk
-        // as per the foreach loops for BUILD, HOST, TARGET machines
         for machine in &["BUILD", "HOST", "TARGET"] {
             for var in &[
                 "ARCH",
@@ -36,211 +34,180 @@ lazy_static! {
         Regex::new(r"^\$\(shell\s+dpkg-architecture\s+-q([A-Z_]+)\)$").unwrap();
 }
 
-/// Check if a variable value matches the standard dpkg-architecture call
-fn is_standard_dpkg_arch_call(variable_name: &str, value: &str) -> bool {
-    if let Some(caps) = DPKG_ARCH_CALL_REGEX.captures(value.trim()) {
-        &caps[1] == variable_name
-    } else {
-        false
-    }
+fn is_standard_dpkg_arch_call(name: &str, value: &str) -> bool {
+    DPKG_ARCH_CALL_REGEX
+        .captures(value.trim())
+        .map(|c| &c[1] == name)
+        .unwrap_or(false)
 }
 
-pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerError> {
-    let rules_path = base_path.join("debian/rules");
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let opinionated = preferences.opinionated.unwrap_or(false);
 
-    if !rules_path.exists() {
-        return Err(FixerError::NoChanges);
+    let rules_rel = PathBuf::from("debian/rules");
+    let rules_abs = base_path.join(&rules_rel);
+    if !rules_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&rules_path)?;
+    let content = std::fs::read_to_string(&rules_abs)?;
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    // Check if architecture.mk is already included
     let already_included = makefile.included_files().any(|f| f == ARCHITECTURE_MK_PATH);
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut vars_to_remove = Vec::new();
-    let mut vars_to_soften = Vec::new();
-    let mut first_different_var_name: Option<String> = None;
+    let mut issues: Vec<LintianIssue> = Vec::new();
+    let mut actions: Vec<Action> = Vec::new();
+    let mut to_remove: Vec<String> = Vec::new();
+    // First DEB_*_* variable that uses a non-standard call. In
+    // opinionated mode we anchor the include directive in front of it
+    // so the include lands near the section it logically supports.
+    let mut first_different_var: Option<String> = None;
 
-    // Find variables that match dpkg architecture variables
     for var_def in makefile.variable_definitions() {
-        if let Some(name) = var_def.name() {
-            if !DPKG_ARCH_VARIABLES.contains(&name) {
-                continue;
+        let Some(name) = var_def.name() else {
+            continue;
+        };
+        if !DPKG_ARCH_VARIABLES.contains(&name) {
+            continue;
+        }
+        let Some(value) = var_def.raw_value() else {
+            continue;
+        };
+        if !is_standard_dpkg_arch_call(&name, &value) {
+            if opinionated && first_different_var.is_none() {
+                first_different_var = Some(name);
             }
-
-            if let Some(value) = var_def.raw_value() {
-                // Check if the value matches the standard dpkg-architecture call
-                if !is_standard_dpkg_arch_call(&name, &value) {
-                    // Value is different - track the first one for include placement
-                    if first_different_var_name.is_none() && opinionated {
-                        first_different_var_name = Some(name.clone());
-                    }
-                    continue;
-                }
-
-                let assignment_op = var_def.assignment_operator();
-                let is_hard = assignment_op.as_deref() != Some("?=");
-
-                // Get line number (1-indexed)
-                let line_num = var_def.line() + 1;
-                let issue = LintianIssue::source_with_info(
-                    "debian-rules-sets-dpkg-architecture-variable",
-                    vec![format!("{} [debian/rules:{}]", name, line_num)],
-                );
-
-                if !issue.should_fix(base_path) {
-                    overridden_issues.push(issue);
-                    continue;
-                }
-
-                if opinionated {
-                    // In opinionated mode, remove all matching lines (both hard and soft)
-                    if is_hard {
-                        fixed_issues.push(issue);
-                    }
-                    vars_to_remove.push(name.clone());
-                } else {
-                    // In non-opinionated mode, only fix hard assignments
-                    if is_hard {
-                        fixed_issues.push(issue);
-                        if already_included {
-                            // Include is already present, remove the variable
-                            vars_to_remove.push(name.clone());
-                        } else {
-                            // Change to soft assignment
-                            vars_to_soften.push(name.clone());
-                        }
-                    }
-                }
-            }
+            continue;
         }
-    }
-
-    // In non-opinionated mode, always succeed with the message even if no changes
-    // This matches the Python implementation behavior
-    let has_changes = !vars_to_remove.is_empty() || !vars_to_soften.is_empty();
-
-    if !has_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        if opinionated {
-            return Err(FixerError::NoChanges);
-        }
-        // Non-opinionated mode: report success with message even if no changes
-        return Ok(
-            FixerResult::builder("Use ?= for assignments to architecture variables.").build(),
+        let assignment_op = var_def.assignment_operator();
+        let is_hard = assignment_op.as_deref() != Some("?=");
+        let line_num = var_def.line() + 1;
+        let issue = LintianIssue::source_with_info(
+            "debian-rules-sets-dpkg-architecture-variable",
+            vec![format!("{} [debian/rules:{}]", name, line_num)],
         );
-    }
 
-    // Add the include if needed (when removing variables)
-    let needs_include = !vars_to_remove.is_empty();
-
-    // Soften variables (change := or = to ?=)
-    for var_name in &vars_to_soften {
-        for mut var_def in makefile.variable_definitions() {
-            if var_def.name().as_deref() == Some(var_name) {
-                var_def.set_assignment_operator("?=");
-                break;
+        if opinionated {
+            if is_hard {
+                issues.push(issue);
+            }
+            to_remove.push(name);
+        } else if is_hard {
+            issues.push(issue);
+            if already_included {
+                to_remove.push(name);
+            } else {
+                actions.push(Action::Makefile(MakefileAction::SetVariableOperator {
+                    file: rules_rel.clone(),
+                    name,
+                    operator: "?=".into(),
+                }));
             }
         }
     }
 
-    // In opinionated mode, replace the first removed variable with the include
-    // Create the include item to use for replacement
-    let include_item = if needs_include && !already_included {
-        let temp_makefile = format!("include {}\n", ARCHITECTURE_MK_PATH)
-            .parse::<Makefile>()
-            .map_err(|e| FixerError::Other(format!("Failed to create include: {}", e)))?;
-        Some(temp_makefile.includes().next().ok_or_else(|| {
-            FixerError::Other("Failed to get include from temp makefile".to_string())
-        })?)
+    // In opinionated mode without an existing include, place
+    // `include /usr/share/dpkg/architecture.mk`:
+    //  - just before the first non-standard DEB_*_* variable, if any
+    //    (so the include sits next to the code that depends on it), or
+    //  - in place of the first variable being removed otherwise.
+    let needs_include = opinionated && !to_remove.is_empty() && !already_included;
+    if needs_include {
+        if let Some(anchor) = first_different_var.as_ref() {
+            actions.push(Action::Makefile(
+                MakefileAction::InsertIncludeBeforeVariable {
+                    file: rules_rel.clone(),
+                    path: ARCHITECTURE_MK_PATH.into(),
+                    before_variable: anchor.clone(),
+                },
+            ));
+            for name in &to_remove {
+                actions.push(Action::Makefile(MakefileAction::RemoveVariable {
+                    file: rules_rel.clone(),
+                    name: name.clone(),
+                }));
+            }
+        } else {
+            let (first, rest) = to_remove.split_first().unwrap();
+            actions.push(Action::Makefile(
+                MakefileAction::ReplaceVariableWithInclude {
+                    file: rules_rel.clone(),
+                    name: first.clone(),
+                    path: ARCHITECTURE_MK_PATH.into(),
+                },
+            ));
+            for name in rest {
+                actions.push(Action::Makefile(MakefileAction::RemoveVariable {
+                    file: rules_rel.clone(),
+                    name: name.clone(),
+                }));
+            }
+        }
     } else {
-        None
-    };
-
-    // Handle include placement and variable removal/replacement
-    let mut replaced_first = false;
-
-    // First pass: insert include before first different variable if it exists
-    if let (Some(include), Some(target_name)) =
-        (include_item.as_ref(), first_different_var_name.as_ref())
-    {
-        let items: Vec<_> = makefile.items().collect();
-        for mut item in items {
-            if let MakefileItem::Variable(var) = &item {
-                if var.name().as_deref() == Some(target_name.as_str()) {
-                    // Insert include before this variable
-                    item.insert_before(MakefileItem::Include(include.clone()))
-                        .map_err(|e| {
-                            FixerError::Other(format!("Failed to insert include: {}", e))
-                        })?;
-                    replaced_first = true;
-                    break;
-                }
-            }
+        for name in to_remove.iter() {
+            actions.push(Action::Makefile(MakefileAction::RemoveVariable {
+                file: rules_rel.clone(),
+                name: name.clone(),
+            }));
         }
     }
 
-    // Second pass: remove variables or replace first one with include
-    let items: Vec<_> = makefile.items().collect();
-    for mut item in items {
-        if let MakefileItem::Variable(var) = &item {
-            if let Some(name) = var.name() {
-                if vars_to_remove.contains(&name) {
-                    if !replaced_first && include_item.is_some() {
-                        // Replace the first variable with the include
-                        item.replace(MakefileItem::Include(include_item.clone().unwrap()))
-                            .map_err(|e| {
-                                FixerError::Other(format!("Failed to replace variable: {}", e))
-                            })?;
-                        replaced_first = true;
-                    } else {
-                        // Remove the variable
-                        if let MakefileItem::Variable(mut var) = item {
-                            var.remove();
-                        }
-                    }
-                }
-            }
-        }
+    if actions.is_empty() {
+        return Ok(Vec::new());
     }
-
-    // Write the modified content back
-    let result_content = makefile.to_string();
-    fs::write(&rules_path, result_content)?;
 
     let message = if opinionated {
         "Rely on pre-initialized dpkg-architecture variables."
-    } else if !vars_to_remove.is_empty() && already_included {
+    } else if !to_remove.is_empty() && already_included {
         "Rely on existing architecture.mk include."
     } else {
         "Use ?= for assignments to architecture variables."
     };
 
-    Ok(FixerResult::builder(message)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    if issues.is_empty() {
+        diagnostics.push(Diagnostic::untagged(message, actions));
+    } else {
+        for (i, issue) in issues.into_iter().enumerate() {
+            let plan_actions = if i == 0 {
+                std::mem::take(&mut actions)
+            } else {
+                Vec::new()
+            };
+            diagnostics.push(Diagnostic::with_actions(issue, message, plan_actions));
+        }
+    }
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-rules-sets-dpkg-architecture-variable",
     tags: ["debian-rules-sets-dpkg-architecture-variable"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences.opinionated.unwrap_or(false))
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path, opinionated: bool) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        let prefs = FixerPreferences {
+            opinionated: Some(opinionated),
+            ..Default::default()
+        };
+        FixerImpl.apply(base, "test", &v, &prefs)
+    }
 
     #[test]
     fn test_is_standard_dpkg_arch_call() {
@@ -265,99 +232,62 @@ mod tests {
 
     #[test]
     fn test_non_opinionated_hard_assignment() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let rules = debian.join("rules");
+        fs::write(
+            &rules,
+            "#! /usr/bin/make -f\n\nDEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)\n\n%:\n\tdh $@\n",
+        )
+        .unwrap();
 
-        let rules_content = r#"#! /usr/bin/make -f
-
-DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
-
-%:
-	dh $@
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        let result = run(base_path, false).unwrap();
+        let result = run_apply(tmp.path(), false).unwrap();
         assert_eq!(
             result.description,
             "Use ?= for assignments to architecture variables."
         );
-
-        let new_content = fs::read_to_string(debian_dir.join("rules")).unwrap();
-        assert!(new_content.contains("DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)"));
+        assert_eq!(
+            fs::read_to_string(&rules).unwrap(),
+            "#! /usr/bin/make -f\n\nDEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)\n\n%:\n\tdh $@\n",
+        );
     }
 
     #[test]
     fn test_opinionated_removes_line() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let rules = debian.join("rules");
+        fs::write(
+            &rules,
+            "#! /usr/bin/make -f\n\nDEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)\n\n%:\n\tdh $@\n",
+        )
+        .unwrap();
 
-        let rules_content = r#"#! /usr/bin/make -f
-
-DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
-
-%:
-	dh $@
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        let result = run(base_path, true).unwrap();
+        let result = run_apply(tmp.path(), true).unwrap();
         assert_eq!(
             result.description,
             "Rely on pre-initialized dpkg-architecture variables."
         );
-
-        let new_content = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        let new_content = fs::read_to_string(&rules).unwrap();
         assert!(new_content.contains("include /usr/share/dpkg/architecture.mk"));
         assert!(!new_content.contains("DEB_HOST_ARCH"));
     }
 
     #[test]
-    fn test_no_matching_variables_non_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let rules_content = r#"#! /usr/bin/make -f
-
-FOO := bar
-
-%:
-	dh $@
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        // Non-opinionated mode always succeeds with message
-        let result = run(base_path, false).unwrap();
-        assert_eq!(
-            result.description,
-            "Use ?= for assignments to architecture variables."
-        );
-    }
-
-    #[test]
     fn test_no_matching_variables_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let rules_content = r#"#! /usr/bin/make -f
-
-FOO := bar
-
-%:
-	dh $@
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        // Opinionated mode returns NoChanges
-        let result = run(base_path, true);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("rules"),
+            "#! /usr/bin/make -f\n\nFOO := bar\n\n%:\n\tdh $@\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), true),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

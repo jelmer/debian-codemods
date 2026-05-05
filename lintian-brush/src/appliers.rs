@@ -107,13 +107,16 @@ fn action_file(action: &Action) -> &Path {
             MakefileAction::ReplaceRecipe { file, .. }
             | MakefileAction::RemoveRecipe { file, .. }
             | MakefileAction::SetVariable { file, .. }
+            | MakefileAction::SetVariableOperator { file, .. }
             | MakefileAction::RemoveVariable { file, .. }
             | MakefileAction::RemoveRule { file, .. }
             | MakefileAction::RemovePhonyTarget { file, .. }
             | MakefileAction::RenameRuleTarget { file, .. }
             | MakefileAction::AddRule { file, .. }
             | MakefileAction::AddPhonyTarget { file, .. }
-            | MakefileAction::AddInclude { file, .. } => file,
+            | MakefileAction::AddInclude { file, .. }
+            | MakefileAction::ReplaceVariableWithInclude { file, .. }
+            | MakefileAction::InsertIncludeBeforeVariable { file, .. } => file,
         },
         Action::Dep3(a) => match a {
             Dep3Action::SetField { file, .. }
@@ -2134,6 +2137,17 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                     }
                 }
             }
+            MakefileAction::SetVariableOperator { name, operator, .. } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(name.as_str()))
+                {
+                    if var.assignment_operator().as_deref() != Some(operator.as_str()) {
+                        var.set_assignment_operator(operator);
+                        any_change = true;
+                    }
+                }
+            }
             MakefileAction::RemoveVariable { name, .. } => {
                 if let Some(mut var) = makefile
                     .variable_definitions()
@@ -2245,6 +2259,82 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                     })?;
                 rules = makefile.rules().collect();
                 any_change = true;
+            }
+            MakefileAction::ReplaceVariableWithInclude { name, path, .. } => {
+                if makefile.included_files().any(|f| &f == path) {
+                    if let Some(mut var) = makefile
+                        .variable_definitions()
+                        .find(|v| v.name().as_deref() == Some(name.as_str()))
+                    {
+                        var.remove();
+                        rules = makefile.rules().collect();
+                        any_change = true;
+                    }
+                    continue;
+                }
+                let temp = format!("include {}\n", path)
+                    .parse::<makefile_lossless::Makefile>()
+                    .map_err(|e| {
+                        FixerError::Other(format!("Failed to build include node: {}", e))
+                    })?;
+                let include = temp.includes().next().ok_or_else(|| {
+                    FixerError::Other("Failed to extract include from temp makefile".into())
+                })?;
+                let items: Vec<_> = makefile.items().collect();
+                let mut found = false;
+                for mut item in items {
+                    if let makefile_lossless::MakefileItem::Variable(var) = &item {
+                        if var.name().as_deref() == Some(name.as_str()) {
+                            item.replace(makefile_lossless::MakefileItem::Include(include.clone()))
+                                .map_err(|e| {
+                                    FixerError::Other(format!("Failed to replace variable: {}", e))
+                                })?;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if found {
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
+            }
+            MakefileAction::InsertIncludeBeforeVariable {
+                path,
+                before_variable,
+                ..
+            } => {
+                if makefile.included_files().any(|f| &f == path) {
+                    continue;
+                }
+                let temp = format!("include {}\n", path)
+                    .parse::<makefile_lossless::Makefile>()
+                    .map_err(|e| {
+                        FixerError::Other(format!("Failed to build include node: {}", e))
+                    })?;
+                let include = temp.includes().next().ok_or_else(|| {
+                    FixerError::Other("Failed to extract include from temp makefile".into())
+                })?;
+                let items: Vec<_> = makefile.items().collect();
+                let mut inserted = false;
+                for mut item in items {
+                    if let makefile_lossless::MakefileItem::Variable(var) = &item {
+                        if var.name().as_deref() == Some(before_variable.as_str()) {
+                            item.insert_before(makefile_lossless::MakefileItem::Include(
+                                include.clone(),
+                            ))
+                            .map_err(|e| {
+                                FixerError::Other(format!("Failed to insert include: {}", e))
+                            })?;
+                            inserted = true;
+                            break;
+                        }
+                    }
+                }
+                if inserted {
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
             }
         }
     }
