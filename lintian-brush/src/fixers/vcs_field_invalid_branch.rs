@@ -1,23 +1,11 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::abstract_control::AbstractControlEditor;
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_analyzer::debcargo::DebcargoEditor;
+use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use debian_control::lossless::Control;
 use debian_control::vcs::ParsedVcs;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use std::path::Path;
-
-/// Helper function to get the appropriate control editor for a package
-fn get_control_editor(base_path: &Path) -> Result<Box<dyn AbstractControlEditor>, FixerError> {
-    let control_path = base_path.join("debian/control");
-    let debcargo_path = base_path.join("debian/debcargo.toml");
-
-    if debcargo_path.exists() && !control_path.exists() {
-        Ok(Box::new(DebcargoEditor::from_directory(base_path)?))
-    } else {
-        Ok(Box::new(TemplatedControlEditor::open(&control_path)?))
-    }
-}
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 #[cfg(feature = "udd")]
 async fn get_branch_from_url(vcs_type: &str, url: &str) -> Result<Option<String>, FixerError> {
@@ -123,122 +111,146 @@ fn get_default_branch(url: &str, branch: Option<&str>) -> Result<Option<String>,
     })
 }
 
-pub async fn run(
+pub async fn detect_async(
     base_path: &Path,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
+) -> Result<Vec<Diagnostic>, FixerError> {
     if preferences
         .minimum_certainty
         .is_some_and(|c| c < debian_analyzer::Certainty::Certain)
     {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut editor = get_control_editor(base_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let debcargo_rel = PathBuf::from("debian/debcargo.toml");
+    let control_rel = PathBuf::from("debian/control");
+    let debcargo_abs = base_path.join(&debcargo_rel);
+    let control_abs = base_path.join(&control_rel);
 
-    if let Some(mut source) = editor.source() {
-        if let Some(vcs_git) = source.get_vcs_url("Git") {
-            // Parse the VCS URL to extract repo URL, branch, and subpath
-            let parsed: ParsedVcs = vcs_git
-                .parse()
-                .map_err(|e| FixerError::Other(format!("Failed to parse Vcs-Git URL: {}", e)))?;
+    let is_debcargo = debcargo_abs.exists() && !control_abs.exists();
 
-            let repo_url = &parsed.repo_url;
-            let branch = parsed.branch.as_deref();
-            let subpath = parsed.subpath.as_deref();
+    // Read the current Vcs-Git URL.
+    let vcs_git: Option<String> = if is_debcargo {
+        let toml_text = std::fs::read_to_string(&debcargo_abs)?;
+        let doc: toml_edit::DocumentMut = toml_text
+            .parse()
+            .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+        doc.get("source")
+            .and_then(|s| s.as_table())
+            .and_then(|s| s.get("vcs_git"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+    } else {
+        if !control_abs.exists() {
+            return Ok(Vec::new());
+        }
+        let content = std::fs::read_to_string(&control_abs)?;
+        let Ok(control) = Control::from_str(&content) else {
+            return Ok(Vec::new());
+        };
+        control.source().and_then(|s| s.as_deb822().get("Vcs-Git"))
+    };
 
-            // Query vcswatch for the branch
-            match get_branch_from_url("Git", &vcs_git).await {
-                Ok(Some(new_branch)) => {
-                    if Some(new_branch.as_str()) != branch {
-                        let default_branch = match get_default_branch(repo_url, branch) {
-                            Ok(db) => db,
-                            Err(e) => {
-                                tracing::debug!(
-                                    "Failed to get default branch from {}: {}",
-                                    repo_url,
-                                    e
-                                );
-                                None
-                            }
-                        };
+    let Some(vcs_git) = vcs_git else {
+        return Ok(Vec::new());
+    };
 
-                        // Only change if opinionated OR the new branch is different from both
-                        // the default branch and the current branch
-                        let should_change = preferences.opinionated.unwrap_or(false)
-                            || default_branch.as_ref().is_none_or(|db| {
-                                new_branch.as_str() != db && Some(db.as_str()) != branch
-                            });
+    let parsed: ParsedVcs = vcs_git
+        .parse()
+        .map_err(|e| FixerError::Other(format!("Failed to parse Vcs-Git URL: {}", e)))?;
+    let repo_url = &parsed.repo_url;
+    let branch = parsed.branch.as_deref();
+    let subpath = parsed.subpath.as_deref();
 
-                        if should_change {
-                            // Build the new VCS URL
-                            let new_vcs = ParsedVcs {
-                                repo_url: repo_url.clone(),
-                                branch: Some(new_branch.clone()),
-                                subpath: subpath.map(String::from),
-                            };
+    // Query vcswatch for the branch.
+    let new_branch = match get_branch_from_url("Git", &vcs_git).await {
+        Ok(Some(b)) => b,
+        Ok(None) => return Ok(Vec::new()),
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(FixerError::Other(msg)) if msg.starts_with("vcswatch URL unusable") => {
+            tracing::debug!("{}", msg);
+            return Ok(Vec::new());
+        }
+        Err(e) => return Err(e),
+    };
 
-                            let new_vcs_git = new_vcs.to_string();
+    if Some(new_branch.as_str()) == branch {
+        return Ok(Vec::new());
+    }
 
-                            let issue = LintianIssue::source("vcs-field-invalid-branch");
-                            if !issue.should_fix(base_path) {
-                                overridden_issues.push(issue);
-                            } else {
-                                source.set_vcs_url("Git", &new_vcs_git);
+    let default_branch = match get_default_branch(repo_url, branch) {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::debug!("Failed to get default branch from {}: {}", repo_url, e);
+            None
+        }
+    };
 
-                                // Update Vcs-Browser if possible
-                                let vcs_browser = debian_analyzer::vcs::determine_browser_url(
-                                    "git",
-                                    &new_vcs_git,
-                                    preferences.net_access,
-                                );
-                                if let Some(browser_url) = vcs_browser {
-                                    source.set_vcs_url("Browser", browser_url.as_ref());
-                                }
+    let should_change = preferences.opinionated.unwrap_or(false)
+        || default_branch
+            .as_ref()
+            .is_none_or(|db| new_branch.as_str() != db && Some(db.as_str()) != branch);
+    if !should_change {
+        return Ok(Vec::new());
+    }
 
-                                fixed_issues.push(issue);
-                            }
-                        }
-                    }
-                }
-                Ok(None) => {
-                    // Not found in vcswatch, nothing to do
-                }
-                Err(FixerError::Other(msg)) if msg.starts_with("vcswatch URL unusable") => {
-                    // Log the warning but don't fail
-                    tracing::debug!("{}", msg);
-                }
-                Err(e) => return Err(e),
-            }
+    let new_vcs = ParsedVcs {
+        repo_url: repo_url.clone(),
+        branch: Some(new_branch.clone()),
+        subpath: subpath.map(String::from),
+    };
+    let new_vcs_git = new_vcs.to_string();
+    let new_vcs_browser =
+        debian_analyzer::vcs::determine_browser_url("git", &new_vcs_git, preferences.net_access)
+            .map(|u| u.to_string());
+
+    let issue = LintianIssue::source("vcs-field-invalid-branch");
+    let mut actions: Vec<Action> = Vec::new();
+
+    if is_debcargo {
+        actions.push(Action::Debcargo(DebcargoAction::SetSourceField {
+            file: debcargo_rel.clone(),
+            field: "vcs_git".into(),
+            value: new_vcs_git,
+        }));
+        if let Some(browser) = new_vcs_browser {
+            actions.push(Action::Debcargo(DebcargoAction::SetSourceField {
+                file: debcargo_rel,
+                field: "vcs_browser".into(),
+                value: browser,
+            }));
+        }
+    } else {
+        actions.push(Action::Deb822(Deb822Action::SetField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: "Vcs-Git".into(),
+            value: new_vcs_git,
+        }));
+        if let Some(browser) = new_vcs_browser {
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel,
+                paragraph: ParagraphSelector::Source,
+                field: "Vcs-Browser".into(),
+                value: browser,
+            }));
         }
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit();
-
-    Ok(
-        FixerResult::builder("Set branch from vcswatch in Vcs-Git URL.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Set branch from vcswatch in Vcs-Git URL.".to_string(),
+        actions,
+    )])
 }
 
 declare_fixer! {
     name: "vcs-field-invalid-branch",
     tags: ["vcs-field-invalid-branch"],
-    apply: |basedir, _package, _version, preferences| {
+    diagnose: |basedir, _package, _version, preferences| {
         let rt = tokio::runtime::Runtime::new()
             .map_err(|e| FixerError::Other(format!("Failed to create runtime: {}", e)))?;
-        rt.block_on(run(basedir, preferences))
+        rt.block_on(detect_async(basedir, preferences))
     }
 }
 
@@ -266,10 +278,10 @@ Description: Test package
 
         let preferences = FixerPreferences::default();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(run(base_path, &preferences));
+        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
 
-        // Should return NoChanges since there's no Vcs-Git field
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        // Should return no diagnostics since there's no Vcs-Git field
+        assert!(result.is_empty());
     }
 
     #[test]
@@ -380,10 +392,10 @@ Description: Test package
         preferences.minimum_certainty = Some(debian_analyzer::Certainty::Possible);
 
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(run(base_path, &preferences));
+        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
 
-        // Should return NoChanges since minimum_certainty is below Certain
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        // Should return no diagnostics since minimum_certainty is below Certain
+        assert!(result.is_empty());
     }
 
     #[test]
@@ -406,9 +418,9 @@ Description: Test package
 
         let preferences = FixerPreferences::default();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(run(base_path, &preferences));
+        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
 
-        // Without UDD feature, should return NoChanges
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        // Without UDD feature, should return no diagnostics
+        assert!(result.is_empty());
     }
 }
