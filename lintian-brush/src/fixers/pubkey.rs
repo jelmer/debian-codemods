@@ -1,10 +1,11 @@
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, WatchAction};
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use debian_watch::{mangle, Release};
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const NUM_KEYS_TO_CHECK: usize = 5;
 const RELEASES_TO_INSPECT: usize = 5;
@@ -293,28 +294,28 @@ fn export_cert_armored(cert: &openpgp::Cert) -> Result<Vec<u8>, String> {
     Ok(key_output)
 }
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
     package: &str,
-    _version: &debversion::Version,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    tracing::debug!("Running pubkey fixer for package {}", package);
+) -> Result<Vec<Diagnostic>, FixerError> {
+    tracing::debug!("Running pubkey detect for package {}", package);
 
-    let watch_path = base_path.join("debian/watch");
+    let watch_rel = PathBuf::from("debian/watch");
+    let watch_path = base_path.join(&watch_rel);
 
     if !watch_path.exists() {
         tracing::debug!("No debian/watch file found");
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Check if network access is allowed
+    // Network is required for both signature probing and key fetching.
     if !preferences.net_access.unwrap_or(false) {
         tracing::debug!("Network access not enabled, skipping");
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Check if signing keys already exist
+    // Check if signing keys already exist.
     let mut has_keys = false;
     for path in &[
         "debian/upstream/signing-key.asc",
@@ -333,9 +334,10 @@ pub fn run(
 
     let mut needed_keys: HashSet<String> = HashSet::new();
     let mut description: Option<String> = None;
-    let mut made_changes = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    // Watch file edits produced during entry analysis. We collect them per
+    // diagnostic so override gating works correctly.
+    let mut watch_actions: Vec<Action> = Vec::new();
 
     // Load existing keyring if available
     let keyring_data = if has_keys {
@@ -363,7 +365,7 @@ pub fn run(
         vec![]
     };
 
-    for mut entry in watch_file.entries() {
+    for entry in watch_file.entries() {
         let pgpsigurlmangle = entry.get_option("pgpsigurlmangle");
 
         // Skip entries that already have pgpsigurlmangle and keys
@@ -385,7 +387,7 @@ pub fn run(
         // Skip certain pgpmodes that we can't handle
         if matches!(pgpmode.as_str(), "gittag" | "previous" | "next" | "self") {
             tracing::debug!("Unsupported pgpmode: {}, skipping", pgpmode);
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
 
         // Discover releases
@@ -399,7 +401,7 @@ pub fn run(
             Err(e) => {
                 if matches!(e, debian_watch::discover::DiscoveryError::HttpError(_)) {
                     tracing::debug!("HTTP error accessing discovery URL: {}", e);
-                    return Err(FixerError::NoChanges);
+                    return Ok(Vec::new());
                 }
                 return Err(FixerError::Other(format!(
                     "Failed to discover releases: {}",
@@ -453,7 +455,7 @@ pub fn run(
                  Not updating watch file or fetching different keys. \
                  If upstream changed their signing key, manually update the keyring."
             );
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
 
         // For unverified signatures (discovery mode), we need enough successful probes
@@ -464,7 +466,7 @@ pub fn run(
                 successful_probes,
                 NUM_KEYS_TO_CHECK
             );
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
 
         let (found_common_mangles, active_common_mangles) = analyze_mangles(&used_mangles);
@@ -476,159 +478,133 @@ pub fn run(
         );
 
         if pgpsigurlmangle.is_none() && !active_common_mangles.is_empty() {
+            let entry_url = entry.url();
+            let mut entry_actions: Vec<Action> = Vec::new();
+
+            // If only a single mangle is used for all releases that have
+            // signatures, set that.
+            if active_common_mangles.len() == 1 {
+                let new_mangle = active_common_mangles.iter().next().unwrap().clone();
+                tracing::debug!("Setting pgpsigurlmangle to: {}", new_mangle);
+                entry_actions.push(Action::Watch(WatchAction::SetEntryOption {
+                    file: watch_rel.clone(),
+                    url: entry_url.clone(),
+                    option: "pgpsigurlmangle".into(),
+                    value: new_mangle,
+                }));
+            }
+
+            let (pgpmode_value, mut desc) = determine_pgpmode(&found_common_mangles);
+            tracing::debug!("Setting pgpmode to: {:?}", pgpmode_value);
+            entry_actions.push(Action::Watch(WatchAction::SetEntryOption {
+                file: watch_rel.clone(),
+                url: entry_url,
+                option: "pgpmode".into(),
+                value: pgpmode_value.to_string(),
+            }));
+
+            // Include fingerprints in description if we found any.
+            if !needed_keys.is_empty() {
+                let fingerprints: Vec<String> = needed_keys.iter().cloned().collect();
+                desc = format!(
+                    "{} ({})",
+                    desc.trim_end_matches('.'),
+                    fingerprints.join(", ")
+                );
+            }
+            description = Some(desc.clone());
+
             let issue = LintianIssue::source_with_info(
                 "debian-watch-does-not-check-openpgp-signature",
                 vec!["[debian/watch]".to_string()],
             );
-
-            if issue.should_fix(base_path) {
-                // If only a single mangle is used for all releases that have signatures, set that
-                if active_common_mangles.len() == 1 {
-                    let new_mangle = active_common_mangles.iter().next().unwrap();
-                    tracing::debug!("Setting pgpsigurlmangle to: {}", new_mangle);
-                    entry.set_option(debian_watch::WatchOption::Pgpsigurlmangle(
-                        new_mangle.to_string(),
-                    ));
-                }
-
-                // Determine pgpmode and description
-                let (pgpmode, mut desc) = determine_pgpmode(&found_common_mangles);
-                tracing::debug!("Setting pgpmode to: {:?}", pgpmode);
-                entry.set_option(debian_watch::WatchOption::Pgpmode(pgpmode));
-
-                // Include fingerprints in description if we found any
-                if !needed_keys.is_empty() {
-                    let fingerprints: Vec<String> = needed_keys.iter().cloned().collect();
-                    desc = format!(
-                        "{} ({})",
-                        desc.trim_end_matches('.'),
-                        fingerprints.join(", ")
-                    );
-                }
-                description = Some(desc);
-
-                made_changes = true;
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+            watch_actions.extend(entry_actions.iter().cloned());
+            diagnostics.push(
+                Diagnostic::with_actions(issue, desc, entry_actions)
+                    .with_certainty(Certainty::Certain),
+            );
         }
     }
+    let _ = watch_actions;
 
     if !has_keys && !needed_keys.is_empty() {
         tracing::debug!("Need to fetch {} keys", needed_keys.len());
 
-        let issue = LintianIssue::source_with_info(
-            "debian-watch-file-pubkey-file-is-missing",
-            vec!["[debian/watch]".to_string()],
-        );
+        // Fetch and export keys using sequoia.
+        let mut keyfile_content = Vec::new();
+        let keys_vec: Vec<String> = needed_keys.iter().cloned().collect();
 
-        if issue.should_fix(base_path) {
-            let upstream_dir = base_path.join("debian/upstream");
-            if !upstream_dir.exists() {
-                tracing::debug!("Creating debian/upstream directory");
-                fs::create_dir(&upstream_dir)?;
-            }
+        let mut fetch_failed = false;
+        for fingerprint in &keys_vec {
+            tracing::debug!("Fetching key with fingerprint: {}", fingerprint);
+            let keyserver = std::env::var("KEYSERVER")
+                .unwrap_or_else(|_| "https://keys.openpgp.org".to_string());
+            let url = format!("{}/vks/v1/by-fingerprint/{}", keyserver, fingerprint);
 
-            let keyfile_path = upstream_dir.join("signing-key.asc");
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .map_err(|e| FixerError::Other(format!("Failed to build HTTP client: {}", e)))?;
 
-            // Fetch and export keys using sequoia
-            let mut keyfile_content = Vec::new();
-            let keys_vec: Vec<String> = needed_keys.iter().cloned().collect();
+            let response = match client.get(&url).send() {
+                Ok(resp) if resp.status().is_success() => resp,
+                Ok(resp) => {
+                    tracing::debug!(
+                        "Keyserver returned status {} for key {}",
+                        resp.status(),
+                        fingerprint
+                    );
+                    fetch_failed = true;
+                    break;
+                }
+                Err(e) => {
+                    tracing::debug!("Failed to fetch key {}: {}", fingerprint, e);
+                    fetch_failed = true;
+                    break;
+                }
+            };
 
-            // Only fetch from keyservers if net_access is enabled
-            if !preferences.net_access.unwrap_or(false) {
-                tracing::debug!("Cannot fetch keys without network access");
-                return Err(FixerError::NoChanges);
-            }
+            let key_data = response
+                .bytes()
+                .map_err(|e| FixerError::Other(format!("Failed to read key data: {}", e)))?;
 
-            for fingerprint in &keys_vec {
-                tracing::debug!("Fetching key with fingerprint: {}", fingerprint);
-                // Fetch the certificate from keys.openpgp.org
-                let keyserver = std::env::var("KEYSERVER")
-                    .unwrap_or_else(|_| "https://keys.openpgp.org".to_string());
-                let url = format!("{}/vks/v1/by-fingerprint/{}", keyserver, fingerprint);
+            use openpgp::parse::Parse;
+            let cert = openpgp::Cert::from_reader(std::io::Cursor::new(&key_data[..]))
+                .map_err(|e| FixerError::Other(format!("Failed to parse certificate: {}", e)))?;
 
-                let client = reqwest::blocking::Client::builder()
-                    .timeout(std::time::Duration::from_secs(30))
-                    .build()
-                    .map_err(|e| {
-                        FixerError::Other(format!("Failed to build HTTP client: {}", e))
-                    })?;
+            let key_output = export_cert_armored(&cert).map_err(FixerError::Other)?;
+            keyfile_content.extend_from_slice(&key_output);
+            keyfile_content.push(b'\n');
+        }
 
-                let response = match client.get(&url).send() {
-                    Ok(resp) if resp.status().is_success() => resp,
-                    Ok(resp) => {
-                        tracing::debug!(
-                            "Keyserver returned status {} for key {}",
-                            resp.status(),
-                            fingerprint
-                        );
-                        return Err(FixerError::NoChanges);
-                    }
-                    Err(e) => {
-                        tracing::debug!("Failed to fetch key {}: {}", fingerprint, e);
-                        return Err(FixerError::NoChanges);
-                    }
-                };
-
-                let key_data = response
-                    .bytes()
-                    .map_err(|e| FixerError::Other(format!("Failed to read key data: {}", e)))?;
-
-                // Parse the certificate
-                use openpgp::parse::Parse;
-                let cert = openpgp::Cert::from_reader(std::io::Cursor::new(&key_data[..]))
-                    .map_err(|e| {
-                        FixerError::Other(format!("Failed to parse certificate: {}", e))
-                    })?;
-
-                // Export the key in minimal armored format
-                let key_output = export_cert_armored(&cert).map_err(FixerError::Other)?;
-
-                keyfile_content.extend_from_slice(&key_output);
-                keyfile_content.push(b'\n');
-            }
-
-            if keyfile_content.is_empty() {
-                tracing::debug!("No keys could be fetched");
-                return Err(FixerError::NoChanges);
-            }
-
-            fs::write(&keyfile_path, &keyfile_content)?;
-
-            made_changes = true;
-
+        if !fetch_failed && !keyfile_content.is_empty() {
+            let issue = LintianIssue::source_with_info(
+                "debian-watch-file-pubkey-file-is-missing",
+                vec!["[debian/watch]".to_string()],
+            );
+            let key_desc = format!(
+                "Add upstream signing keys ({}).",
+                needed_keys.iter().cloned().collect::<Vec<_>>().join(", ")
+            );
             if description.is_none() {
-                description = Some(format!(
-                    "Add upstream signing keys ({}).",
-                    needed_keys.iter().cloned().collect::<Vec<_>>().join(", ")
-                ));
+                description = Some(key_desc.clone());
             }
-
-            fixed_issues.push(issue);
-        } else {
-            overridden_issues.push(issue);
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    key_desc,
+                    vec![Action::Filesystem(FilesystemAction::Write {
+                        file: PathBuf::from("debian/upstream/signing-key.asc"),
+                        content: keyfile_content,
+                    })],
+                )
+                .with_certainty(Certainty::Certain),
+            );
         }
     }
 
-    if !made_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    // Write the updated watch file
-    fs::write(&watch_path, watch_file.to_string())?;
-
-    Ok(FixerResult::builder(
-        description.unwrap_or_else(|| "Update PGP signature checking".to_string()),
-    )
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .certainty(crate::Certainty::Certain)
-    .build())
+    let _ = description; // formerly used to override the framework's describer
+    Ok(diagnostics)
 }
 
 declare_fixer! {
@@ -637,8 +613,8 @@ declare_fixer! {
         "debian-watch-does-not-check-openpgp-signature",
         "debian-watch-file-pubkey-file-is-missing"
     ],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, version, preferences)
+    diagnose: |basedir, package, _version, preferences| {
+        detect(basedir, package, preferences)
     }
 }
 
