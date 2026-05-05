@@ -1,200 +1,154 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut made_changes = false;
-    let mut fixed_issue = None;
-
-    if let Some(mut source) = editor.source() {
-        let source_para = source.as_mut_deb822();
-
-        // Check if Vcs-Browser is already present
-        if source_para.get("Vcs-Browser").is_some() {
-            return Err(FixerError::NoChanges);
-        }
-
-        // Check if Vcs-Git is present
-        if let Some(vcs_git) = source_para.get("Vcs-Git") {
-            // Determine the browser URL from the Git URL
-            let browser_url = debian_analyzer::vcs::determine_browser_url(
-                "git",
-                &vcs_git,
-                preferences.net_access,
-            );
-
-            if let Some(browser_url) = browser_url {
-                let issue = LintianIssue::source_with_info(
-                    "missing-vcs-browser-field",
-                    vec![format!("Vcs-Git {}", vcs_git)],
-                );
-
-                if !issue.should_fix(base_path) {
-                    return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-                }
-
-                source_para.insert("Vcs-Browser", browser_url.as_ref());
-                made_changes = true;
-                fixed_issue = Some(issue);
-            }
-        }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let para = source.as_deb822();
+    if para.contains_key("Vcs-Browser") {
+        return Ok(Vec::new());
     }
+    let Some(vcs_git) = para.get("Vcs-Git") else {
+        return Ok(Vec::new());
+    };
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
+    let Some(browser_url) =
+        debian_analyzer::vcs::determine_browser_url("git", &vcs_git, preferences.net_access)
+    else {
+        return Ok(Vec::new());
+    };
 
-    editor.commit()?;
-
-    // fixed_issue is guaranteed to be Some if made_changes is true
-    let issue = fixed_issue.expect("fixed_issue should be Some when made_changes is true");
-
-    Ok(
-        FixerResult::builder("debian/control: Add Vcs-Browser field")
-            .fixed_issue(issue)
-            .build(),
-    )
+    let Some(source_name) = para.get("Source") else {
+        return Ok(Vec::new());
+    };
+    let issue = LintianIssue::source_with_info(
+        "missing-vcs-browser-field",
+        vec![format!("Vcs-Git {}", vcs_git)],
+    );
+    // Use the generic deb822 path so the new field lands at end of the
+    // source paragraph, right after Vcs-Git, instead of being shuffled
+    // into the typed control editor's canonical order.
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "debian/control: Add Vcs-Browser field",
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::ByKey {
+                field: "Source".into(),
+                value: source_name,
+            },
+            field: "Vcs-Browser".into(),
+            value: browser_url.to_string(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "missing-vcs-browser-field",
     tags: ["missing-vcs-browser-field"],
-    // Must add browser field after all VCS URL improvements are complete
     after: ["vcs-field-uses-not-recommended-uri-format"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(
+        base: &Path,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, preferences)
+    }
+
     #[test]
     fn test_add_vcs_browser_for_github() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: git://github.com/user/repo
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: test-package\nVcs-Git: git://github.com/user/repo\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
         let preferences = FixerPreferences {
-            net_access: Some(false), // Disable network for tests
+            net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path(), &preferences).unwrap();
         assert_eq!(result.description, "debian/control: Add Vcs-Browser field");
 
-        // Check that the file was updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Vcs-Browser:"));
-        assert!(updated_content.contains("https://github.com/user/repo"));
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-package\nVcs-Git: git://github.com/user/repo\nVcs-Browser: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_vcs_browser_exists() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: git://github.com/user/repo
-Vcs-Browser: https://github.com/user/repo
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nVcs-Git: git://github.com/user/repo\nVcs-Browser: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
         let preferences = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &preferences),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_change_when_no_vcs_git() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
         let preferences = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_add_vcs_browser_for_salsa() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: https://salsa.debian.org/debian/test-package.git
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences {
-            net_access: Some(false),
-            ..Default::default()
-        };
-
-        let result = run(base_path, &preferences);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
-        assert_eq!(result.description, "debian/control: Add Vcs-Browser field");
-
-        // Check that the file was updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Vcs-Browser:"));
-        assert!(updated_content.contains("https://salsa.debian.org/debian/test-package"));
+        assert!(matches!(
+            run_apply(tmp.path(), &preferences),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

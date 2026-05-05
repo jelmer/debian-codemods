@@ -8,7 +8,7 @@
 
 use crate::diagnostic::{
     Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, ParagraphSelector,
-    SystemdAction, YamlAction, YamlPathComponent,
+    SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -64,7 +64,10 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::NormalizeFieldSpacing { file, .. }
             | Deb822Action::DropRelation { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
-            | Deb822Action::DropSubstvar { file, .. } => file,
+            | Deb822Action::DropSubstvar { file, .. }
+            | Deb822Action::EnsureRelation { file, .. }
+            | Deb822Action::MoveRelation { file, .. }
+            | Deb822Action::ReorderParagraphs { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -88,7 +91,11 @@ fn action_file(action: &Action) -> &Path {
             ChangelogAction::ReplaceEntryChanges { file, .. }
             | ChangelogAction::SetEntryDate { file, .. }
             | ChangelogAction::RemoveBullet { file, .. }
-            | ChangelogAction::ReplaceBullet { file, .. } => file,
+            | ChangelogAction::ReplaceBullet { file, .. }
+            | ChangelogAction::SetEntryVersion { file, .. } => file,
+        },
+        Action::Watch(a) => match a {
+            WatchAction::SetEntryMatchingPattern { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -123,6 +130,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::DesktopIni(_) => apply_desktop_ini_group(base, rel, group),
         Action::Yaml(_) => apply_yaml_group(base, rel, group),
         Action::Changelog(_) => apply_changelog_group(base, rel, group),
+        Action::Watch(_) => apply_watch_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -160,8 +168,10 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
-            | Deb822Action::DropSubstvar { paragraph, .. } => Some(paragraph),
-            Deb822Action::AppendParagraph { .. } => None,
+            | Deb822Action::DropSubstvar { paragraph, .. }
+            | Deb822Action::EnsureRelation { paragraph, .. }
+            | Deb822Action::MoveRelation { paragraph, .. } => Some(paragraph),
+            Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => None,
         };
     }
     None
@@ -262,6 +272,32 @@ fn apply_control_deb822_group(
                 if drop_deb822_substvar(&editor, paragraph, field, substvar)? {
                     any_change = true;
                 }
+            }
+            Deb822Action::EnsureRelation {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                if ensure_deb822_relation(&editor, paragraph, field, entry)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::MoveRelation {
+                paragraph,
+                from_field,
+                to_field,
+                package,
+                ..
+            } => {
+                if move_deb822_relation(&editor, paragraph, from_field, to_field, package)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::ReorderParagraphs { .. } => {
+                return Err(FixerError::Other(
+                    "deb822 ReorderParagraphs is not supported via the typed control editor; use a generic-path action group".into(),
+                ));
             }
         }
     }
@@ -406,6 +442,40 @@ fn apply_generic_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::EnsureRelation {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if ensure_relation_in_paragraph(&mut p, field, entry)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::MoveRelation {
+                paragraph,
+                from_field,
+                to_field,
+                package,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if move_relation_in_paragraph(&mut p, from_field, to_field, package) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::ReorderParagraphs {
+                key_field, order, ..
+            } => {
+                if reorder_paragraphs(&mut deb822, key_field, order) {
+                    any_change = true;
+                }
+            }
         }
     }
 
@@ -413,6 +483,74 @@ fn apply_generic_deb822_group(
         std::fs::write(&abs, deb822.to_string())?;
     }
     Ok(any_change)
+}
+
+/// Reorder a subset of paragraphs in `deb822`. Paragraphs whose
+/// `key_field` value appears in `order` are moved into the order
+/// specified, occupying the same positions originally held by
+/// participating paragraphs. Returns true if any paragraph moved.
+fn reorder_paragraphs(
+    deb822: &mut deb822_lossless::Deb822,
+    key_field: &str,
+    order: &[String],
+) -> bool {
+    // Snapshot the current positions of paragraphs that have key_field,
+    // along with their current key value.
+    let participants: Vec<(usize, String)> = deb822
+        .paragraphs()
+        .enumerate()
+        .filter_map(|(idx, p)| p.get(key_field).map(|v| (idx, v.to_string())))
+        .collect();
+
+    // Build the desired sequence of keys, restricted to those that
+    // actually exist in the document, preserving the order given.
+    let present: std::collections::HashSet<&str> =
+        participants.iter().map(|(_, v)| v.as_str()).collect();
+    let desired_keys: Vec<&str> = order
+        .iter()
+        .map(|s| s.as_str())
+        .filter(|k| present.contains(k))
+        .collect();
+
+    if desired_keys.len() != participants.len() {
+        // Some participating paragraphs aren't covered by `order`. We
+        // could leave them in place, but the most straightforward
+        // semantic is "only act when `order` covers all participants",
+        // which the detector already arranges for. Treat this as a
+        // no-op.
+        return false;
+    }
+
+    // Walk participants in document order and move the one whose key
+    // matches the desired key into the slot. We use `move_paragraph`
+    // and re-snapshot positions after each move because moves shift
+    // indices around.
+    let mut changed = false;
+    for (slot, want_key) in desired_keys.iter().enumerate() {
+        // Re-snapshot.
+        let participants: Vec<(usize, String)> = deb822
+            .paragraphs()
+            .enumerate()
+            .filter_map(|(idx, p)| p.get(key_field).map(|v| (idx, v.to_string())))
+            .collect();
+        let dest_idx = participants[slot].0;
+        // Find the current index of the paragraph that should be in
+        // this slot.
+        let Some(src_idx) = participants
+            .iter()
+            .find(|(_, v)| v == *want_key)
+            .map(|(idx, _)| *idx)
+        else {
+            continue;
+        };
+        if src_idx == dest_idx {
+            continue;
+        }
+        deb822.move_paragraph(src_idx, dest_idx);
+        changed = true;
+    }
+
+    changed
 }
 
 /// Like [`pick_generic_paragraph`] but returns the paragraph's index. Used
@@ -587,21 +725,35 @@ fn drop_relation_in_paragraph(
     true
 }
 
+/// Compute the post-edit relations for a substvar ensure: parse the
+/// current field value, return the new relations if the substvar wasn't
+/// already present (else `None`).
+fn ensure_substvar_compute(
+    current: Option<&str>,
+    substvar: &str,
+) -> Result<Option<debian_control::lossless::relations::Relations>, FixerError> {
+    use debian_control::lossless::relations::Relations;
+    let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
+    let already_present = relations.substvars().any(|s| s == substvar);
+    if already_present {
+        return Ok(None);
+    }
+    relations
+        .ensure_substvar(substvar)
+        .map_err(FixerError::Other)?;
+    Ok(Some(relations))
+}
+
 fn ensure_substvar_in_paragraph(
     p: &mut deb822_lossless::Paragraph,
     field: &str,
     substvar: &str,
 ) -> Result<bool, FixerError> {
-    use debian_control::lossless::relations::Relations;
-    let value = p.get(field).unwrap_or_default();
-    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
-    if relations.substvars().any(|s| s == substvar) {
+    let current = p.get(field);
+    let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)? else {
         return Ok(false);
-    }
-    relations
-        .ensure_substvar(substvar)
-        .map_err(FixerError::Other)?;
-    p.set(field, &relations.to_string());
+    };
+    p.set(field, &new_relations.to_string());
     Ok(true)
 }
 
@@ -673,20 +825,258 @@ fn ensure_deb822_substvar(
             let Some(mut source) = editor.source() else {
                 return Ok(false);
             };
-            ensure_substvar_in_paragraph(source.as_mut_deb822(), field, substvar)
+            let current = source.as_deb822().get(field);
+            let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)? else {
+                return Ok(false);
+            };
+            match field {
+                "Build-Depends" => source.set_build_depends(&new_relations),
+                "Build-Depends-Indep" => source.set_build_depends_indep(&new_relations),
+                "Build-Depends-Arch" => source.set_build_depends_arch(&new_relations),
+                _ => {
+                    source.set(field, &new_relations.to_string());
+                }
+            }
+            Ok(true)
         }
         ParagraphSelector::Binary { package: pkg } => {
             for mut binary in editor.binaries() {
-                let p = binary.as_mut_deb822();
-                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
                     continue;
                 }
-                return ensure_substvar_in_paragraph(p, field, substvar);
+                let current = binary.as_deb822().get(field);
+                let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)?
+                else {
+                    return Ok(false);
+                };
+                match field {
+                    "Depends" => binary.set_depends(Some(&new_relations)),
+                    "Recommends" => binary.set_recommends(Some(&new_relations)),
+                    "Suggests" => binary.set_suggests(Some(&new_relations)),
+                    "Pre-Depends" => binary.set_pre_depends(Some(&new_relations)),
+                    "Conflicts" => binary.set_conflicts(Some(&new_relations)),
+                    "Replaces" => binary.set_replaces(Some(&new_relations)),
+                    "Provides" => binary.set_provides(Some(&new_relations)),
+                    "Breaks" => binary.set_breaks(Some(&new_relations)),
+                    "Built-Using" => binary.set_built_using(Some(&new_relations)),
+                    "Static-Built-Using" => binary.set_static_built_using(Some(&new_relations)),
+                    _ => {
+                        binary.set(field, &new_relations.to_string());
+                    }
+                }
+                return Ok(true);
             }
             Ok(false)
         }
         other => Err(FixerError::Other(format!(
             "deb822 EnsureSubstvar does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn ensure_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    entry: &str,
+) -> Result<bool, FixerError> {
+    let current = p.get(field);
+    let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)? else {
+        return Ok(false);
+    };
+    p.set(field, &new_relations.to_string());
+    Ok(true)
+}
+
+/// Compute the post-edit relations for a field: parse the current field
+/// value (if any), apply the requested ensure operation, and return both
+/// the resulting relations and whether the field changed. Returns `None`
+/// when there's no change to write.
+fn ensure_relation_compute(
+    current: Option<&str>,
+    entry: &str,
+) -> Result<Option<debian_control::lossless::relations::Relations>, FixerError> {
+    use debian_control::lossless::relations::Relations;
+    use std::str::FromStr;
+
+    let requested_entry = debian_control::lossless::Entry::from_str(entry).map_err(|e| {
+        FixerError::Other(format!("Failed to parse relation entry {:?}: {}", entry, e))
+    })?;
+    let Some(first) = requested_entry.relations().next() else {
+        return Err(FixerError::Other(format!(
+            "Relation entry {:?} has no relations",
+            entry
+        )));
+    };
+    let Some(name) = first.try_name() else {
+        return Err(FixerError::Other(format!(
+            "Relation entry {:?} has no package name",
+            entry
+        )));
+    };
+    let version = first.version();
+
+    let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
+
+    let changed = if let Some((constraint, ver)) = version {
+        if !matches!(
+            constraint,
+            debian_control::relations::VersionConstraint::Equal
+        ) {
+            return Err(FixerError::Other(format!(
+                "EnsureRelation only supports `=` version constraints, got {:?} in {:?}",
+                constraint, entry
+            )));
+        }
+        debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
+    } else {
+        // Pass the original entry string through verbatim so build-profile
+        // suffixes like `pkg <!nocheck>` round-trip correctly via
+        // Relation::simple's literal-name behaviour. The parsed `name` would
+        // have stripped the suffix.
+        let before = relations.to_string();
+        debian_analyzer::relations::ensure_some_version(&mut relations, entry);
+        relations.to_string() != before
+    };
+
+    Ok(if changed { Some(relations) } else { None })
+}
+
+/// Move the entry for `package` from `from_field` to `to_field` in
+/// `paragraph`. Returns true if either field was modified.
+fn move_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    from_field: &str,
+    to_field: &str,
+    package: &str,
+) -> bool {
+    use debian_control::lossless::relations::Relations;
+
+    let Some(from_value) = p.get(from_field) else {
+        return false;
+    };
+    let (mut from_relations, _errors) = Relations::parse_relaxed(&from_value, true);
+    let Ok((_pos, moved_entry)) = from_relations.get_relation(package) else {
+        return false;
+    };
+    if !from_relations.drop_dependency(package) {
+        return false;
+    }
+
+    // Update or remove the source field.
+    if from_relations.is_empty() || from_relations.to_string().trim().is_empty() {
+        p.remove(from_field);
+    } else {
+        p.set(from_field, &from_relations.to_string());
+    }
+
+    // Append (sorted) to the destination field.
+    let to_value = p.get(to_field).unwrap_or_default();
+    let (mut to_relations, _errors) = Relations::parse_relaxed(&to_value, true);
+    to_relations.add_dependency(moved_entry, None);
+    p.set(to_field, &to_relations.to_string());
+
+    true
+}
+
+fn move_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    from_field: &str,
+    to_field: &str,
+    package: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(move_relation_in_paragraph(
+                source.as_mut_deb822(),
+                from_field,
+                to_field,
+                package,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(move_relation_in_paragraph(
+                    binary.as_mut_deb822(),
+                    from_field,
+                    to_field,
+                    package,
+                ));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 MoveRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn ensure_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    entry: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            // Read the current value via the typed accessor when available
+            // so we can write back via a typed setter that places the
+            // field canonically.
+            let current = source.as_deb822().get(field);
+            let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)? else {
+                return Ok(false);
+            };
+            match field {
+                "Build-Depends" => source.set_build_depends(&new_relations),
+                "Build-Depends-Indep" => source.set_build_depends_indep(&new_relations),
+                "Build-Depends-Arch" => source.set_build_depends_arch(&new_relations),
+                _ => {
+                    source.set(field, &new_relations.to_string());
+                }
+            }
+            Ok(true)
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                let current = binary.as_deb822().get(field);
+                let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)?
+                else {
+                    return Ok(false);
+                };
+                match field {
+                    "Depends" => binary.set_depends(Some(&new_relations)),
+                    "Recommends" => binary.set_recommends(Some(&new_relations)),
+                    "Suggests" => binary.set_suggests(Some(&new_relations)),
+                    "Pre-Depends" => binary.set_pre_depends(Some(&new_relations)),
+                    "Conflicts" => binary.set_conflicts(Some(&new_relations)),
+                    "Replaces" => binary.set_replaces(Some(&new_relations)),
+                    "Provides" => binary.set_provides(Some(&new_relations)),
+                    "Breaks" => binary.set_breaks(Some(&new_relations)),
+                    "Built-Using" => binary.set_built_using(Some(&new_relations)),
+                    _ => {
+                        binary.set(field, &new_relations.to_string());
+                    }
+                }
+                return Ok(true);
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 EnsureRelation does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -1276,11 +1666,93 @@ fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<b
                     any_change = true;
                 }
             }
+            ChangelogAction::SetEntryVersion {
+                version,
+                new_version,
+                ..
+            } => {
+                use std::str::FromStr;
+                let parsed_new = debversion::Version::from_str(new_version).map_err(|e| {
+                    FixerError::Other(format!(
+                        "Invalid new version {:?} in SetEntryVersion: {}",
+                        new_version, e
+                    ))
+                })?;
+                let mut updated = false;
+                for mut entry in changelog.iter() {
+                    let Some(entry_version) = entry.version() else {
+                        continue;
+                    };
+                    if entry_version.to_string() != *version {
+                        continue;
+                    }
+                    if entry_version == parsed_new {
+                        break;
+                    }
+                    entry.set_version(&parsed_new);
+                    updated = true;
+                    break;
+                }
+                if updated {
+                    any_change = true;
+                }
+            }
         }
     }
 
     if any_change {
         std::fs::write(&abs, changelog.to_string())?;
+    }
+    Ok(any_change)
+}
+
+fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "watch action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let watch_file = debian_watch::parse::parse(&content)
+        .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", rel.display(), e)))?;
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Watch(w) = action else {
+            unreachable!("apply_watch_group called with non-watch action");
+        };
+        match w {
+            WatchAction::SetEntryMatchingPattern {
+                url, new_pattern, ..
+            } => {
+                let mut found = false;
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    found = true;
+                    let current = entry.matching_pattern().unwrap_or_default();
+                    if &current == new_pattern {
+                        break;
+                    }
+                    entry.set_matching_pattern(new_pattern);
+                    any_change = true;
+                    break;
+                }
+                if !found {
+                    // Idempotency: if the entry was already updated by a
+                    // sibling action and the URL key has shifted, the
+                    // detector's snapshot is stale; treat as a no-op.
+                    continue;
+                }
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, watch_file.to_string())?;
     }
     Ok(any_change)
 }
@@ -1590,6 +2062,160 @@ mod tests {
         let changed = apply_action(tmp.path(), &action).unwrap();
         assert!(!changed);
         assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_ensure_relation_appends_unversioned() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends:\n debhelper,\n pkg-config\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "python3-setuptools".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends:\n debhelper,\n pkg-config,\n python3-setuptools\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_ensure_relation_idempotent_when_present() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nBuild-Depends: python3-setuptools, debhelper\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "python3-setuptools".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_ensure_relation_versioned_creates_field() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("control"), "Source: foo\n\nPackage: foo\n").unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "debhelper-compat (= 13)".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_move_relation_between_fields() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends-Indep: debhelper-compat (= 12)\nBuild-Depends: python3\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::MoveRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            from_field: "Build-Depends-Indep".into(),
+            to_field: "Build-Depends".into(),
+            package: "debhelper-compat".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 12), python3\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_move_relation_idempotent_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nBuild-Depends: python3\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::MoveRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            from_field: "Build-Depends-Indep".into(),
+            to_field: "Build-Depends".into(),
+            package: "debhelper-compat".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn watch_set_entry_matching_pattern_updates() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/(.*)\\.tar\\.gz\n",
+        )
+        .unwrap();
+
+        let action = Action::Watch(WatchAction::SetEntryMatchingPattern {
+            file: PathBuf::from("debian/watch"),
+            url: "https://github.com/foo/bar/tags".into(),
+            new_pattern: ".*/archive/refs/tags/(.*)\\.tar\\.gz".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("watch")).unwrap(),
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/refs/tags/(.*)\\.tar\\.gz\n",
+        );
+    }
+
+    #[test]
+    fn watch_set_entry_matching_pattern_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial =
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/refs/tags/(.*)\\.tar\\.gz\n";
+        fs::write(debian.join("watch"), initial).unwrap();
+
+        let action = Action::Watch(WatchAction::SetEntryMatchingPattern {
+            file: PathBuf::from("debian/watch"),
+            url: "https://github.com/foo/bar/tags".into(),
+            new_pattern: ".*/archive/refs/tags/(.*)\\.tar\\.gz".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("watch")).unwrap(), initial);
     }
 
     #[test]
