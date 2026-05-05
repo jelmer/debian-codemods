@@ -1,21 +1,25 @@
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use debian_control::lossless::Control;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_path = base_path.join("debian/control");
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(editor) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
 
     // Get the compat_release from preferences, defaulting to "sid"
     let compat_release = preferences.compat_release.as_deref().unwrap_or("sid");
@@ -42,29 +46,29 @@ pub fn run(
                 // Remove redundant Priority: optional from source stanza
                 let issue = LintianIssue::source_with_info(
                     "redundant-field",
-                    vec![format!("debian/control Source Priority")],
+                    vec!["debian/control Source Priority".to_string()],
                 );
                 let plans = vec![ActionPlan {
                     label: Some(
                         "Remove redundant Priority: optional from source stanza.".to_string(),
                     ),
                     actions: vec![Action::Deb822(Deb822Action::RemoveField {
-                        file: control_path.clone(),
+                        file: control_rel.clone(),
                         paragraph: ParagraphSelector::Source,
                         field: "Priority".to_string(),
                     })],
                 }];
                 let diagnostic = Diagnostic {
                     issue: Some(issue),
-                    message: "Priority: optional in source stanza is redundant with dpkg >= 1.
-22.13 and can be removed."
-                        .to_string(),
+                    message:
+                        "Priority: optional in source stanza is redundant with dpkg >= 1.22.13 and can be removed."
+                            .to_string(),
                     plans,
                     certainty: Some(crate::Certainty::Confident),
                 };
                 return Ok(vec![diagnostic]);
             }
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     }
 
@@ -75,7 +79,7 @@ pub fn run(
     // Collect binaries to process
     let binaries: Vec<_> = editor.binaries().collect();
 
-    for binary in binaries {
+    for binary in &binaries {
         let paragraph = binary.as_deb822();
         let package_name = paragraph.get("Package").unwrap_or_default().to_string();
 
@@ -101,14 +105,13 @@ pub fn run(
         if any_explicit || !default_priority_is_optional {
             if common_priority != "optional" || !default_priority_is_optional {
                 let mut actions = vec![Action::Deb822(Deb822Action::SetField {
-                    file: control_path.clone(),
+                    file: control_rel.clone(),
                     paragraph: ParagraphSelector::Source,
                     field: "Priority".to_string(),
                     value: common_priority.clone(),
                 })];
 
-                let binaries: Vec<_> = editor.binaries().collect();
-                for binary in binaries {
+                for binary in &binaries {
                     let package_name = binary
                         .as_deb822()
                         .get("Package")
@@ -116,7 +119,7 @@ pub fn run(
                         .to_string();
                     if binary.as_deb822().get("Priority").is_some() {
                         actions.push(Action::Deb822(Deb822Action::RemoveField {
-                            file: control_path.clone(),
+                            file: control_rel.clone(),
                             paragraph: ParagraphSelector::Binary {
                                 package: package_name,
                             },
@@ -159,12 +162,12 @@ pub fn run(
         for package_name in missing_priorities {
             let issue = LintianIssue::source_with_info(
                 "recommended-field",
-                vec![format!("debian/control Priority")],
+                vec!["debian/control Priority".to_string()],
             );
             let plans = vec![ActionPlan {
                 label: Some("Set priority to 'optional' for this binary package.".to_string()),
                 actions: vec![Action::Deb822(Deb822Action::SetField {
-                    file: control_path.clone(),
+                    file: control_rel.clone(),
                     paragraph: ParagraphSelector::Binary {
                         package: package_name.clone(),
                     },
@@ -184,18 +187,14 @@ pub fn run(
         }
     }
 
-    if !diagnostics.is_empty() {
-        return Ok(diagnostics);
-    }
-
-    Err(FixerError::NoChanges)
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "no-priority-field",
     tags: ["recommended-field"],
     diagnose: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+        detect(basedir, preferences)
     }
 }
 
