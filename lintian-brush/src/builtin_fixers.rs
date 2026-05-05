@@ -314,6 +314,41 @@ impl Fixer for BuiltinFixerWrapper {
     }
 }
 
+/// View of a registration sufficient for topological sorting.
+///
+/// Both legacy [`BuiltinFixerRegistration`] and
+/// [`crate::workspace::DetectorRegistration`] implement this so they can be
+/// sorted together.
+trait OrderedRegistration {
+    fn name(&self) -> &'static str;
+    fn after(&self) -> &'static [&'static str];
+    fn before(&self) -> &'static [&'static str];
+}
+
+impl OrderedRegistration for &BuiltinFixerRegistration {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn after(&self) -> &'static [&'static str] {
+        self.after
+    }
+    fn before(&self) -> &'static [&'static str] {
+        self.before
+    }
+}
+
+impl OrderedRegistration for &crate::workspace::DetectorRegistration {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn after(&self) -> &'static [&'static str] {
+        self.after
+    }
+    fn before(&self) -> &'static [&'static str] {
+        self.before
+    }
+}
+
 /// Topologically sort fixers based on their dependencies
 ///
 /// This function resolves both `after` and `before` constraints into a unified
@@ -324,30 +359,32 @@ impl Fixer for BuiltinFixerWrapper {
 /// Panics if:
 /// - A circular dependency is detected
 /// - A fixer references a non-existent dependency
-fn topologically_sort_fixers(
-    registrations: Vec<&BuiltinFixerRegistration>,
-) -> Vec<&BuiltinFixerRegistration> {
+fn topologically_sort_fixers<T: OrderedRegistration + Clone>(registrations: Vec<T>) -> Vec<T> {
     use std::collections::{HashMap, HashSet, VecDeque};
 
     // Build a map of fixer names to registrations for quick lookup
-    let name_to_reg: HashMap<&str, &BuiltinFixerRegistration> =
-        registrations.iter().map(|reg| (reg.name, *reg)).collect();
+    let name_to_reg: HashMap<&str, T> = registrations
+        .iter()
+        .map(|reg| (reg.name(), reg.clone()))
+        .collect();
 
     // Validate that all dependencies exist
     for reg in &registrations {
-        for dep in reg.after {
+        for dep in reg.after() {
             if !name_to_reg.contains_key(dep) {
                 panic!(
                     "Fixer '{}' declares dependency on non-existent fixer '{}' in 'after' list",
-                    reg.name, dep
+                    reg.name(),
+                    dep
                 );
             }
         }
-        for dep in reg.before {
+        for dep in reg.before() {
             if !name_to_reg.contains_key(dep) {
                 panic!(
                     "Fixer '{}' declares dependency on non-existent fixer '{}' in 'before' list",
-                    reg.name, dep
+                    reg.name(),
+                    dep
                 );
             }
         }
@@ -360,24 +397,24 @@ fn topologically_sort_fixers(
 
     // Initialize structures
     for reg in &registrations {
-        adj_list.entry(reg.name).or_default();
-        in_degree.entry(reg.name).or_insert(0);
+        adj_list.entry(reg.name()).or_default();
+        in_degree.entry(reg.name()).or_insert(0);
     }
 
     // Add edges from 'after' constraints
     // If B declares after: [A], then A -> B (A must run before B)
     for reg in &registrations {
-        for dep in reg.after {
-            adj_list.entry(*dep).or_default().push(reg.name);
-            *in_degree.entry(reg.name).or_insert(0) += 1;
+        for dep in reg.after() {
+            adj_list.entry(*dep).or_default().push(reg.name());
+            *in_degree.entry(reg.name()).or_insert(0) += 1;
         }
     }
 
     // Add edges from 'before' constraints
     // If A declares before: [B], then A -> B (A must run before B)
     for reg in &registrations {
-        for dep in reg.before {
-            adj_list.entry(reg.name).or_default().push(*dep);
+        for dep in reg.before() {
+            adj_list.entry(reg.name()).or_default().push(*dep);
             *in_degree.entry(*dep).or_insert(0) += 1;
         }
     }
@@ -425,8 +462,8 @@ fn topologically_sort_fixers(
         // Find the cycle for error reporting
         let remaining: Vec<_> = registrations
             .iter()
-            .filter(|reg| !processed.contains(reg.name))
-            .map(|reg| reg.name)
+            .filter(|reg| !processed.contains(reg.name()))
+            .map(|reg| reg.name())
             .collect();
 
         // Build a detailed cycle description
@@ -436,18 +473,18 @@ fn topologically_sort_fixers(
 
         for name in &remaining {
             if let Some(reg) = name_to_reg.get(name) {
-                if !reg.after.is_empty() {
+                if !reg.after().is_empty() {
                     cycle_msg.push_str(&format!(
                         "\n  '{}' after: [{}]",
                         name,
-                        reg.after.join(", ")
+                        reg.after().join(", ")
                     ));
                 }
-                if !reg.before.is_empty() {
+                if !reg.before().is_empty() {
                     cycle_msg.push_str(&format!(
                         "\n  '{}' before: [{}]",
                         name,
-                        reg.before.join(", ")
+                        reg.before().join(", ")
                     ));
                 }
             }
@@ -457,24 +494,80 @@ fn topologically_sort_fixers(
     }
 
     // Convert sorted names back to registrations
-    sorted.iter().map(|name| name_to_reg[name]).collect()
+    sorted
+        .iter()
+        .map(|name| name_to_reg[name].clone())
+        .collect()
 }
 
-/// Get all registered builtin fixers
+/// Construct a fixer instance for a sorted entry — either from a legacy
+/// registration's `create` fn or by wrapping a freshly-created detector in
+/// a [`crate::workspace::DetectorAdapter`].
+#[derive(Clone)]
+enum MergedRegistration {
+    Legacy(&'static BuiltinFixerRegistration),
+    Detector(&'static crate::workspace::DetectorRegistration),
+}
+
+impl OrderedRegistration for MergedRegistration {
+    fn name(&self) -> &'static str {
+        match self {
+            MergedRegistration::Legacy(reg) => reg.name,
+            MergedRegistration::Detector(reg) => reg.name,
+        }
+    }
+    fn after(&self) -> &'static [&'static str] {
+        match self {
+            MergedRegistration::Legacy(reg) => reg.after,
+            MergedRegistration::Detector(reg) => reg.after,
+        }
+    }
+    fn before(&self) -> &'static [&'static str] {
+        match self {
+            MergedRegistration::Legacy(reg) => reg.before,
+            MergedRegistration::Detector(reg) => reg.before,
+        }
+    }
+}
+
+impl MergedRegistration {
+    fn into_fixer(self) -> Box<dyn Fixer> {
+        match self {
+            MergedRegistration::Legacy(reg) => {
+                Box::new(BuiltinFixerWrapper::new((reg.create)())) as Box<dyn Fixer>
+            }
+            MergedRegistration::Detector(reg) => {
+                let adapter = crate::workspace::DetectorAdapter::new((reg.create)());
+                Box::new(BuiltinFixerWrapper::new(Box::new(adapter))) as Box<dyn Fixer>
+            }
+        }
+    }
+}
+
+/// Get all registered builtin fixers.
+///
+/// Yields fixers from both the legacy `BuiltinFixer` inventory and the
+/// modern [`crate::workspace::Detector`] inventory. Detectors are wrapped
+/// in [`crate::workspace::DetectorAdapter`] so they look like ordinary
+/// `BuiltinFixer`s to the CLI driver. Both kinds are sorted together so
+/// `after`/`before` declarations can cross the legacy/detector boundary.
 pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
-    let registrations: Vec<_> = inventory::iter::<BuiltinFixerRegistration>
-        .into_iter()
-        .collect();
+    let mut merged: Vec<MergedRegistration> = Vec::new();
+    merged.extend(
+        inventory::iter::<BuiltinFixerRegistration>
+            .into_iter()
+            .map(MergedRegistration::Legacy),
+    );
+    merged.extend(
+        inventory::iter::<crate::workspace::DetectorRegistration>
+            .into_iter()
+            .map(MergedRegistration::Detector),
+    );
 
-    // Topologically sort based on dependencies (with deterministic ordering)
-    let sorted_registrations = topologically_sort_fixers(registrations);
-
-    sorted_registrations
+    let sorted = topologically_sort_fixers(merged);
+    sorted
         .into_iter()
-        .map(|reg| {
-            let builtin_fixer = (reg.create)();
-            Box::new(BuiltinFixerWrapper::new(builtin_fixer)) as Box<dyn Fixer>
-        })
+        .map(MergedRegistration::into_fixer)
         .collect()
 }
 
@@ -524,9 +617,17 @@ mod tests {
         //
         // The topological sort will panic if there are issues, which fails this test.
 
-        let all_registrations: Vec<_> = inventory::iter::<BuiltinFixerRegistration>
-            .into_iter()
-            .collect();
+        let mut all_registrations: Vec<MergedRegistration> = Vec::new();
+        all_registrations.extend(
+            inventory::iter::<BuiltinFixerRegistration>
+                .into_iter()
+                .map(MergedRegistration::Legacy),
+        );
+        all_registrations.extend(
+            inventory::iter::<crate::workspace::DetectorRegistration>
+                .into_iter()
+                .map(MergedRegistration::Detector),
+        );
 
         let original_count = all_registrations.len();
 
@@ -546,9 +647,9 @@ mod tests {
         let mut seen_names = std::collections::HashSet::new();
         for reg in &sorted {
             assert!(
-                seen_names.insert(reg.name),
+                seen_names.insert(reg.name()),
                 "Duplicate fixer name in sorted output: {}",
-                reg.name
+                reg.name()
             );
         }
 
@@ -556,33 +657,37 @@ mod tests {
         let name_to_index: std::collections::HashMap<_, _> = sorted
             .iter()
             .enumerate()
-            .map(|(idx, reg)| (reg.name, idx))
+            .map(|(idx, reg)| (reg.name(), idx))
             .collect();
 
         for (idx, reg) in sorted.iter().enumerate() {
             // Check that all 'after' dependencies come before this fixer
-            for dep in reg.after {
+            for dep in reg.after() {
                 let dep_idx = name_to_index.get(dep).expect(&format!(
                     "Fixer '{}' declares after: ['{}'], but '{}' not found in sorted output",
-                    reg.name, dep, dep
+                    reg.name(),
+                    dep,
+                    dep
                 ));
                 assert!(
                     dep_idx < &idx,
                     "Dependency ordering violated: '{}' (index {}) should run after '{}' (index {}), but doesn't",
-                    reg.name, idx, dep, dep_idx
+                    reg.name(), idx, dep, dep_idx
                 );
             }
 
             // Check that all 'before' dependencies come after this fixer
-            for dep in reg.before {
+            for dep in reg.before() {
                 let dep_idx = name_to_index.get(dep).expect(&format!(
                     "Fixer '{}' declares before: ['{}'], but '{}' not found in sorted output",
-                    reg.name, dep, dep
+                    reg.name(),
+                    dep,
+                    dep
                 ));
                 assert!(
                     dep_idx > &idx,
                     "Dependency ordering violated: '{}' (index {}) should run before '{}' (index {}), but doesn't",
-                    reg.name, idx, dep, dep_idx
+                    reg.name(), idx, dep, dep_idx
                 );
             }
         }
