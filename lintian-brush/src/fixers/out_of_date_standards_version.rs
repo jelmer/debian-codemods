@@ -1,5 +1,5 @@
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::{is_debcargo_package, Certainty, FixerError, LintianIssue};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
@@ -619,7 +619,7 @@ fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
 
 pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     // Debcargo packages manage their own control file — skip.
-    if base_path.join("debian/debcargo.toml").exists() {
+    if is_debcargo_package(base_path) {
         return Ok(Vec::new());
     }
 

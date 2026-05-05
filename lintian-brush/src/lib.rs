@@ -471,6 +471,12 @@ impl From<LintianIssueParseError> for OutputParseError {
     }
 }
 
+/// Whether `base_path` is a debcargo-managed package (Rust crate
+/// packaging where `debian/control` is generated from `debian/debcargo.toml`).
+pub fn is_debcargo_package(base_path: &std::path::Path) -> bool {
+    base_path.join("debian/debcargo.toml").exists()
+}
+
 /// Parse the output of a script fixer
 pub fn parse_script_fixer_output(text: &str) -> Result<FixerResult, OutputParseError> {
     let mut description: Vec<String> = Vec::new();
