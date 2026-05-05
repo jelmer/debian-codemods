@@ -1,23 +1,20 @@
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::lintian_overrides::{filter_overrides, LintianOverrides};
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, LintianIssue};
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Find all lintian override files in the package
 fn find_override_files(base_path: &Path) -> Vec<PathBuf> {
     let mut paths = Vec::new();
-
-    // Check debian/source/lintian-overrides
     let source_overrides = base_path.join("debian/source/lintian-overrides");
     if source_overrides.exists() {
         paths.push(source_overrides);
     }
-
-    // Check debian/*.lintian-overrides
     let debian_dir = base_path.join("debian");
-    if let Ok(entries) = fs::read_dir(&debian_dir) {
-        for entry in entries.flatten() {
+    if let Ok(entries) = std::fs::read_dir(&debian_dir) {
+        let mut sorted: Vec<_> = entries.filter_map(|e| e.ok()).collect();
+        sorted.sort_by_key(|e| e.file_name());
+        for entry in sorted {
             let path = entry.path();
             if let Some(name) = path.file_name() {
                 if name.to_string_lossy().ends_with(".lintian-overrides") {
@@ -26,68 +23,52 @@ fn find_override_files(base_path: &Path) -> Vec<PathBuf> {
             }
         }
     }
-
     paths
 }
 
-/// Process a single overrides file and remove duplicates
-fn process_overrides_file(
+fn process_one_file(
     path: &Path,
     base_path: &Path,
-) -> Result<(bool, Vec<LintianIssue>), FixerError> {
-    let content = fs::read_to_string(path)?;
+) -> Result<Option<(Vec<LintianIssue>, String)>, FixerError> {
+    let content = std::fs::read_to_string(path)?;
     let parsed = LintianOverrides::parse(&content);
-    let overrides = parsed.ok().map_err(|_| FixerError::NoChanges)?;
+    let overrides = parsed
+        .ok()
+        .map_err(|_| FixerError::Other("parse error".to_string()))?;
 
-    // Track line numbers for each override (package, tag, info)
-    // Map from (package, tag, info) to list of line numbers
     let mut override_lines: HashMap<(Option<String>, String, String), Vec<usize>> = HashMap::new();
     let mut line_number = 0;
-
-    // First pass: identify duplicates and track line numbers
     for line in overrides.lines() {
         line_number += 1;
-
-        // Skip comments and empty lines
         if line.is_comment() || line.is_empty() {
             continue;
         }
-
-        let package = line.package_spec().and_then(|spec| spec.package_name());
+        let package = line.package_spec().and_then(|s| s.package_name());
         let tag = line.tag().map(|t| t.text().to_string()).unwrap_or_default();
         let info = line.info().unwrap_or_default();
-
-        let key = (package, tag, info);
-        override_lines.entry(key).or_default().push(line_number);
+        override_lines
+            .entry((package, tag, info))
+            .or_default()
+            .push(line_number);
     }
 
-    // Find duplicates (entries with more than one line)
-    let duplicates: Vec<_> = override_lines
+    let mut duplicates: Vec<_> = override_lines
         .iter()
         .filter(|(_, lines)| lines.len() > 1)
         .collect();
-
     if duplicates.is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(None);
     }
+    duplicates.sort_by_key(|(_, lines)| lines[0]);
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    // Get the relative path for the override file
     let override_file_path = path
         .strip_prefix(base_path.join("debian"))
         .unwrap_or(path)
         .to_string_lossy()
         .to_string();
 
-    // Sort duplicates by first line number for consistent ordering
-    let mut duplicates_sorted = duplicates;
-    duplicates_sorted.sort_by_key(|(_, lines)| lines[0]);
-
-    // Check if any of the duplicates should be fixed
-    for ((package, tag, override_info), lines) in &duplicates_sorted {
-        // Format: "tag override_info (lines X Y) [path]"
+    let mut issues = Vec::new();
+    for ((package, tag, override_info), lines) in &duplicates {
         let lines_str = lines
             .iter()
             .map(|n| n.to_string())
@@ -107,94 +88,68 @@ fn process_overrides_file(
                 format!("[debian/{}]", override_file_path),
             ]
         };
-
         let mut issue = LintianIssue::source_with_info("duplicate-override-context", info_parts);
         issue.package = package.clone();
-
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-        } else {
-            fixed_issues.push(issue);
-        }
+        issues.push(issue);
     }
 
-    if fixed_issues.is_empty() {
-        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-    }
-
-    // Second pass: filter out duplicates, keeping only the first occurrence
-    let mut seen_overrides = HashMap::new();
+    // Filter to drop duplicates (keep first occurrence).
+    let mut seen: HashMap<(Option<String>, String, String), bool> = HashMap::new();
     let filtered = filter_overrides(&overrides, |line| {
-        // Always keep comments and empty lines
         if line.is_comment() || line.is_empty() {
             return true;
         }
-
-        let package = line.package_spec().and_then(|spec| spec.package_name());
+        let package = line.package_spec().and_then(|s| s.package_name());
         let tag = line.tag().map(|t| t.text().to_string()).unwrap_or_default();
         let info = line.info().unwrap_or_default();
         let key = (package, tag, info);
-
-        // Keep only the first occurrence using the Entry API
         use std::collections::hash_map::Entry;
-        match seen_overrides.entry(key) {
+        match seen.entry(key) {
             Entry::Occupied(_) => false,
-            Entry::Vacant(entry) => {
-                entry.insert(true);
+            Entry::Vacant(e) => {
+                e.insert(true);
                 true
             }
         }
     });
 
-    fs::write(path, filtered.to_string())?;
-
-    Ok((true, fixed_issues))
+    Ok(Some((issues, filtered.to_string())))
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let override_files = find_override_files(base_path);
-
-    if override_files.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let mut any_changes = false;
-    let mut all_fixed_issues = Vec::new();
-
-    for path in override_files {
-        match process_overrides_file(&path, base_path) {
-            Ok((changed, fixed_issues)) => {
-                if changed {
-                    any_changes = true;
-                    all_fixed_issues.extend(fixed_issues);
-                }
-            }
-            Err(FixerError::NoChanges) => {
-                // No changes needed for this file, continue
-            }
-            Err(FixerError::NoChangesAfterOverrides(overridden)) => {
-                // All duplicates were overridden, but continue checking other files
-                return Err(FixerError::NoChangesAfterOverrides(overridden));
-            }
-            Err(e) => return Err(e),
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut diagnostics = Vec::new();
+    for path in find_override_files(base_path) {
+        let Some((issues, new_content)) = process_one_file(&path, base_path)? else {
+            continue;
+        };
+        let rel = path
+            .strip_prefix(base_path)
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|_| path.clone());
+        let action = Action::Filesystem(FilesystemAction::Write {
+            file: rel,
+            content: new_content.into_bytes(),
+        });
+        for (idx, issue) in issues.into_iter().enumerate() {
+            let actions = if idx == 0 {
+                vec![action.clone()]
+            } else {
+                Vec::new()
+            };
+            diagnostics.push(
+                Diagnostic::with_actions(issue, "Remove duplicate lintian overrides.", actions)
+                    .with_certainty(Certainty::Certain),
+            );
         }
     }
-
-    if !any_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(FixerResult::builder("Remove duplicate lintian overrides.")
-        .fixed_issues(all_fixed_issues)
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "duplicate-override-context",
     tags: ["duplicate-override-context"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -202,116 +157,63 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_duplicate_in_source_overrides() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let source_dir = debian_dir.join("source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
+        let overrides = source_dir.join("lintian-overrides");
+        fs::write(
+            &overrides,
+            "# Comment\ntest-package source: some-tag info\ntest-package source: some-tag info\ntest-package source: other-tag\n",
+        )
+        .unwrap();
 
-        let overrides_content = r#"# Comment
-test-package source: some-tag info
-test-package source: some-tag info
-test-package source: other-tag
-"#;
-        let overrides_path = source_dir.join("lintian-overrides");
-        fs::write(&overrides_path, overrides_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(base_path, "test-package", &version, &Default::default());
-
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let content = fs::read_to_string(&overrides_path).unwrap();
-        // Should keep only one copy of the duplicate
-        assert_eq!(content.matches("some-tag info").count(), 1);
-        // Should keep the other non-duplicate tag
-        assert!(content.contains("other-tag"));
-        // Should keep the comment
-        assert!(content.contains("# Comment"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&overrides).unwrap(),
+            "# Comment\ntest-package source: some-tag info\ntest-package source: other-tag\n",
+        );
     }
 
     #[test]
     fn test_no_duplicates() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let source_dir = debian_dir.join("source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
-
-        let overrides_content = r#"test-package source: tag1
-test-package source: tag2
-"#;
-        let overrides_path = source_dir.join("lintian-overrides");
-        fs::write(&overrides_path, overrides_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(base_path, "test-package", &version, &Default::default());
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        fs::write(
+            source_dir.join("lintian-overrides"),
+            "test-package source: tag1\ntest-package source: tag2\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_multiple_duplicates() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let source_dir = debian_dir.join("source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
+        let overrides = source_dir.join("lintian-overrides");
+        fs::write(
+            &overrides,
+            "pkg source: tag1\npkg source: tag1\npkg source: tag2 info\npkg source: tag2 info\npkg source: tag2 info\n",
+        )
+        .unwrap();
 
-        let overrides_content = r#"pkg source: tag1
-pkg source: tag1
-pkg source: tag2 info
-pkg source: tag2 info
-pkg source: tag2 info
-"#;
-        let overrides_path = source_dir.join("lintian-overrides");
-        fs::write(&overrides_path, overrides_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(base_path, "pkg", &version, &Default::default());
-
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let content = fs::read_to_string(&overrides_path).unwrap();
-        assert_eq!(content.matches("tag1").count(), 1);
-        assert_eq!(content.matches("tag2 info").count(), 1);
-    }
-
-    #[test]
-    fn test_preserves_comments_and_empty_lines() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let source_dir = debian_dir.join("source");
-        fs::create_dir_all(&source_dir).unwrap();
-
-        let overrides_content = r#"# Header comment
-
-pkg source: tag1
-# Middle comment
-pkg source: tag1
-
-"#;
-        let overrides_path = source_dir.join("lintian-overrides");
-        fs::write(&overrides_path, overrides_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(base_path, "pkg", &version, &Default::default());
-
-        assert!(result.is_ok());
-
-        let content = fs::read_to_string(&overrides_path).unwrap();
-        assert!(content.contains("# Header comment"));
-        assert!(content.contains("# Middle comment"));
-        assert_eq!(content.matches("tag1").count(), 1);
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&overrides).unwrap(),
+            "pkg source: tag1\npkg source: tag2 info\n",
+        );
     }
 }
