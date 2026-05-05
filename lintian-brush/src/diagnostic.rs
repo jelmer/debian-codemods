@@ -103,6 +103,11 @@ pub enum Action {
     Changelog(ChangelogAction),
     /// An edit to a `debian/watch` file.
     Watch(WatchAction),
+    /// An edit to a Makefile (typically `debian/rules`).
+    Makefile(MakefileAction),
+    /// An edit to a DEP-3 patch header (a quilt patch under
+    /// `debian/patches/`).
+    Dep3(Dep3Action),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -579,6 +584,188 @@ pub enum WatchAction {
         url: String,
         /// New matching pattern.
         new_pattern: String,
+    },
+    /// Remove an `opts=...` option from the entry whose current URL is
+    /// `url`. A no-op if no entry matches or the option isn't set.
+    RemoveEntryOption {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// Name of the option to remove (e.g. `filenamemangle`).
+        option: String,
+    },
+    /// Set (or insert) an `opts=...` option on the entry whose current URL
+    /// is `url`. A no-op if no entry matches or the option already has the
+    /// requested value.
+    SetEntryOption {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// Name of the option to set (e.g. `dversionmangle`).
+        option: String,
+        /// New value for the option.
+        value: String,
+    },
+    /// Replace the URL of the entry whose current URL is `url`. A no-op if
+    /// no entry matches.
+    SetEntryUrl {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// New URL.
+        new_url: String,
+    },
+}
+
+/// Edits to a Makefile (typically `debian/rules`).
+///
+/// Recipes are addressed by their exact current text (including leading
+/// indentation). This avoids index drift when multiple recipe edits target
+/// the same rule.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum MakefileAction {
+    /// Replace the first recipe whose text exactly matches `recipe` in the
+    /// rule whose primary target is `target`. A no-op if no rule or recipe
+    /// matches.
+    ReplaceRecipe {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule containing the recipe.
+        target: String,
+        /// Current recipe text, matched verbatim (including indentation).
+        recipe: String,
+        /// Replacement recipe text. The applier preserves the original
+        /// recipe's leading whitespace if `new_recipe` doesn't start with
+        /// whitespace itself.
+        new_recipe: String,
+    },
+    /// Remove the first recipe whose text exactly matches `recipe` from the
+    /// rule whose primary target is `target`. A no-op if no rule or recipe
+    /// matches.
+    RemoveRecipe {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule containing the recipe.
+        target: String,
+        /// Recipe text, matched verbatim (including indentation).
+        recipe: String,
+    },
+    /// Replace the value of the first variable definition for `name`.
+    /// A no-op if no such variable exists.
+    SetVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name (matched exactly).
+        name: String,
+        /// New right-hand side, verbatim (no quoting applied).
+        value: String,
+    },
+    /// Remove the first variable definition for `name`. A no-op if no such
+    /// variable exists.
+    RemoveVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name (matched exactly).
+        name: String,
+    },
+    /// Remove the first rule whose primary target is `target`. A no-op if
+    /// no such rule exists.
+    RemoveRule {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule to remove.
+        target: String,
+    },
+    /// Remove `target` from the prerequisites of the `.PHONY` rule. If
+    /// `.PHONY` becomes empty, the rule itself is removed. A no-op if
+    /// the target is not listed.
+    RemovePhonyTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name to remove from `.PHONY`.
+        target: String,
+    },
+    /// Rename a target on the first rule that has it. A no-op if no rule
+    /// has the old target.
+    RenameRuleTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Old target name (matched exactly after trimming).
+        from_target: String,
+        /// New target name.
+        to_target: String,
+    },
+    /// Append a new rule with `target` and the given (possibly empty)
+    /// prerequisites. The applier does not check for an existing rule —
+    /// detectors must guard against duplicates themselves.
+    AddRule {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name for the new rule.
+        target: String,
+        /// Prerequisite targets (in order).
+        prerequisites: Vec<String>,
+    },
+    /// Add `target` to the prerequisites of the `.PHONY` rule. A no-op if
+    /// `.PHONY` already lists `target`. If no `.PHONY` rule exists, the
+    /// applier creates one.
+    AddPhonyTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name to add to `.PHONY`.
+        target: String,
+    },
+    /// Add an `include <path>` directive. A no-op if the file is already
+    /// included.
+    AddInclude {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path to include (e.g. `/usr/share/dpkg/pkg-info.mk`).
+        path: String,
+    },
+}
+
+/// Edits to a DEP-3 patch header.
+///
+/// DEP-3 headers live at the top of a quilt patch (under
+/// `debian/patches/`) followed by a blank line and the unified diff. The
+/// applier parses just the header (everything before the first `---`,
+/// `diff `, or `Index:` line), edits it, and reassembles the file.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum Dep3Action {
+    /// Set a field's value, inserting it if missing. The field is added in
+    /// the patch header's existing position when present, or appended.
+    SetField {
+        /// Patch file to edit, relative to the package root (e.g.
+        /// `debian/patches/foo.patch`).
+        file: PathBuf,
+        /// Field name (case-sensitive, e.g. `Author`).
+        field: String,
+        /// New value.
+        value: String,
+    },
+    /// Remove a field. A no-op if the field isn't present.
+    RemoveField {
+        /// Patch file to edit, relative to the package root.
+        file: PathBuf,
+        /// Field name to remove.
+        field: String,
+    },
+    /// Rename `from_field` to `to_field`, preserving its value. A no-op
+    /// if `from_field` isn't present. If `to_field` already exists, it is
+    /// overwritten.
+    RenameField {
+        /// Patch file to edit, relative to the package root.
+        file: PathBuf,
+        /// Current field name.
+        from_field: String,
+        /// New field name.
+        to_field: String,
     },
 }
 

@@ -1,56 +1,51 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::relations::ensure_some_version;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_control::lossless::Control;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Check if this is a debcargo package
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     if base_path.join("debian/debcargo.toml").exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Read the source format
-    let source_format_path = base_path.join("debian/source/format");
-    let format = if source_format_path.exists() {
-        std::fs::read_to_string(&source_format_path)?
-            .trim()
-            .to_string()
+    let format_path = base_path.join("debian/source/format");
+    let format = if format_path.exists() {
+        std::fs::read_to_string(&format_path)?.trim().to_string()
     } else {
         String::new()
     };
-
-    // Skip if using 3.0 (quilt) format
     if format == "3.0 (quilt)" {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Check if debian/patches/series exists
     if !base_path.join("debian/patches/series").exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Update the control file
-    let control_path = base_path.join("debian/control");
-    let control_content = std::fs::read_to_string(&control_path)?;
-    let control = Control::from_str(&control_content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/control: {:?}", e)))?;
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
 
-    let mut source = control
-        .source()
-        .ok_or_else(|| FixerError::Other("No source paragraph in debian/control".to_string()))?;
-
-    let original_build_depends = source.build_depends().unwrap_or_default();
-    let original_str = original_build_depends.to_string();
-
-    // Parse into a mutable copy
-    let mut new_build_depends = original_build_depends;
-
-    ensure_some_version(&mut new_build_depends, "quilt");
-
-    // Check if anything changed
-    if new_build_depends.to_string() == original_str {
-        return Err(FixerError::NoChanges);
+    // Skip if quilt is already in Build-Depends.
+    if let Some(value) = source.as_deb822().get("Build-Depends") {
+        let (relations, _errors) =
+            debian_control::lossless::relations::Relations::parse_relaxed(&value, true);
+        if relations.entries().any(|e| {
+            e.relations()
+                .any(|r| r.try_name().as_deref() == Some("quilt"))
+        }) {
+            return Ok(Vec::new());
+        }
     }
 
     let issue = LintianIssue::source_with_info(
@@ -58,75 +53,103 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         vec!["[debian/patches/series]".to_string()],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    source.set_build_depends(&new_build_depends);
-
-    // Write back to file
-    std::fs::write(&control_path, control.to_string())?;
-
-    Ok(FixerResult::builder("Add missing dependency on quilt.")
-        .fixed_issues(vec![issue])
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Add missing dependency on quilt.",
+        vec![Action::Deb822(Deb822Action::EnsureRelation {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "quilt".into(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "quilt-series-but-no-build-dep",
     tags: ["quilt-series-but-no-build-dep"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_control::lossless::Control;
-    use std::str::FromStr;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
 
-    #[test]
-    fn test_ensure_some_version_adds_quilt() {
-        let input = r#"Source: blah
-Maintainer: Joe Example <joe@example.com>
-Build-Depends: debhelper
-
-Package: blah
-Description: blah blah
- Blah blah
-"#;
-
-        let control = Control::from_str(input).unwrap();
-        let mut source = control.source().unwrap();
-        let mut build_depends = source.build_depends().unwrap_or_default();
-
-        ensure_some_version(&mut build_depends, "quilt");
-        source.set_build_depends(&build_depends);
-
-        let output = control.to_string();
-        assert!(output.contains("Build-Depends: debhelper, quilt"));
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
-    fn test_ensure_some_version_skips_if_present() {
-        let input = r#"Source: blah
-Maintainer: Joe Example <joe@example.com>
-Build-Depends: debhelper, quilt
+    fn test_simple() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        let patches = debian.join("patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "01-foo.patch\n").unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\nMaintainer: Joe Example <joe@example.com>\nBuild-Depends: debhelper\n\nPackage: blah\nDescription: blah blah\n Blah blah\n",
+        )
+        .unwrap();
 
-Package: blah
-Description: blah blah
- Blah blah
-"#;
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nMaintainer: Joe Example <joe@example.com>\nBuild-Depends: debhelper, quilt\n\nPackage: blah\nDescription: blah blah\n Blah blah\n",
+        );
+    }
 
-        let control = Control::from_str(input).unwrap();
-        let source = control.source().unwrap();
-        let original_build_depends = source.build_depends().unwrap_or_default();
-        let original_str = original_build_depends.to_string();
-        let mut new_build_depends = original_build_depends;
+    #[test]
+    fn test_no_change_when_quilt_already_present() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        let patches = debian.join("patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "01-foo.patch\n").unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nBuild-Depends: debhelper, quilt\n\nPackage: blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
 
-        ensure_some_version(&mut new_build_depends, "quilt");
+    #[test]
+    fn test_no_change_when_3_0_quilt() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        let patches = debian.join("patches");
+        let source = debian.join("source");
+        fs::create_dir_all(&patches).unwrap();
+        fs::create_dir_all(&source).unwrap();
+        fs::write(patches.join("series"), "01-foo.patch\n").unwrap();
+        fs::write(source.join("format"), "3.0 (quilt)\n").unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nBuild-Depends: debhelper\n\nPackage: blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
 
-        assert_eq!(new_build_depends.to_string(), original_str);
+    #[test]
+    fn test_no_change_when_no_series() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nBuild-Depends: debhelper\n\nPackage: blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

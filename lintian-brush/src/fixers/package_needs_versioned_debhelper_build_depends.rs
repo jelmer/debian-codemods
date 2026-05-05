@@ -1,44 +1,37 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_analyzer::debhelper::read_debhelper_compat_file;
 use debian_control::lossless::Control;
-use debversion::Version;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Read debian/compat to get the minimum debhelper version
-    let compat_path = base_path.join("debian/compat");
-    let minimum_version = match read_debhelper_compat_file(&compat_path)? {
-        Some(v) => v,
-        None => return Err(FixerError::NoChanges),
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let Some(minimum_version) = read_debhelper_compat_file(&base_path.join("debian/compat"))?
+    else {
+        return Ok(Vec::new());
     };
 
-    // Read and parse debian/control
-    let control_path = base_path.join("debian/control");
-    let control_content = std::fs::read_to_string(&control_path)?;
-    let control = Control::from_str(&control_content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/control: {:?}", e)))?;
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
 
-    let mut source = control
-        .source()
-        .ok_or_else(|| FixerError::Other("No source paragraph in debian/control".to_string()))?;
-
-    // Get Build-Depends
+    // Already at or above the minimum?
     let mut build_depends = source.build_depends().unwrap_or_default();
-
-    // Check if debhelper is already at the correct version
-    let version_str = format!("{}~", minimum_version);
-    let version = Version::from_str(&version_str)
+    let original = build_depends.to_string();
+    let version = debversion::Version::from_str(&format!("{}~", minimum_version))
         .map_err(|e| FixerError::Other(format!("Failed to parse version: {:?}", e)))?;
-
-    let original_build_depends = build_depends.to_string();
-
-    // Ensure minimum version for debhelper
     build_depends.ensure_minimum_version("debhelper", &version);
-
-    // Check if anything changed
-    if build_depends.to_string() == original_build_depends {
-        return Err(FixerError::NoChanges);
+    if build_depends.to_string() == original {
+        return Ok(Vec::new());
     }
 
     let issue = LintianIssue::source_with_info(
@@ -46,77 +39,86 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         vec![minimum_version.to_string()],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    source.set_build_depends(&build_depends);
-
-    // Write back to file
-    std::fs::write(&control_path, control.to_string())?;
-
-    Ok(FixerResult::builder(format!(
-        "Bump debhelper dependency to >= {}, since that's what is used in debian/compat.",
-        minimum_version
-    ))
-    .fixed_issue(issue)
-    .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        format!(
+            "Bump debhelper dependency to >= {}, since that's what is used in debian/compat.",
+            minimum_version
+        ),
+        vec![Action::Deb822(Deb822Action::EnsureRelation {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: format!("debhelper (>= {}~)", minimum_version),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "package-needs-versioned-debhelper-build-depends",
     tags: ["no-versioned-debhelper-prerequisite"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_control::lossless::Control;
-    use std::str::FromStr;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
-    fn test_ensure_minimum_version() {
-        let input = r#"Source: blah
-Maintainer: Joe Example <joe@example.com>
-Build-Depends: debhelper (>= 9), pkg-config
+    fn test_bump_debhelper() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("compat"), "12\n").unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\nMaintainer: Joe <joe@example.com>\nBuild-Depends: debhelper (>= 9), pkg-config\n\nPackage: blah\nDescription: blah\n blah\n",
+        )
+        .unwrap();
 
-Package: blah
-Description: blah blah
-"#;
-
-        let control = Control::from_str(input).unwrap();
-        let source = control.source().unwrap();
-        let mut build_depends = source.build_depends().unwrap();
-
-        let version = Version::from_str("12~").unwrap();
-        build_depends.ensure_minimum_version("debhelper", &version);
-
-        let output = build_depends.to_string();
-        assert!(output.contains("debhelper"));
-        assert!(output.contains(">= 12~"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nMaintainer: Joe <joe@example.com>\nBuild-Depends: debhelper (>= 12~), pkg-config\n\nPackage: blah\nDescription: blah\n blah\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_already_correct() {
-        let input = r#"Source: blah
-Maintainer: Joe Example <joe@example.com>
-Build-Depends: debhelper (>= 12~), pkg-config
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("compat"), "12\n").unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nMaintainer: Joe <joe@example.com>\nBuild-Depends: debhelper (>= 12~)\n\nPackage: blah\nDescription: blah\n blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
 
-Package: blah
-Description: blah blah
-"#;
-
-        let control = Control::from_str(input).unwrap();
-        let source = control.source().unwrap();
-        let mut build_depends = source.build_depends().unwrap();
-        let original = build_depends.to_string();
-
-        let version = Version::from_str("12~").unwrap();
-        build_depends.ensure_minimum_version("debhelper", &version);
-
-        assert_eq!(build_depends.to_string(), original);
+    #[test]
+    fn test_no_change_when_no_compat() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nBuild-Depends: debhelper\n\nPackage: blah\nDescription: blah\n blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

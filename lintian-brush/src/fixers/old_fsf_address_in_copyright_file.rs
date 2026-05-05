@@ -1,139 +1,131 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::{Certainty, FixerError, LintianIssue};
 use regex::Regex;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let copyright_abs = base_path.join(&copyright_rel);
+    if !copyright_abs.exists() {
+        return Ok(Vec::new());
+    }
 
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&copyright_abs)?;
+
+    // Match the old FSF address with its leading indentation captured so
+    // we can preserve it on the rewritten lines.
+    let re = Regex::new(
+        r"(?s)([ ]+)Free Software Foundation, Inc\., 59 Temple Place - Suite 330,\s*\n([ ]+)Boston, MA 02111-1307, USA\.",
+    )
+    .unwrap();
+
+    let mut actions: Vec<Action> = Vec::new();
+    for caps in re.captures_iter(&content) {
+        let m = caps.get(0).unwrap();
+        let replacement = format!(
+            "{}Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n{}MA 02110-1301, USA.",
+            &caps[1], &caps[2]
+        );
+        actions.push(Action::Filesystem(FilesystemAction::ReplaceText {
+            file: copyright_rel.clone(),
+            range: TextRange {
+                start: m.start(),
+                end: m.end(),
+            },
+            replacement,
+        }));
+    }
+
+    if actions.is_empty() {
+        return Ok(Vec::new());
     }
 
     let issue = LintianIssue::source_with_info("old-fsf-address-in-copyright-file", vec![]);
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    let content = fs::read_to_string(&copyright_path)?;
-
-    // Create regex to match the old FSF address and replace with new one
-    // The pattern needs to handle whitespace preservation like the perl script
-    let old_fsf_regex = Regex::new(
-        r"(?s)([ ]+)Free Software Foundation, Inc\., 59 Temple Place - Suite 330,\s*\n([ ]+)Boston, MA 02111-1307, USA\."
-    ).unwrap();
-
-    if !old_fsf_regex.is_match(&content) {
-        return Err(FixerError::NoChanges);
-    }
-
-    let new_content = old_fsf_regex.replace_all(
-        &content,
-        "${1}Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n${2}MA 02110-1301, USA."
-    );
-
-    if new_content == content {
-        return Err(FixerError::NoChanges);
-    }
-
-    fs::write(&copyright_path, new_content.as_ref())?;
-
-    Ok(FixerResult::builder("Update FSF postal address.")
-        .fixed_issue(issue)
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Update FSF postal address.",
+        actions,
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "old-fsf-address-in-copyright-file",
     tags: ["old-fsf-address-in-copyright-file"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_update_fsf_address() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
+        fs::write(&copyright, "This program is free software...\n  Free Software Foundation, Inc., 59 Temple Place - Suite 330,\n  Boston, MA 02111-1307, USA.\nOn Debian systems...").unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        let content = "This program is free software...\n  Free Software Foundation, Inc., 59 Temple Place - Suite 330,\n  Boston, MA 02111-1307, USA.\nOn Debian systems...";
-        fs::write(&copyright_path, content).unwrap();
-
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Update FSF postal address.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        let new_content = fs::read_to_string(&copyright_path).unwrap();
-        assert!(!new_content.contains("59 Temple Place"));
-        assert!(!new_content.contains("02111-1307"));
-        assert!(new_content.contains("51 Franklin St, Fifth Floor"));
-        assert!(new_content.contains("02110-1301"));
-
-        let expected = "This program is free software...\n  Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n  MA 02110-1301, USA.\nOn Debian systems...";
-        assert_eq!(new_content, expected);
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert_eq!(
+            fs::read_to_string(&copyright).unwrap(),
+            "This program is free software...\n  Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n  MA 02110-1301, USA.\nOn Debian systems...",
+        );
     }
 
     #[test]
     fn test_no_old_fsf_address() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
-        let content = "This program is free software...\n  Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n  MA 02110-1301, USA.\nOn Debian systems...";
-        fs::write(&copyright_path, content).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            "This program is free software...\n  Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n  MA 02110-1301, USA.\nOn Debian systems...",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_different_whitespace() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
+        fs::write(&copyright, "License text:\n    Free Software Foundation, Inc., 59 Temple Place - Suite 330,\n    Boston, MA 02111-1307, USA.\nMore text.").unwrap();
 
-        let copyright_path = debian_dir.join("copyright");
-        let content = "License text:\n    Free Software Foundation, Inc., 59 Temple Place - Suite 330,\n    Boston, MA 02111-1307, USA.\nMore text.";
-        fs::write(&copyright_path, content).unwrap();
-
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        let new_content = fs::read_to_string(&copyright_path).unwrap();
-        assert!(new_content.contains("    Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n    MA 02110-1301, USA."));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&copyright).unwrap(),
+            "License text:\n    Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\n    MA 02110-1301, USA.\nMore text.",
+        );
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

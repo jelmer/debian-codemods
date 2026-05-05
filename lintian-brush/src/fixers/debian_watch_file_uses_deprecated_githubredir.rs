@@ -1,159 +1,128 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, WatchAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(
-    base_path: &Path,
-    package: &str,
-    upstream_version: &str,
-    net_access: bool,
-) -> Result<FixerResult, FixerError> {
-    let watch_path = base_path.join("debian/watch");
-
-    if !watch_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let watch_rel = PathBuf::from("debian/watch");
+    let watch_abs = base_path.join(&watch_rel);
+    if !watch_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&watch_path)?;
-
+    let content = std::fs::read_to_string(&watch_abs)?;
     let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
-    let mut made_changes = false;
-    let mut fixed_issues = Vec::new();
-
-    for mut entry in watch_file.entries() {
+    let mut diagnostics = Vec::new();
+    for entry in watch_file.entries() {
         let url = entry.url();
-
-        // Check if URL uses githubredir.debian.net
         if !url.contains("githubredir.debian.net") {
             continue;
         }
+        let Ok(parsed) = url::Url::parse(&url) else {
+            continue;
+        };
+        if parsed.host_str() != Some("githubredir.debian.net") {
+            continue;
+        }
+        let path_parts: Vec<&str> = parsed.path().trim_matches('/').split('/').collect();
+        if path_parts.len() < 3 || path_parts[0] != "github" {
+            continue;
+        }
+        let (org, repo) = (path_parts[1], path_parts[2]);
 
-        // Create issue with URL and line number
-        let line_no = entry.line() + 1; // Convert to 1-indexed
+        let new_url = format!("https://github.com/{}/{}/tags", org, repo);
+        let mut actions: Vec<Action> = vec![Action::Watch(WatchAction::SetEntryUrl {
+            file: watch_rel.clone(),
+            url: url.clone(),
+            new_url: new_url.clone(),
+        })];
         let matching = entry.matching_pattern().unwrap_or_default();
+        if let Some(last_part) = matching.rsplit('/').next() {
+            let new_pattern = format!(".*/{}", last_part);
+            if new_pattern != matching {
+                actions.push(Action::Watch(WatchAction::SetEntryMatchingPattern {
+                    file: watch_rel.clone(),
+                    url: new_url,
+                    new_pattern,
+                }));
+            }
+        }
+
+        let line_no = entry.line() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-watch-file-uses-deprecated-githubredir",
             vec![format!("{} {} [debian/watch:{}]", url, matching, line_no)],
         );
-        if !issue.should_fix(base_path) {
-            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-        }
-
-        // Parse the URL to extract org and repo
-        // URL format: http://githubredir.debian.net/github/ORG/REPO
-        let url_parsed = url::Url::parse(&url).map_err(|_| FixerError::NoChanges)?;
-
-        if url_parsed.host_str() != Some("githubredir.debian.net") {
-            continue;
-        }
-
-        let path_parts: Vec<&str> = url_parsed.path().trim_matches('/').split('/').collect();
-
-        if path_parts.len() < 3 || path_parts[0] != "github" {
-            continue;
-        }
-
-        let org = path_parts[1];
-        let repo = path_parts[2];
-
-        // Update URL to use GitHub directly
-        let new_url = format!("https://github.com/{}/{}/tags", org, repo);
-        entry.set_url(&new_url);
-
-        // Update matching pattern - extract just the filename part
-        if let Some(pattern) = entry.matching_pattern() {
-            if let Some(last_part) = pattern.rsplit('/').next() {
-                let new_pattern = format!(".*/{}", last_part);
-                entry.set_matching_pattern(&new_pattern);
-            }
-        }
-
-        made_changes = true;
-        fixed_issues.push(issue);
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                "Remove use of githubredir - see https://lists.debian.org/debian-devel-announce/2014/10/msg00000.html for details.",
+                actions,
+            )
+            .with_certainty(Certainty::Confident),
+        );
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    fs::write(&watch_path, watch_file.to_string())?;
-
-    let certainty = if net_access {
-        match crate::watch::verify_watch_entry_discovers_version(
-            &watch_path,
-            package,
-            upstream_version,
-        ) {
-            Some(true) => Certainty::Certain,
-            Some(false) => Certainty::Likely,
-            None => Certainty::Likely,
-        }
-    } else {
-        Certainty::Confident
-    };
-
-    Ok(FixerResult::builder(
-        "Remove use of githubredir - see https://lists.debian.org/debian-devel-announce/2014/10/msg00000.html for details."
-    )
-    .fixed_issues(fixed_issues)
-    .certainty(certainty)
-    .build())
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-watch-file-uses-deprecated-githubredir",
     tags: ["debian-watch-file-uses-deprecated-githubredir"],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, &version.upstream_version.to_string(), preferences.net_access.unwrap_or(false))
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_replaces_githubredir() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let watch = debian.join("watch");
+        fs::write(
+            &watch,
+            "version=3\nhttp://githubredir.debian.net/github/developmentseed/mirror http://github.com/developmentseed/mirror/archive/(\\d+.*)\\.tar\\.gz\n",
+        )
+        .unwrap();
 
-        let watch_content = "version=3\nhttp://githubredir.debian.net/github/developmentseed/mirror http://github.com/developmentseed/mirror/archive/(\\d+.*)\\.tar\\.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let result = run(temp_dir.path(), "test", "1.0", false).unwrap();
-        assert!(result.description.contains("githubredir"));
-
-        let updated_content = fs::read_to_string(&watch_path).unwrap();
-        assert!(updated_content.contains("https://github.com/developmentseed/mirror/tags"));
-        assert!(!updated_content.contains("githubredir.debian.net"));
-        assert!(updated_content.contains(".*/"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&watch).unwrap(),
+            "version=3\nhttps://github.com/developmentseed/mirror/tags .*/(\\d+.*)\\.tar\\.gz\n",
+        );
     }
 
     #[test]
     fn test_no_watch_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let result = run(temp_dir.path(), "test", "1.0", false);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_githubredir() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let watch_content =
-            "version=4\nhttps://github.com/example/project/releases .*/v?(\\d\\S+)\\.tar\\.gz\n";
-        let watch_path = debian_dir.join("watch");
-        fs::write(&watch_path, watch_content).unwrap();
-
-        let result = run(temp_dir.path(), "test", "1.0", false);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttps://github.com/example/project/releases .*/v?(\\d\\S+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

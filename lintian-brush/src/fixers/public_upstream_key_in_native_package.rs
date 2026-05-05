@@ -1,196 +1,157 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debversion::Version;
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Version};
+use std::path::{Path, PathBuf};
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
-    _package_name: &str,
     current_version: &Version,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    // Check if package is native
+) -> Result<Vec<Diagnostic>, FixerError> {
     if !current_version.is_native() {
-        // Not a native package, nothing to do
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    // Check if we're in opinionated mode
     if !preferences.opinionated.unwrap_or(false) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let signing_key_path = base_path.join("debian/upstream/signing-key.asc");
-
-    // Check if the signing key file exists
-    if !signing_key_path.exists() {
-        return Err(FixerError::NoChanges);
+    let key_rel = PathBuf::from("debian/upstream/signing-key.asc");
+    let key_abs = base_path.join(&key_rel);
+    if !key_abs.exists() {
+        return Ok(Vec::new());
     }
 
     let issue = LintianIssue::source_with_info(
         "public-upstream-key-in-native-package",
         vec!["[debian/upstream/signing-key.asc]".to_string()],
     );
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Remove the signing key file
-    fs::remove_file(&signing_key_path)?;
-
-    // Check if debian/upstream directory is now empty and remove it if so
-    let upstream_dir = base_path.join("debian/upstream");
-    if upstream_dir.exists() && fs::read_dir(&upstream_dir)?.next().is_none() {
-        // Directory is empty, remove it
-        fs::remove_dir(&upstream_dir)?;
-    }
-
-    Ok(
-        FixerResult::builder("Remove upstream signing key in native source package.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issue(issue)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove upstream signing key in native source package.",
+        vec![
+            Action::Filesystem(FilesystemAction::Delete { file: key_rel }),
+            Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+                file: PathBuf::from("debian/upstream"),
+            }),
+        ],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "public-upstream-key-in-native-package",
     tags: ["public-upstream-key-in-native-package"],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, version, preferences)
+    diagnose: |basedir, _package, version, preferences| {
+        detect(basedir, version, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use std::fs;
+    use std::str::FromStr;
     use tempfile::TempDir;
+
+    fn run_apply(
+        base: &Path,
+        version: &str,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let v = Version::from_str(version).unwrap();
+        FixerImpl.apply(base, "test", &v, preferences)
+    }
 
     #[test]
     fn test_native_package_with_signing_key() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let key = upstream.join("signing-key.asc");
+        fs::write(&key, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
 
-        let signing_key_path = upstream_dir.join("signing-key.asc");
-        fs::write(&signing_key_path, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path(), "1.0", &prefs).unwrap();
         assert_eq!(
             result.description,
             "Remove upstream signing key in native source package."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
-        assert!(!signing_key_path.exists());
-        // Check that the empty directory was removed
-        assert!(!upstream_dir.exists());
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert!(!key.exists());
+        assert!(!upstream.exists());
     }
 
     #[test]
     fn test_native_package_not_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let key = upstream.join("signing-key.asc");
+        fs::write(&key, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
 
-        let signing_key_path = upstream_dir.join("signing-key.asc");
-        fs::write(&signing_key_path, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(false),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that the file was not removed
-        assert!(signing_key_path.exists());
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0", &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert!(key.exists());
     }
 
     #[test]
     fn test_non_native_package() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let key = upstream.join("signing-key.asc");
+        fs::write(&key, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
 
-        let signing_key_path = upstream_dir.join("signing-key.asc");
-        fs::write(&signing_key_path, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0-1").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that the file was not removed
-        assert!(signing_key_path.exists());
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0-1", &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert!(key.exists());
     }
 
     #[test]
     fn test_no_signing_key_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences {
+        let tmp = TempDir::new().unwrap();
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0", &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_upstream_dir_with_other_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let key = upstream.join("signing-key.asc");
+        fs::write(&key, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
+        let other = upstream.join("metadata");
+        fs::write(&other, "Name: test\n").unwrap();
 
-        let signing_key_path = upstream_dir.join("signing-key.asc");
-        fs::write(&signing_key_path, "-----BEGIN PGP PUBLIC KEY BLOCK-----\n").unwrap();
-
-        // Add another file to the upstream directory
-        let other_file = upstream_dir.join("metadata");
-        fs::write(&other_file, "Name: test\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(result.is_ok());
-
-        // Check that the signing key file was removed
-        assert!(!signing_key_path.exists());
-        // Check that the directory was not removed (has other files)
-        assert!(upstream_dir.exists());
-        assert!(other_file.exists());
+        run_apply(tmp.path(), "1.0", &prefs).unwrap();
+        assert!(!key.exists());
+        assert!(upstream.exists());
+        assert!(other.exists());
     }
 }
