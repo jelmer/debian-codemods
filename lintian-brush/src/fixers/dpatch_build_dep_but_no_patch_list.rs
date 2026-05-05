@@ -1,89 +1,80 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
 use debian_control::lossless::Control;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Read debian/control
-    let control_path = base_path.join("debian/control");
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+const STUB_CONTENT: &[u8] =
+    b"# List patches to apply here\n# Empty file cannot be represented in Debian diff\n";
+
+fn has_dpatch(source: &debian_control::lossless::Source) -> bool {
+    let fields = ["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
+    for field in fields {
+        let Some(value) = source.as_deb822().get(field) else {
+            continue;
+        };
+        let (relations, _errors) =
+            debian_control::lossless::relations::Relations::parse_relaxed(&value, true);
+        let found = relations.entries().any(|e| {
+            e.relations()
+                .any(|r| r.try_name().as_deref() == Some("dpatch"))
+        });
+        if found {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    if !has_dpatch(&source) {
+        return Ok(Vec::new());
     }
 
-    let control_content = std::fs::read_to_string(&control_path)?;
-    let control = Control::from_str(&control_content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/control: {:?}", e)))?;
-
-    let source = control
-        .source()
-        .ok_or_else(|| FixerError::Other("No source paragraph in debian/control".to_string()))?;
-
-    // Check if dpatch is in Build-Depends-All
-    let build_depends = source.build_depends().unwrap_or_default();
-    let build_depends_indep = source.build_depends_indep().unwrap_or_default();
-    let build_depends_arch = source.build_depends_arch().unwrap_or_default();
-
-    let has_dpatch = build_depends.entries().any(|entry| {
-        entry
-            .relations()
-            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
-    }) || build_depends_indep.entries().any(|entry| {
-        entry
-            .relations()
-            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
-    }) || build_depends_arch.entries().any(|entry| {
-        entry
-            .relations()
-            .any(|rel| rel.try_name().as_deref() == Some("dpatch"))
-    });
-
-    if !has_dpatch {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Check if debian/patches directory exists
+    // If there's already an existing patch list (any file starting with
+    // "00list" in debian/patches) we don't need to write a stub.
     let patches_dir = base_path.join("debian/patches");
-    if !patches_dir.exists() {
-        // Create the debian/patches directory
-        std::fs::create_dir_all(&patches_dir)?;
-    }
-
-    // Check if 00list exists (or any file starting with 00list)
-    let has_list_file = patches_dir
-        .read_dir()?
-        .filter_map(|entry| entry.ok())
-        .any(|entry| entry.file_name().to_string_lossy().starts_with("00list"));
-
-    if has_list_file {
-        return Err(FixerError::NoChanges);
+    if patches_dir.exists() {
+        if let Ok(read_dir) = std::fs::read_dir(&patches_dir) {
+            let has_list = read_dir
+                .filter_map(|e| e.ok())
+                .any(|e| e.file_name().to_string_lossy().starts_with("00list"));
+            if has_list {
+                return Ok(Vec::new());
+            }
+        }
     }
 
     let issue = LintianIssue::source_with_info("dpatch-build-dep-but-no-patch-list", vec![]);
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Create debian/patches/00list with a comment to prevent it from disappearing
-    let list_file_path = patches_dir.join("00list");
-    std::fs::write(
-        &list_file_path,
-        "# List patches to apply here\n# Empty file cannot be represented in Debian diff\n",
-    )?;
-
-    Ok(
-        FixerResult::builder("Add missing debian/patches/00list file for dpatch.")
-            .fixed_issues(vec![issue])
-            .certainty(Certainty::Certain)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Add missing debian/patches/00list file for dpatch.",
+        vec![Action::Filesystem(FilesystemAction::Write {
+            file: PathBuf::from("debian/patches/00list"),
+            content: STUB_CONTENT.to_vec(),
+        })],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "dpatch-build-dep-but-no-patch-list",
     tags: ["dpatch-build-dep-but-no-patch-list"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -91,172 +82,76 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_creates_00list_when_dpatch_in_build_depends() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nMaintainer: Test User <test@example.com>\nBuild-Depends: debhelper, dpatch\n\nPackage: test-package\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Maintainer: Test User <test@example.com>
-Build-Depends: debhelper, dpatch
-
-Package: test-package
-Description: Test package
- Test description
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
-        assert!(result
-            .description
-            .contains("Add missing debian/patches/00list file for dpatch"));
-
-        // Check that the 00list file was created
-        let list_file = temp_dir.path().join("debian/patches/00list");
-        assert!(list_file.exists());
-
-        // Check the content has comments
-        let content = fs::read_to_string(&list_file).unwrap();
-        assert!(content.contains("#"));
+        run_apply(tmp.path()).unwrap();
+        let list = tmp.path().join("debian/patches/00list");
+        assert_eq!(fs::read(&list).unwrap(), STUB_CONTENT,);
     }
 
     #[test]
     fn test_no_changes_when_no_dpatch() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nMaintainer: Test User <test@example.com>\nBuild-Depends: debhelper\n\nPackage: test-package\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Maintainer: Test User <test@example.com>
-Build-Depends: debhelper
-
-Package: test-package
-Description: Test package
- Test description
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changes_when_00list_exists() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let patches_dir = debian_dir.join("patches");
-        fs::create_dir_all(&patches_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        let patches = debian.join("patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nMaintainer: Test User <test@example.com>\nBuild-Depends: debhelper, dpatch\n\nPackage: test-package\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
+        fs::write(patches.join("00list"), "# existing\n").unwrap();
 
-        let control_content = r#"Source: test-package
-Maintainer: Test User <test@example.com>
-Build-Depends: debhelper, dpatch
-
-Package: test-package
-Description: Test package
- Test description
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        // Create existing 00list file
-        fs::write(patches_dir.join("00list"), "# existing\n").unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_creates_patches_dir_if_missing() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let control_content = r#"Source: test-package
-Maintainer: Test User <test@example.com>
-Build-Depends: debhelper, dpatch
-
-Package: test-package
-Description: Test package
- Test description
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-
-        assert!(result.is_ok());
-
-        // Check that the patches directory was created
-        let patches_dir = temp_dir.path().join("debian/patches");
-        assert!(patches_dir.exists());
-        assert!(patches_dir.join("00list").exists());
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_dpatch_in_build_depends_indep() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nMaintainer: Test User <test@example.com>\nBuild-Depends: debhelper\nBuild-Depends-Indep: dpatch\n\nPackage: test-package\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Maintainer: Test User <test@example.com>
-Build-Depends: debhelper
-Build-Depends-Indep: dpatch
-
-Package: test-package
-Description: Test package
- Test description
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read(tmp.path().join("debian/patches/00list")).unwrap(),
+            STUB_CONTENT,
         );
-
-        assert!(result.is_ok());
-
-        // Check that the 00list file was created
-        let list_file = temp_dir.path().join("debian/patches/00list");
-        assert!(list_file.exists());
     }
 }

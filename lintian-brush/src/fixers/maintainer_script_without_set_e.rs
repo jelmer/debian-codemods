@@ -1,189 +1,122 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
 const SCRIPTS: &[&str] = &["preinst", "prerm", "postinst", "config", "postrm"];
 
-fn needs_fix(path: &Path) -> Result<bool, std::io::Error> {
-    // Try to read the file
-    let content = match fs::read(path) {
-        Ok(c) => c,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(e) => return Err(e),
-    };
+const SHEBANG_OLD: &str = "#!/bin/sh -e\n";
+const SHEBANG_NEW: &str = "#!/bin/sh\n";
 
+/// Compute the byte offset and the text to insert at it for adding a
+/// `set -e` line to a script that opens with `#!/bin/sh -e`. Returns
+/// `None` when no fix is needed (the file isn't a candidate, or already
+/// has `set -e`).
+///
+/// The mathematics here mirrors the original Python/Rust algorithm: walk
+/// the script line by line starting at line 1, find the first
+/// non-comment, non-blank line, and insert before the line one position
+/// earlier. The leading newline of the inserted text gets a blank
+/// separator inserted on either side; which side depends on whether
+/// `lines[i-1]` (absolute) is already blank.
+fn compute_insertion(content: &[u8]) -> Option<(usize, String)> {
     let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
-    if lines.is_empty() {
-        return Ok(false);
+    if lines.is_empty() || lines[0] != SHEBANG_OLD.as_bytes() {
+        return None;
+    }
+    if lines.iter().any(|l| *l == b"set -e\n") {
+        return None;
     }
 
-    // Check if file already has "set -e\n" anywhere
-    if lines.iter().any(|line| *line == b"set -e\n") {
-        return Ok(false);
-    }
-
-    // Check if first line is "#!/bin/sh -e\n"
-    Ok(lines[0] == b"#!/bin/sh -e\n")
-}
-
-fn replace_set_e(path: &Path) -> Result<bool, std::io::Error> {
-    // Try to read the file
-    let content = match fs::read(path) {
-        Ok(c) => c,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(e) => return Err(e),
-    };
-
-    let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
-    if lines.is_empty() {
-        return Ok(false);
-    }
-
-    // Check if file already has "set -e\n" anywhere
-    if lines.iter().any(|line| *line == b"set -e\n") {
-        return Ok(false);
-    }
-
-    // Check if first line is "#!/bin/sh -e\n"
-    if lines[0] != b"#!/bin/sh -e\n" {
-        return Ok(false);
-    }
-
-    // Replace shebang
-    let mut new_content = Vec::new();
-    new_content.extend_from_slice(b"#!/bin/sh\n");
-
-    // Find the right place to insert "set -e"
-    // We're looking for the first non-comment, non-blank line (or #DEBHELPER#)
-    // Python code: for i, line in enumerate(lines[1:]):
-    // When line at lines[1+i] is the first non-comment, we insert at position i
-    let mut insert_idx = None;
+    // Find first non-comment, non-blank line in lines[1..].
+    let mut found = None;
     for (i, line) in lines[1..].iter().enumerate() {
-        let trimmed = line
+        let trimmed: Vec<u8> = line
             .iter()
-            .filter(|&&b| b != b'\n' && b != b'\r')
             .copied()
-            .collect::<Vec<u8>>();
-
-        // Check if this line is a comment (excluding #DEBHELPER#) or blank
-        let is_comment_line = line.starts_with(b"#") && trimmed != b"#DEBHELPER#";
-        let is_blank_line = *line == b"\n" || line.iter().all(|&b| b == b'\n' || b == b'\r');
-
-        if !is_comment_line && !is_blank_line {
-            // Found the first non-comment, non-blank line (or #DEBHELPER#)
-            // This is at index i in lines[1..], which is index i+1 in lines
-            // Python inserts at position i (in the enumerate index)
-            insert_idx = Some(i);
+            .filter(|&b| b != b'\n' && b != b'\r')
+            .collect();
+        let is_comment = line.starts_with(b"#") && trimmed != b"#DEBHELPER#";
+        let is_blank = line.iter().all(|&b| b == b'\n' || b == b'\r');
+        if !is_comment && !is_blank {
+            found = Some(i);
             break;
         }
     }
+    let Some(i) = found else { return None };
 
-    if let Some(i) = insert_idx {
-        // i is the enumerate index from lines[1..]
-        // lines[i-1] refers to the line just before position i in the original array
-        // Python inserts at position i, which means BEFORE the current enumerate element
+    // Insertion point: absolute byte offset of `lines[i]`. (Note: that's
+    // one element behind the matched line — the original code's slice
+    // boundary is `lines[1..i]` for prefix, `lines[i..]` for suffix.)
+    let insert_at: usize = lines[..i].iter().map(|l| l.len()).sum();
 
-        let prev_line_blank = if i > 0 {
-            lines[i - 1]
-                .iter()
-                .all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t')
-        } else {
-            // i == 0 means first line after shebang is the target
-            // Check lines[0] (the shebang line) - definitely not blank
-            false
-        };
-
-        // Add all lines from 1 up to (but not including) the insert position i
-        for line in &lines[1..i] {
-            new_content.extend_from_slice(line);
-        }
-
-        // Now insert the two lines in the appropriate order
-        if prev_line_blank {
-            // lines.insert(i, b"set -e\n")
-            // lines.insert(i+1, b"\n")
-            new_content.extend_from_slice(b"set -e\n");
-            new_content.extend_from_slice(b"\n");
-        } else {
-            // lines.insert(i, b"\n")
-            // lines.insert(i+1, b"set -e\n")
-            new_content.extend_from_slice(b"\n");
-            new_content.extend_from_slice(b"set -e\n");
-        }
-
-        // Add remaining lines from position i onward
-        for line in &lines[i..] {
-            new_content.extend_from_slice(line);
-        }
+    let prev_line_blank = if i > 0 {
+        lines[i - 1]
+            .iter()
+            .all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t')
     } else {
-        // No non-comment lines found, shouldn't really happen but handle it
-        for line in &lines[1..] {
-            new_content.extend_from_slice(line);
-        }
-    }
+        false
+    };
+    let insert_text = if prev_line_blank {
+        "set -e\n\n".to_string()
+    } else {
+        "\nset -e\n".to_string()
+    };
 
-    fs::write(path, new_content)?;
-    Ok(true)
+    Some((insert_at, insert_text))
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_dir = base_path.join("debian");
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
 
+    let mut diagnostics = Vec::new();
     for script_name in SCRIPTS {
-        let script_path = debian_dir.join(script_name);
+        let script_abs = debian_dir.join(script_name);
+        let content = match std::fs::read(&script_abs) {
+            Ok(c) => c,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e.into()),
+        };
+        let Some((offset, insert_text)) = compute_insertion(&content) else {
+            continue;
+        };
 
-        // Check if the script needs fixing
-        match needs_fix(&script_path) {
-            Ok(true) => {
-                let issue = LintianIssue::source_with_info(
-                    "maintainer-script-without-set-e",
-                    vec![format!("[{}]", script_name)],
-                );
-
-                if !issue.should_fix(base_path) {
-                    overridden_issues.push(issue);
-                    continue;
-                }
-
-                // Now actually fix it
-                match replace_set_e(&script_path) {
-                    Ok(true) => {
-                        fixed_issues.push(issue);
-                    }
-                    Ok(false) => {
-                        // Shouldn't happen since needs_fix returned true
-                    }
-                    Err(e) => return Err(FixerError::from(e)),
-                }
-            }
-            Ok(false) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => return Err(FixerError::from(e)),
-        }
+        let issue = LintianIssue::source_with_info(
+            "maintainer-script-without-set-e",
+            vec![format!("[{}]", script_name)],
+        );
+        let rel = PathBuf::from("debian").join(script_name);
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Use set -e rather than passing -e on the shebang-line.",
+            vec![
+                // Insert `set -e` first (offsets in the ORIGINAL file
+                // are valid until any other edit shifts them); the
+                // Substitute below then strips ` -e` from the shebang.
+                Action::Filesystem(FilesystemAction::ReplaceText {
+                    file: rel.clone(),
+                    range: TextRange {
+                        start: offset,
+                        end: offset,
+                    },
+                    replacement: insert_text,
+                }),
+                Action::Filesystem(FilesystemAction::Substitute {
+                    file: rel,
+                    from: SHEBANG_OLD.into(),
+                    to: SHEBANG_NEW.into(),
+                }),
+            ],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(
-        FixerResult::builder("Use set -e rather than passing -e on the shebang-line.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "maintainer-script-without-set-e",
     tags: ["maintainer-script-without-set-e"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -191,34 +124,28 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple_replacement() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let prerm = debian.join("prerm");
+        fs::write(&prerm, "#!/bin/sh -e\n# Foo\n# bar\n\necho \"blah\"\n").unwrap();
 
-        let prerm_path = debian_dir.join("prerm");
-        fs::write(&prerm_path, "#!/bin/sh -e\n# Foo\n# bar\n\necho \"blah\"\n").unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&prerm).unwrap(),
+            "#!/bin/sh\n# Foo\n# bar\n\nset -e\n\necho \"blah\"\n",
         );
-        assert!(result.is_ok());
-
-        let content = fs::read_to_string(&prerm_path).unwrap();
-        assert!(content.starts_with("#!/bin/sh\n"));
-        assert!(content.contains("set -e"));
-        assert!(!content.contains("#!/bin/sh -e"));
-
-        let result = result.unwrap();
         assert_eq!(
             result.description,
             "Use set -e rather than passing -e on the shebang-line."
@@ -227,91 +154,46 @@ mod tests {
 
     #[test]
     fn test_with_debhelper_tag() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let prerm_path = debian_dir.join("prerm");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let prerm = debian.join("prerm");
         fs::write(
-            &prerm_path,
+            &prerm,
             "#!/bin/sh -e\n# Foo\n\n#DEBHELPER#\n\n# bar\n\necho \"blah\"\n",
         )
         .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&prerm).unwrap(),
+            "#!/bin/sh\n# Foo\n\nset -e\n\n#DEBHELPER#\n\n# bar\n\necho \"blah\"\n",
         );
-        assert!(result.is_ok());
-
-        let content = fs::read_to_string(&prerm_path).unwrap();
-        assert!(content.starts_with("#!/bin/sh\n"));
-        assert!(content.contains("set -e"));
-
-        // set -e should be inserted before #DEBHELPER#
-        let set_e_pos = content.find("set -e").unwrap();
-        let debhelper_pos = content.find("#DEBHELPER#").unwrap();
-        assert!(set_e_pos < debhelper_pos);
     }
 
     #[test]
     fn test_no_change_when_already_has_set_e() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let prerm_path = debian_dir.join("prerm");
-        fs::write(&prerm_path, "#!/bin/sh\nset -e\n\necho \"blah\"\n").unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("prerm"), "#!/bin/sh\nset -e\n\necho \"blah\"\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_dash_e() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let prerm_path = debian_dir.join("prerm");
-        fs::write(&prerm_path, "#!/bin/sh\n\necho \"blah\"\n").unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("prerm"), "#!/bin/sh\n\necho \"blah\"\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_scripts() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
