@@ -8,7 +8,7 @@
 
 use crate::diagnostic::{
     Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, ParagraphSelector,
-    SystemdAction, YamlAction, YamlPathComponent,
+    SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -64,7 +64,8 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::NormalizeFieldSpacing { file, .. }
             | Deb822Action::DropRelation { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
-            | Deb822Action::DropSubstvar { file, .. } => file,
+            | Deb822Action::DropSubstvar { file, .. }
+            | Deb822Action::EnsureRelation { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -89,6 +90,9 @@ fn action_file(action: &Action) -> &Path {
             | ChangelogAction::SetEntryDate { file, .. }
             | ChangelogAction::RemoveBullet { file, .. }
             | ChangelogAction::ReplaceBullet { file, .. } => file,
+        },
+        Action::Watch(a) => match a {
+            WatchAction::SetEntryMatchingPattern { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -123,6 +127,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::DesktopIni(_) => apply_desktop_ini_group(base, rel, group),
         Action::Yaml(_) => apply_yaml_group(base, rel, group),
         Action::Changelog(_) => apply_changelog_group(base, rel, group),
+        Action::Watch(_) => apply_watch_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -160,7 +165,8 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
-            | Deb822Action::DropSubstvar { paragraph, .. } => Some(paragraph),
+            | Deb822Action::DropSubstvar { paragraph, .. }
+            | Deb822Action::EnsureRelation { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } => None,
         };
     }
@@ -260,6 +266,16 @@ fn apply_control_deb822_group(
                 ..
             } => {
                 if drop_deb822_substvar(&editor, paragraph, field, substvar)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::EnsureRelation {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                if ensure_deb822_relation(&editor, paragraph, field, entry)? {
                     any_change = true;
                 }
             }
@@ -403,6 +419,19 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if drop_substvar_in_paragraph(&mut p, field, substvar) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::EnsureRelation {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if ensure_relation_in_paragraph(&mut p, field, entry)? {
                     any_change = true;
                 }
             }
@@ -687,6 +716,132 @@ fn ensure_deb822_substvar(
         }
         other => Err(FixerError::Other(format!(
             "deb822 EnsureSubstvar does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn ensure_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    entry: &str,
+) -> Result<bool, FixerError> {
+    let current = p.get(field);
+    let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)? else {
+        return Ok(false);
+    };
+    p.set(field, &new_relations.to_string());
+    Ok(true)
+}
+
+/// Compute the post-edit relations for a field: parse the current field
+/// value (if any), apply the requested ensure operation, and return both
+/// the resulting relations and whether the field changed. Returns `None`
+/// when there's no change to write.
+fn ensure_relation_compute(
+    current: Option<&str>,
+    entry: &str,
+) -> Result<Option<debian_control::lossless::relations::Relations>, FixerError> {
+    use debian_control::lossless::relations::Relations;
+    use std::str::FromStr;
+
+    let requested_entry = debian_control::lossless::Entry::from_str(entry).map_err(|e| {
+        FixerError::Other(format!("Failed to parse relation entry {:?}: {}", entry, e))
+    })?;
+    let Some(first) = requested_entry.relations().next() else {
+        return Err(FixerError::Other(format!(
+            "Relation entry {:?} has no relations",
+            entry
+        )));
+    };
+    let Some(name) = first.try_name() else {
+        return Err(FixerError::Other(format!(
+            "Relation entry {:?} has no package name",
+            entry
+        )));
+    };
+    let version = first.version();
+
+    let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
+
+    let changed = if let Some((constraint, ver)) = version {
+        if !matches!(
+            constraint,
+            debian_control::relations::VersionConstraint::Equal
+        ) {
+            return Err(FixerError::Other(format!(
+                "EnsureRelation only supports `=` version constraints, got {:?} in {:?}",
+                constraint, entry
+            )));
+        }
+        debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
+    } else {
+        let before = relations.to_string();
+        debian_analyzer::relations::ensure_some_version(&mut relations, &name);
+        relations.to_string() != before
+    };
+
+    Ok(if changed { Some(relations) } else { None })
+}
+
+fn ensure_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    entry: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            // Read the current value via the typed accessor when available
+            // so we can write back via a typed setter that places the
+            // field canonically.
+            let current = source.as_deb822().get(field);
+            let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)? else {
+                return Ok(false);
+            };
+            match field {
+                "Build-Depends" => source.set_build_depends(&new_relations),
+                "Build-Depends-Indep" => source.set_build_depends_indep(&new_relations),
+                "Build-Depends-Arch" => source.set_build_depends_arch(&new_relations),
+                _ => {
+                    source.set(field, &new_relations.to_string());
+                }
+            }
+            Ok(true)
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                let current = binary.as_deb822().get(field);
+                let Some(new_relations) = ensure_relation_compute(current.as_deref(), entry)?
+                else {
+                    return Ok(false);
+                };
+                match field {
+                    "Depends" => binary.set_depends(Some(&new_relations)),
+                    "Recommends" => binary.set_recommends(Some(&new_relations)),
+                    "Suggests" => binary.set_suggests(Some(&new_relations)),
+                    "Pre-Depends" => binary.set_pre_depends(Some(&new_relations)),
+                    "Conflicts" => binary.set_conflicts(Some(&new_relations)),
+                    "Replaces" => binary.set_replaces(Some(&new_relations)),
+                    "Provides" => binary.set_provides(Some(&new_relations)),
+                    "Breaks" => binary.set_breaks(Some(&new_relations)),
+                    "Built-Using" => binary.set_built_using(Some(&new_relations)),
+                    _ => {
+                        binary.set(field, &new_relations.to_string());
+                    }
+                }
+                return Ok(true);
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 EnsureRelation does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -1285,6 +1440,57 @@ fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<b
     Ok(any_change)
 }
 
+fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "watch action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let watch_file = debian_watch::parse::parse(&content)
+        .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", rel.display(), e)))?;
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Watch(w) = action else {
+            unreachable!("apply_watch_group called with non-watch action");
+        };
+        match w {
+            WatchAction::SetEntryMatchingPattern {
+                url, new_pattern, ..
+            } => {
+                let mut found = false;
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    found = true;
+                    let current = entry.matching_pattern().unwrap_or_default();
+                    if &current == new_pattern {
+                        break;
+                    }
+                    entry.set_matching_pattern(new_pattern);
+                    any_change = true;
+                    break;
+                }
+                if !found {
+                    // Idempotency: if the entry was already updated by a
+                    // sibling action and the URL key has shifted, the
+                    // detector's snapshot is stale; treat as a no-op.
+                    continue;
+                }
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, watch_file.to_string())?;
+    }
+    Ok(any_change)
+}
+
 fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
     let abs = base.join(rel);
     let mut any_change = false;
@@ -1590,6 +1796,114 @@ mod tests {
         let changed = apply_action(tmp.path(), &action).unwrap();
         assert!(!changed);
         assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_ensure_relation_appends_unversioned() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends:\n debhelper,\n pkg-config\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "python3-setuptools".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends:\n debhelper,\n pkg-config,\n python3-setuptools\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_ensure_relation_idempotent_when_present() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nBuild-Depends: python3-setuptools, debhelper\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "python3-setuptools".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_ensure_relation_versioned_creates_field() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("control"), "Source: foo\n\nPackage: foo\n").unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            entry: "debhelper-compat (= 13)".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn watch_set_entry_matching_pattern_updates() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("watch"),
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/(.*)\\.tar\\.gz\n",
+        )
+        .unwrap();
+
+        let action = Action::Watch(WatchAction::SetEntryMatchingPattern {
+            file: PathBuf::from("debian/watch"),
+            url: "https://github.com/foo/bar/tags".into(),
+            new_pattern: ".*/archive/refs/tags/(.*)\\.tar\\.gz".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("watch")).unwrap(),
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/refs/tags/(.*)\\.tar\\.gz\n",
+        );
+    }
+
+    #[test]
+    fn watch_set_entry_matching_pattern_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial =
+            "version=4\nhttps://github.com/foo/bar/tags .*/archive/refs/tags/(.*)\\.tar\\.gz\n";
+        fs::write(debian.join("watch"), initial).unwrap();
+
+        let action = Action::Watch(WatchAction::SetEntryMatchingPattern {
+            file: PathBuf::from("debian/watch"),
+            url: "https://github.com/foo/bar/tags".into(),
+            new_pattern: ".*/archive/refs/tags/(.*)\\.tar\\.gz".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("watch")).unwrap(), initial);
     }
 
     #[test]
