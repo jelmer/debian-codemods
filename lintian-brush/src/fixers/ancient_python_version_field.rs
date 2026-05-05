@@ -1,8 +1,9 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 const LINTIAN_PYTHON_VERSIONS_PATH: &str = "/usr/share/lintian/data/python/versions";
 
@@ -17,122 +18,86 @@ fn parse_version(version_str: &str) -> Result<(u8, u8), Box<dyn std::error::Erro
 }
 
 fn load_python_versions() -> Result<HashMap<String, (u8, u8)>, FixerError> {
-    let content = fs::read_to_string(LINTIAN_PYTHON_VERSIONS_PATH)?;
+    let content = std::fs::read_to_string(LINTIAN_PYTHON_VERSIONS_PATH)?;
     let mut versions = HashMap::new();
-
     for line in content.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
-
         if let Some((key, value)) = line.split_once('=') {
-            let key = key.trim().to_string();
-            let value = value.trim();
-            if let Ok(version) = parse_version(value) {
-                versions.insert(key, version);
+            if let Ok(version) = parse_version(value.trim()) {
+                versions.insert(key.trim().to_string(), version);
             }
         }
     }
-
     Ok(versions)
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let python_versions = match load_python_versions() {
+        Ok(v) => v,
+        // Without lintian's data file we can't decide what's ancient.
+        Err(_) => return Ok(Vec::new()),
+    };
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for (field, threshold_key) in &[
+        ("X-Python-Version", "old-python2"),
+        ("X-Python3-Version", "old-python3"),
+    ] {
+        let Some(value) = source.as_deb822().get(field) else {
+            continue;
+        };
+        let trimmed = value.trim();
+        let Some(rest) = trimmed.strip_prefix(">=") else {
+            continue;
+        };
+        let Ok(version) = parse_version(rest.trim()) else {
+            continue;
+        };
+        let Some(&threshold) = python_versions.get(*threshold_key) else {
+            continue;
+        };
+        if version > threshold {
+            continue;
+        }
+        let issue = LintianIssue::source_with_info(
+            "ancient-python-version-field",
+            vec![format!("{}: {}", field, trimmed)],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Remove unnecessary X-Python{,3}-Version field in debian/control.",
+            vec![Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: (*field).to_string(),
+            })],
+        ));
     }
 
-    let python_versions = load_python_versions()?;
-
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        // Check X-Python-Version
-        if let Some(x_python_version) = paragraph.get("X-Python-Version") {
-            let x_python_version = x_python_version.trim();
-            if x_python_version.starts_with(">=") {
-                if let Some(vers_str) = x_python_version.strip_prefix(">=") {
-                    let vers_str = vers_str.trim();
-                    if let Ok(version) = parse_version(vers_str) {
-                        // Check if it's old or ancient Python 2
-                        if let Some(&old_python2) = python_versions.get("old-python2") {
-                            if version <= old_python2 {
-                                let issue = LintianIssue::source_with_info(
-                                    "ancient-python-version-field",
-                                    vec![format!("X-Python-Version: {}", x_python_version)],
-                                );
-
-                                if issue.should_fix(base_path) {
-                                    paragraph.remove("X-Python-Version");
-                                    fixed_issues.push(issue);
-                                } else {
-                                    overridden_issues.push(issue);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Check X-Python3-Version
-        if let Some(x_python3_version) = paragraph.get("X-Python3-Version") {
-            let x_python3_version = x_python3_version.trim();
-            if x_python3_version.starts_with(">=") {
-                if let Some(vers_str) = x_python3_version.strip_prefix(">=") {
-                    let vers_str = vers_str.trim();
-                    if let Ok(version) = parse_version(vers_str) {
-                        // Check if it's old or ancient Python 3
-                        if let Some(&old_python3) = python_versions.get("old-python3") {
-                            if version <= old_python3 {
-                                let issue = LintianIssue::source_with_info(
-                                    "ancient-python-version-field",
-                                    vec![format!("X-Python3-Version: {}", x_python3_version)],
-                                );
-
-                                if issue.should_fix(base_path) {
-                                    paragraph.remove("X-Python3-Version");
-                                    fixed_issues.push(issue);
-                                } else {
-                                    overridden_issues.push(issue);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Remove unnecessary X-Python{,3}-Version field in debian/control.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "ancient-python-version-field",
     tags: ["ancient-python-version-field", "old-python-version-field"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -140,103 +105,86 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "lintian-brush", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_ancient_python2_version() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        if !std::path::Path::new(LINTIAN_PYTHON_VERSIONS_PATH).exists() {
+            return; // Lintian data file not installed.
+        }
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: lintian-brush\nX-Python-Version: >= 2.5\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: lintian-brush\nX-Python-Version: >= 2.5\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("X-Python-Version"));
-        assert!(updated_content.contains("Source: lintian-brush"));
     }
 
     #[test]
     fn test_remove_ancient_python3_version() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        if !std::path::Path::new(LINTIAN_PYTHON_VERSIONS_PATH).exists() {
+            return;
+        }
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: lintian-brush\nX-Python3-Version: >= 3.2\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: lintian-brush\nX-Python3-Version: >= 3.2\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("X-Python3-Version"));
-        assert!(updated_content.contains("Source: lintian-brush"));
     }
 
     #[test]
     fn test_no_change_when_no_field() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let control_content =
-            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_recent_version() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let control_content = "Source: lintian-brush\nX-Python3-Version: >= 3.8\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // File should still contain the field
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("X-Python3-Version: >= 3.8"));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: lintian-brush\nX-Python3-Version: >= 3.8\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert!(fs::read_to_string(&control)
+            .unwrap()
+            .contains("X-Python3-Version: >= 3.8"));
     }
 }
