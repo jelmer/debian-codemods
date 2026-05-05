@@ -105,6 +105,9 @@ pub enum Action {
     Watch(WatchAction),
     /// An edit to a Makefile (typically `debian/rules`).
     Makefile(MakefileAction),
+    /// An edit to a DEP-3 patch header (a quilt patch under
+    /// `debian/patches/`).
+    Dep3(Dep3Action),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -605,6 +608,16 @@ pub enum WatchAction {
         /// New value for the option.
         value: String,
     },
+    /// Replace the URL of the entry whose current URL is `url`. A no-op if
+    /// no entry matches.
+    SetEntryUrl {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// New URL.
+        new_url: String,
+    },
 }
 
 /// Edits to a Makefile (typically `debian/rules`).
@@ -694,6 +707,46 @@ pub enum MakefileAction {
         file: PathBuf,
         /// Target name to add to `.PHONY`.
         target: String,
+    },
+}
+
+/// Edits to a DEP-3 patch header.
+///
+/// DEP-3 headers live at the top of a quilt patch (under
+/// `debian/patches/`) followed by a blank line and the unified diff. The
+/// applier parses just the header (everything before the first `---`,
+/// `diff `, or `Index:` line), edits it, and reassembles the file.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum Dep3Action {
+    /// Set a field's value, inserting it if missing. The field is added in
+    /// the patch header's existing position when present, or appended.
+    SetField {
+        /// Patch file to edit, relative to the package root (e.g.
+        /// `debian/patches/foo.patch`).
+        file: PathBuf,
+        /// Field name (case-sensitive, e.g. `Author`).
+        field: String,
+        /// New value.
+        value: String,
+    },
+    /// Remove a field. A no-op if the field isn't present.
+    RemoveField {
+        /// Patch file to edit, relative to the package root.
+        file: PathBuf,
+        /// Field name to remove.
+        field: String,
+    },
+    /// Rename `from_field` to `to_field`, preserving its value. A no-op
+    /// if `from_field` isn't present. If `to_field` already exists, it is
+    /// overwritten.
+    RenameField {
+        /// Patch file to edit, relative to the package root.
+        file: PathBuf,
+        /// Current field name.
+        from_field: String,
+        /// New field name.
+        to_field: String,
     },
 }
 

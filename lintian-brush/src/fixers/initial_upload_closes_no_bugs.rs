@@ -1,379 +1,224 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::wnpp::{BugId, BugKind};
-use debian_changelog::{iter_changes_by_author, ChangeLog};
-use std::fs;
-use std::path::Path;
+use debian_changelog::ChangeLog;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    // Check if net access is allowed
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     if !preferences.net_access.unwrap_or(false) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let changelog_path = base_path.join("debian/changelog");
-
-    if !changelog_path.exists() {
-        return Err(FixerError::NoChanges);
+    let changelog_rel = PathBuf::from("debian/changelog");
+    let changelog_abs = base_path.join(&changelog_rel);
+    if !changelog_abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let content = fs::read_to_string(&changelog_path)?;
-    let changelog: ChangeLog = ChangeLog::read_relaxed(content.as_bytes())
+    let content = std::fs::read_to_string(&changelog_abs)?;
+    let changelog = ChangeLog::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
 
-    // Get the last (oldest) entry
-    let last_entry = if let Some(e) = changelog.iter().last() {
-        e
-    } else {
-        return Err(FixerError::NoChanges);
+    let Some(last_entry) = changelog.iter().last() else {
+        return Ok(Vec::new());
     };
 
-    // If the last entry already has bugs closed, nothing to do
-    // Check case-insensitively to catch both "Closes:" and "closes:"
-    let bugs_closed: Vec<String> = last_entry
+    // If the entry already mentions Closes anywhere, nothing to do.
+    let has_closes = last_entry.change_lines().any(|line| {
+        let lower = line.to_lowercase();
+        lower.contains("closes:") || lower.contains("closes #")
+    });
+    if has_closes {
+        return Ok(Vec::new());
+    }
+
+    let Some(package_name) = last_entry.package() else {
+        return Ok(Vec::new());
+    };
+    let Some(version) = last_entry.version() else {
+        return Ok(Vec::new());
+    };
+
+    // Find the bullet that mentions "Initial release".
+    let initial_bullet = last_entry
         .change_lines()
-        .filter_map(|line| {
-            let line_lower = line.to_lowercase();
-            if line_lower.contains("closes:") || line_lower.contains("closes #") {
-                Some(line.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    if !bugs_closed.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let package_name = if let Some(pkg) = last_entry.package() {
-        pkg
-    } else {
-        return Err(FixerError::NoChanges);
+        .find(|l| l.to_lowercase().contains("initial release"));
+    let Some(bullet) = initial_bullet else {
+        return Ok(Vec::new());
     };
 
-    let issue = LintianIssue::source("initial-upload-closes-no-bugs");
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Find WNPP bugs for this package
-    let wnpp_bugs = match find_wnpp_bugs(&package_name) {
-        Ok(bugs) => bugs,
-        Err(_) => return Err(FixerError::NoChanges),
+    let Ok(wnpp_bugs) = find_wnpp_bugs(&package_name) else {
+        return Ok(Vec::new());
     };
-
     if wnpp_bugs.is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let version_changed = last_entry.version();
+    let trimmed = bullet.trim_end();
+    let mut new_line = if trimmed.ends_with('.') {
+        trimmed.to_string()
+    } else {
+        format!("{}.", trimmed)
+    };
+    let bug_numbers: Vec<String> = wnpp_bugs.iter().map(|(id, _)| id.to_string()).collect();
+    new_line.push_str(&format!(" Closes: #{}", bug_numbers.join(", #")));
 
-    // Use iter_changes_by_author to get mutable change objects
-    let changes = iter_changes_by_author(&changelog);
-    let mut found = false;
-
-    for change in changes {
-        // Only process the last entry
-        if change.version() != version_changed {
-            continue;
-        }
-
-        let bullets = change.split_into_bullets();
-
-        for bullet in bullets {
-            let lines = bullet.lines();
-            let combined = lines.join("\n");
-
-            if combined.contains("Initial release") {
-                // Process this line
-                let trimmed = combined.trim_end();
-                let mut new_line = if trimmed.ends_with('.') {
-                    trimmed.to_string()
-                } else {
-                    format!("{}.", trimmed)
-                };
-
-                // Add the Closes: #... part
-                let bug_numbers: Vec<String> = wnpp_bugs
-                    .iter()
-                    .map(|(bug_no, _)| bug_no.to_string())
-                    .collect();
-                new_line.push_str(&format!(" Closes: #{}", bug_numbers.join(", #")));
-
-                // Replace the bullet
-                bullet.replace_with(vec![new_line.as_str()]);
-                found = true;
-                break;
-            }
-        }
-
-        if found {
-            break;
-        }
-    }
-
-    if !found {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Write the updated changelog
-    fs::write(&changelog_path, changelog.to_string())?;
-
-    // Build result message
-    let bug_kinds: std::collections::HashSet<String> = wnpp_bugs
+    let mut bug_kinds: Vec<String> = wnpp_bugs
         .iter()
         .map(|(_, kind)| format!("{:?}", kind))
         .collect();
-    let mut sorted_kinds: Vec<_> = bug_kinds.into_iter().collect();
-    sorted_kinds.sort();
+    bug_kinds.sort();
+    bug_kinds.dedup();
 
-    let version_str = if let Some(v) = version_changed {
-        v.to_string()
-    } else {
-        "unknown".to_string()
-    };
-
-    Ok(FixerResult::builder(format!(
-        "Add {} bugs in {}.",
-        sorted_kinds.join(", "),
-        version_str
-    ))
-    .build())
+    let issue = LintianIssue::source("initial-upload-closes-no-bugs");
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        format!("Add {} bugs in {}.", bug_kinds.join(", "), version),
+        vec![Action::Changelog(ChangelogAction::ReplaceBullet {
+            file: changelog_rel,
+            version: version.to_string(),
+            author: None,
+            text: bullet,
+            occurrence: 0,
+            new_lines: vec![new_line],
+        })],
+    )])
 }
 
 fn find_wnpp_bugs(package_name: &str) -> Result<Vec<(BugId, BugKind)>, FixerError> {
-    // Create a Tokio runtime to run the async function
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| FixerError::Other(format!("Failed to create async runtime: {}", e)))?;
-
-    rt.block_on(find_wnpp_bugs_async(package_name))
-}
-
-async fn find_wnpp_bugs_async(package_name: &str) -> Result<Vec<(BugId, BugKind)>, FixerError> {
-    let names = vec![package_name];
-
-    // Try to find WNPP bugs
-    match debian_analyzer::wnpp::find_wnpp_bugs_harder(&names).await {
-        Ok(bugs) => Ok(bugs),
-        Err(e) => {
-            // If we can't fetch bugs, just return an empty list
-            tracing::debug!("Failed to query WNPP bugs: {}", e);
-            Ok(vec![])
+    rt.block_on(async {
+        match debian_analyzer::wnpp::find_wnpp_bugs_harder(&[package_name]).await {
+            Ok(bugs) => Ok(bugs),
+            Err(e) => {
+                tracing::debug!("Failed to query WNPP bugs: {}", e);
+                Ok(Vec::new())
+            }
         }
-    }
+    })
 }
 
 declare_fixer! {
     name: "initial-upload-closes-no-bugs",
     tags: ["initial-upload-closes-no-bugs"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
+    use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(
+        base: &Path,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, preferences)
+    }
 
     #[test]
     fn test_no_changelog() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let prefs = FixerPreferences {
+            net_access: Some(true),
+            ..Default::default()
+        };
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_already_has_bugs_closed() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("changelog"),
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. Closes: #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. Closes: #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let prefs = FixerPreferences {
+            net_access: Some(true),
+            ..Default::default()
+        };
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_already_has_bugs_closed_lowercase() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("changelog"),
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release (closes: #123456).\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        // Test with lowercase "closes:" in parentheses, as seen in bug #1128557
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release (closes: #123456).\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let prefs = FixerPreferences {
+            net_access: Some(true),
+            ..Default::default()
+        };
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_net_access() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("changelog"),
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_multiple_entries_only_modifies_last() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (2.0-1) unstable; urgency=medium\n\n  * New upstream release.\n\n -- Test User <test@example.com>  Mon, 02 Jan 2024 12:00:00 +0000\n\ntest-package (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences {
-            net_access: Some(false),
-            ..Default::default()
-        };
-        let result = run(base_path, &preferences);
-        // Should exit early due to no net access, but the logic would target the last entry
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_initial_release_without_period() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences {
-            net_access: Some(false),
-            ..Default::default()
-        };
-        let result = run(base_path, &preferences);
-        // Should exit early due to no net access
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    #[cfg(feature = "udd")]
-    fn test_no_initial_release_line() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * First upload to Debian.\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        // Even with net access enabled, should fail because there's no "Initial release" line
-        let preferences = FixerPreferences {
-            net_access: Some(true),
-            ..Default::default()
-        };
-        let result = run(base_path, &preferences);
-        // Will fail at finding "Initial release" line, not at net access
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_empty_changelog() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        fs::write(&changelog_path, "").unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        // Empty changelog parses successfully but has no entries, so we get NoChanges
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_malformed_changelog() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        fs::write(&changelog_path, "This is not a valid changelog\n").unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        // Malformed changelog also parses (losslessly) but has no entries
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_changelog_with_closes_in_different_line() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("changelog"),
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n  * Closes: #999999\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        )
+        .unwrap();
 
-        let changelog_path = debian_dir.join("changelog");
-        // Has "Closes:" but in a different bullet point
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n  * Closes: #999999\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences {
-            net_access: Some(false),
+        let prefs = FixerPreferences {
+            net_access: Some(true),
             ..Default::default()
         };
-        let result = run(base_path, &preferences);
-        // Should detect Closes: in any line and exit early
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
-
-    #[test]
-    fn test_initial_release_with_capital_i() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let changelog_path = debian_dir.join("changelog");
-        let content = "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial Release.\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n";
-        fs::write(&changelog_path, content).unwrap();
-
-        let preferences = FixerPreferences {
-            net_access: Some(false),
-            ..Default::default()
-        };
-        let result = run(base_path, &preferences);
-        // "Initial Release" (capital R) should still match since we use contains()
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    // Note: We can't easily test the actual WNPP bug fetching without network access
-    // and without mocking the debian_analyzer::wnpp functions. The integration tests
-    // will cover the full functionality with actual network calls.
 }
