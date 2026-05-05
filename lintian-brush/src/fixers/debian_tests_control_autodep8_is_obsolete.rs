@@ -1,76 +1,106 @@
-use crate::{FixerError, FixerResult, LintianIssue, PackageType};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::{FixerError, LintianIssue, PackageType};
+use std::path::{Path, PathBuf};
 
-const OLD_PATH: &str = "debian/tests/control.autodep8";
-const NEW_PATH: &str = "debian/tests/control";
+const OLD_REL: &str = "debian/tests/control.autodep8";
+const NEW_REL: &str = "debian/tests/control";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let old_path = base_path.join(OLD_PATH);
-    let new_path = base_path.join(NEW_PATH);
+const RENAME_TAG: char = 'R';
+const MERGE_TAG: char = 'M';
 
-    if !old_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let old_rel = PathBuf::from(OLD_REL);
+    let new_rel = PathBuf::from(NEW_REL);
+    let old_abs = base_path.join(&old_rel);
+    if !old_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let issue = LintianIssue {
+    let issue_obsolete = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
         tag: Some("debian-tests-control-autodep8-is-obsolete".to_string()),
-        info: Some(OLD_PATH.to_string()),
+        info: Some(OLD_REL.to_string()),
     };
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
+    let new_abs = base_path.join(&new_rel);
+    if !new_abs.exists() {
+        // Simple rename.
+        return Ok(vec![Diagnostic::with_actions(
+            issue_obsolete,
+            format!("{}", RENAME_TAG),
+            vec![Action::Filesystem(FilesystemAction::Rename {
+                file: old_rel,
+                to: new_rel,
+            })],
+        )]);
     }
 
-    if !new_path.exists() {
-        // Simple case: just rename
-        fs::rename(&old_path, &new_path)?;
+    // Both files exist: append the autodep8 contents to the existing
+    // control file (with a separating newline) and delete the autodep8
+    // file. The detector reads the source bytes; the actions express the
+    // resulting edits without re-reading.
+    let old_bytes = std::fs::read(&old_abs)?;
+    let new_bytes = std::fs::read(&new_abs)?;
 
-        Ok(FixerResult::builder(format!(
-            "Rename obsolete path {} to {}.",
-            OLD_PATH, NEW_PATH
-        ))
-        .fixed_issue(issue)
-        .build())
+    let mut suffix = Vec::with_capacity(1 + old_bytes.len());
+    suffix.push(b'\n');
+    suffix.extend_from_slice(&old_bytes);
+    let suffix_str = String::from_utf8(suffix)
+        .map_err(|e| FixerError::Other(format!("autodep8 contents are not valid UTF-8: {}", e)))?;
+
+    let issue_merge = LintianIssue {
+        package: None,
+        package_type: Some(PackageType::Source),
+        tag: Some("debian-tests-control-and-control-autodep8".to_string()),
+        info: Some(format!("{} {}", OLD_REL, NEW_REL)),
+    };
+
+    let actions = vec![
+        Action::Filesystem(FilesystemAction::ReplaceText {
+            file: new_rel,
+            range: TextRange {
+                start: new_bytes.len(),
+                end: new_bytes.len(),
+            },
+            replacement: suffix_str,
+        }),
+        Action::Filesystem(FilesystemAction::Delete { file: old_rel }),
+    ];
+
+    // The issue order in the message file is merge first, then obsolete.
+    Ok(vec![
+        Diagnostic::with_actions(issue_merge, format!("{}", MERGE_TAG), actions),
+        // The obsolete diagnostic carries no actions of its own — the
+        // merge above already removed the file. Emitting it as a separate
+        // diagnostic ensures the lintian issue is still reported.
+        Diagnostic::with_actions(
+            issue_obsolete,
+            format!("{}", MERGE_TAG),
+            vec![Action::Filesystem(FilesystemAction::Delete {
+                file: PathBuf::from(OLD_REL),
+            })],
+        ),
+    ])
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let is_merge = fixed.iter().any(|d| d.message.starts_with(MERGE_TAG));
+    if is_merge {
+        format!("Merge {} into {}.", OLD_REL, NEW_REL)
     } else {
-        // Need to merge the files
-        let merge_issue = LintianIssue {
-            package: None,
-            package_type: Some(PackageType::Source),
-            tag: Some("debian-tests-control-and-control-autodep8".to_string()),
-            info: Some(format!("{} {}", OLD_PATH, NEW_PATH)),
-        };
-
-        if !merge_issue.should_fix(base_path) {
-            return Err(FixerError::NoChangesAfterOverrides(vec![merge_issue]));
-        }
-
-        // Read the old file
-        let old_content = fs::read(&old_path)?;
-
-        // Append to the new file
-        let mut new_content = fs::read(&new_path)?;
-        new_content.push(b'\n');
-        new_content.extend_from_slice(&old_content);
-
-        fs::write(&new_path, new_content)?;
-        fs::remove_file(&old_path)?;
-
-        Ok(
-            FixerResult::builder(format!("Merge {} into {}.", OLD_PATH, NEW_PATH))
-                .fixed_issues(vec![merge_issue, issue])
-                .build(),
-        )
+        format!("Rename obsolete path {} to {}.", OLD_REL, NEW_REL)
     }
 }
 
 declare_fixer! {
     name: "debian-tests-control-autodep8-is-obsolete",
     tags: ["debian-tests-control-autodep8-is-obsolete", "debian-tests-control-and-control-autodep8"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -78,88 +108,62 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_renames_autodep8_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
-
-        let old_content = "Test-Command: echo test\n";
         let old_path = tests_dir.join("control.autodep8");
-        fs::write(&old_path, old_content).unwrap();
+        fs::write(&old_path, "Test-Command: echo test\n").unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // Old file should be gone
+        run_apply(tmp.path()).unwrap();
         assert!(!old_path.exists());
-
-        // New file should exist with the same content
-        let new_path = tests_dir.join("control");
-        assert!(new_path.exists());
-        let new_content = fs::read_to_string(&new_path).unwrap();
-        assert_eq!(new_content, old_content);
+        assert_eq!(
+            fs::read_to_string(tests_dir.join("control")).unwrap(),
+            "Test-Command: echo test\n",
+        );
     }
 
     #[test]
     fn test_merges_when_both_exist() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
-
-        let old_content = "Test-Command: echo old\n";
         let old_path = tests_dir.join("control.autodep8");
-        fs::write(&old_path, old_content).unwrap();
-
-        let new_content = "Test-Command: echo new\n";
         let new_path = tests_dir.join("control");
-        fs::write(&new_path, new_content).unwrap();
+        fs::write(&old_path, "Test-Command: echo old\n").unwrap();
+        fs::write(&new_path, "Test-Command: echo new\n").unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // Old file should be gone
+        run_apply(tmp.path()).unwrap();
         assert!(!old_path.exists());
-
-        // New file should have both contents
-        let merged_content = fs::read_to_string(&new_path).unwrap();
-        assert!(merged_content.contains("echo new"));
-        assert!(merged_content.contains("echo old"));
+        assert_eq!(
+            fs::read_to_string(&new_path).unwrap(),
+            "Test-Command: echo new\n\nTest-Command: echo old\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_no_autodep8() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
+        fs::write(tests_dir.join("control"), "Test-Command: echo test\n").unwrap();
 
-        let new_content = "Test-Command: echo test\n";
-        let new_path = tests_dir.join("control");
-        fs::write(&new_path, new_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_tests_dir() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

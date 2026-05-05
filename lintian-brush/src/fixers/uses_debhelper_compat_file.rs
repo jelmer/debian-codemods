@@ -1,13 +1,13 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_analyzer::debhelper::{highest_stable_compat_level, read_debhelper_compat_file};
 use debian_analyzer::relations::is_relation_implied;
-use debian_control::lossless::Entry;
-use debversion::Version;
-use std::path::Path;
+use debian_control::lossless::{Control, Entry};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-/// Check if the package uses CDBS by looking for cdbs include in debian/rules
+const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
+
 fn check_cdbs(base_path: &Path) -> bool {
     let rules_path = base_path.join("debian/rules");
     if let Ok(content) = std::fs::read_to_string(&rules_path) {
@@ -17,126 +17,93 @@ fn check_cdbs(base_path: &Path) -> bool {
     }
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let compat_path = base_path.join("debian/compat");
-
-    // Check if debian/compat exists
-    let debhelper_compat_version = match read_debhelper_compat_file(&compat_path)? {
-        Some(version) => version,
-        None => return Err(FixerError::NoChanges),
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let compat_rel = PathBuf::from("debian/compat");
+    let compat_abs = base_path.join(&compat_rel);
+    let Some(compat_version) = read_debhelper_compat_file(&compat_abs)? else {
+        return Ok(Vec::new());
     };
 
-    // debhelper >= 11 supports the magic debhelper-compat build-dependency
-    if debhelper_compat_version < 11 {
-        return Err(FixerError::NoChanges);
+    if compat_version < 11 {
+        return Ok(Vec::new());
     }
-
-    // Exclude cdbs, since it only knows to get the debhelper compat version from debian/compat
     if check_cdbs(base_path) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
+    }
+    if compat_version > highest_stable_compat_level() {
+        return Ok(Vec::new());
     }
 
-    // debhelper-compat is only supported for stable compat levels
-    if debhelper_compat_version > highest_stable_compat_level() {
-        return Err(FixerError::NoChanges);
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+
+    let target_str = format!("debhelper (>= {})", compat_version);
+    let target_entry = Entry::from_str(&target_str)
+        .map_err(|e| FixerError::Other(format!("Failed to parse target entry: {:?}", e)))?;
 
     let issue = LintianIssue::source_with_info(
         "uses-debhelper-compat-file",
         vec!["[debian/compat]".to_string()],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Parse and edit the control file
-    let control_path = base_path.join("debian/control");
-    let editor = TemplatedControlEditor::open(&control_path)?;
-
-    let Some(mut source) = editor.source() else {
-        return Err(FixerError::NoChanges);
-    };
-
-    // Create a target entry: debhelper (>= compat_version) for comparison
-    let target_str = format!("debhelper (>= {})", debhelper_compat_version);
-    let target_entry = Entry::from_str(&target_str)
-        .map_err(|e| FixerError::Other(format!("Failed to parse target entry: {:?}", e)))?;
-
-    // Process all three build dependency fields to remove debhelper
-    for field in ["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"] {
-        let Some(mut deps) = (match field {
-            "Build-Depends" => source.build_depends(),
-            "Build-Depends-Indep" => source.build_depends_indep(),
-            "Build-Depends-Arch" => source.build_depends_arch(),
-            _ => None,
-        }) else {
+    // Per field: drop debhelper if its constraint is implied by
+    // `debhelper (>= compat_version)`. Always add debhelper-compat to
+    // Build-Depends and remove the debian/compat file — those are the
+    // primary fix; the DropRelation actions only fire when a debhelper
+    // entry is redundant given the new debhelper-compat dependency.
+    let mut actions: Vec<Action> = Vec::new();
+    for field in FIELDS {
+        let Some(value) = source.as_deb822().get(field) else {
             continue;
         };
-
-        // Check if this field has a debhelper dependency
-        if !deps.has_relation("debhelper") {
-            continue;
-        }
-
-        let Ok((_pos, entry)) = deps.get_relation("debhelper") else {
+        let (relations, _errors) =
+            debian_control::lossless::relations::Relations::parse_relaxed(&value, true);
+        let Ok((_pos, existing)) = relations.get_relation("debhelper") else {
             continue;
         };
-
-        // Only remove if the entry is implied by debhelper >= compat_version
-        if !is_relation_implied(&entry, &target_entry) {
+        if !is_relation_implied(&existing, &target_entry) {
             continue;
         }
-
-        // Remove debhelper
-        deps.drop_dependency("debhelper");
-
-        // Update or remove the field
-        if deps.is_empty() {
-            source.as_mut_deb822().remove(field);
-        } else {
-            match field {
-                "Build-Depends" => source.set_build_depends(&deps),
-                _ => source.set(field, &deps.to_string()),
-            }
-        }
+        actions.push(Action::Deb822(Deb822Action::DropRelation {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: (*field).to_string(),
+            package: "debhelper".into(),
+        }));
     }
 
-    // Add debhelper-compat to Build-Depends (Relations will sort appropriately)
-    let mut build_depends = source.build_depends().unwrap_or_default();
+    actions.push(Action::Deb822(Deb822Action::EnsureRelation {
+        file: control_rel.clone(),
+        paragraph: ParagraphSelector::Source,
+        field: "Build-Depends".into(),
+        entry: format!("debhelper-compat (= {})", compat_version),
+    }));
+    actions.push(Action::Filesystem(FilesystemAction::Delete {
+        file: compat_rel,
+    }));
 
-    // Create the debhelper-compat entry
-    let compat_version_str = debhelper_compat_version.to_string();
-    let version = Version::from_str(&compat_version_str)
-        .map_err(|e| FixerError::Other(format!("Failed to parse version: {:?}", e)))?;
-
-    debian_analyzer::relations::ensure_exact_version(
-        &mut build_depends,
-        "debhelper-compat",
-        &version,
-        None,
-    );
-
-    source.set_build_depends(&build_depends);
-
-    // Commit the control file changes
-    editor.commit()?;
-
-    // Delete the debian/compat file
-    std::fs::remove_file(&compat_path)?;
-
-    Ok(
-        FixerResult::builder("Set debhelper-compat version in Build-Depends.")
-            .fixed_issue(issue)
-            .build(),
-    )
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Set debhelper-compat version in Build-Depends.",
+        actions,
+    )])
 }
 
-crate::declare_fixer! {
+declare_fixer! {
     name: "uses-debhelper-compat-file",
     tags: ["uses-debhelper-compat-file"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -144,77 +111,53 @@ crate::declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("compat"), "11\n").unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: f2fs-tools\nBuild-Depends:\n debhelper (>= 11),\n pkg-config\n\nPackage: blah\nArchitecture: any\n",
+        )
+        .unwrap();
 
-        // Create debian/compat
-        let compat_path = debian_dir.join("compat");
-        fs::write(&compat_path, "11\n").unwrap();
-
-        // Create debian/control
-        let control_content = r#"Source: f2fs-tools
-Section: admin
-Priority: optional
-Maintainer: Jelmer Vernooĳ <jelmer@debian.org>
-Build-Depends:
- debhelper (>= 11),
- pkg-config,
- uuid-dev
-Standards-Version: 4.2.0
-
-Package: blah
-Architecture: linux-any
-Description: test
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "f2fs-tools", &version, &Default::default());
-        assert!(result.is_ok());
-
-        // Check that compat file is deleted
-        assert!(!compat_path.exists());
-
-        // Check that control file is updated
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("debhelper-compat (= 11)"));
-        assert!(!updated_content.contains("debhelper (>= 11)"));
+        run_apply(tmp.path()).unwrap();
+        assert!(!debian.join("compat").exists());
+        // The deb822 lossless layout collapses two entries onto one line
+        // when the result fits; the integration fixtures (3+ entries)
+        // exercise the multi-line case. This matches the pre-port
+        // behaviour of `set_build_depends`.
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: f2fs-tools\nBuild-Depends:\n debhelper-compat (= 11), pkg-config\n\nPackage: blah\nArchitecture: any\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_compat_too_old() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("compat"), "9\n").unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test\nBuild-Depends: debhelper (>= 9)\n\nPackage: test\n",
+        )
+        .unwrap();
 
-        // Create debian/compat with old version
-        let compat_path = debian_dir.join("compat");
-        fs::write(&compat_path, "9\n").unwrap();
-
-        // Create debian/control
-        let control_content = r#"Source: test
-Build-Depends: debhelper (>= 9)
-
-Package: test
-Description: test
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "test", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Compat file should still exist
-        assert!(compat_path.exists());
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert!(debian.join("compat").exists());
     }
 }

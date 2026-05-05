@@ -1,108 +1,97 @@
-use crate::{FixerError, FixerResult};
-use std::fs;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError};
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let rules_path = base_path.join("debian/rules");
-
-    if !rules_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_rel = PathBuf::from("debian/rules");
+    let abs = base_path.join(&rules_rel);
+    let metadata = match std::fs::metadata(&abs) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
+    };
+    let mode = metadata.permissions().mode();
+    if mode & 0o111 != 0 {
+        return Ok(Vec::new());
     }
 
-    let metadata = fs::metadata(&rules_path)?;
-    let current_mode = metadata.permissions().mode();
-
-    // Check if it's already executable (has execute bit for owner, group, or others)
-    if current_mode & 0o111 != 0 {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Set permissions to 0o755 (rwxr-xr-x)
-    let mut perms = metadata.permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&rules_path, perms)?;
-
-    Ok(FixerResult::builder("Mark debian/rules as executable.")
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(vec![Diagnostic::untagged(
+        "Mark debian/rules as executable.",
+        vec![Action::Filesystem(FilesystemAction::SetMode {
+            file: rules_rel,
+            mode: 0o755,
+        })],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "rules-not-executable",
     tags: [],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
-    use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_make_rules_executable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let rules_path = debian_dir.join("rules");
-        fs::write(&rules_path, "#!/usr/bin/make -f\n%:\n\tdh $@\n").unwrap();
-
-        // Set non-executable permissions (644)
-        let mut perms = fs::metadata(&rules_path).unwrap().permissions();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let rules = debian.join("rules");
+        fs::write(&rules, "#!/usr/bin/make -f\n%:\n\tdh $@\n").unwrap();
+        let mut perms = fs::metadata(&rules).unwrap().permissions();
         perms.set_mode(0o644);
-        fs::set_permissions(&rules_path, perms).unwrap();
+        fs::set_permissions(&rules, perms).unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Mark debian/rules as executable.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that file is now executable
-        let metadata = fs::metadata(&rules_path).unwrap();
-        assert_eq!(metadata.permissions().mode() & 0o777, 0o755);
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert_eq!(
+            fs::metadata(&rules).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
     }
 
     #[test]
     fn test_already_executable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let rules_path = debian_dir.join("rules");
-        fs::write(&rules_path, "#!/usr/bin/make -f\n%:\n\tdh $@\n").unwrap();
-
-        // Set executable permissions (755)
-        let mut perms = fs::metadata(&rules_path).unwrap().permissions();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let rules = debian.join("rules");
+        fs::write(&rules, "#!/usr/bin/make -f\n%:\n\tdh $@\n").unwrap();
+        let mut perms = fs::metadata(&rules).unwrap().permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&rules_path, perms).unwrap();
+        fs::set_permissions(&rules, perms).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_rules_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

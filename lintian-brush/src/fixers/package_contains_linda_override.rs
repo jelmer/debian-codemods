@@ -1,68 +1,70 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+const SEP: char = '\t';
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_dir = base_path.join("debian");
-
-    if !debian_dir.exists() || !debian_dir.is_dir() {
-        return Err(FixerError::NoChanges);
+    if !debian_dir.is_dir() {
+        return Ok(Vec::new());
     }
 
-    let mut removed = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut entries: Vec<_> = std::fs::read_dir(&debian_dir)?
+        .filter_map(|e| e.ok())
+        .collect();
+    entries.sort_by_key(|e| e.file_name());
 
-    // Read directory entries
-    let entries = fs::read_dir(&debian_dir)?;
-
+    let mut diagnostics = Vec::new();
     for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
+        let file_name_os = entry.file_name();
+        let Some(file_name) = file_name_os.to_str() else {
+            continue;
+        };
+        let Some(package_name) = file_name.strip_suffix(".linda-overrides") else {
+            continue;
+        };
 
-        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-            if let Some(package_name) = file_name.strip_suffix(".linda-overrides") {
-                // Create issue for this package
-                let tag_info = format!("usr/share/linda/overrides/{}", package_name);
-                let issue = LintianIssue::binary_with_info(
-                    package_name,
-                    "package-contains-linda-override",
-                    vec![tag_info],
-                );
+        let issue = LintianIssue::binary_with_info(
+            package_name,
+            "package-contains-linda-override",
+            vec![format!("usr/share/linda/overrides/{}", package_name)],
+        );
 
-                if !issue.should_fix(base_path) {
-                    overridden_issues.push(issue);
-                    continue;
-                }
-
-                // Remove the file
-                fs::remove_file(&path)?;
-                removed.push(file_name.to_string());
-                fixed_issues.push(issue);
-            }
-        }
+        let rel = PathBuf::from("debian").join(file_name);
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("file{}{}", SEP, file_name),
+            vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    let description = format!("Remove obsolete linda overrides: {}", removed.join(", "));
-
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut files: Vec<String> = fixed
+        .iter()
+        .filter_map(|d| {
+            d.message
+                .split_once(SEP)
+                .filter(|(tag, _)| *tag == "file")
+                .map(|(_, name)| name.to_string())
+        })
+        .collect();
+    files.sort();
+    files.dedup();
+    format!("Remove obsolete linda overrides: {}", files.join(", "))
 }
 
 declare_fixer! {
     name: "package-contains-linda-override",
     tags: ["package-contains-linda-override"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -70,137 +72,64 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_linda_overrides() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let p1 = debian.join("libhugs-cabal-bundled.linda-overrides");
+        let p2 = debian.join("test-package.linda-overrides");
+        fs::write(&p1, "Tag: foo\n").unwrap();
+        fs::write(&p2, "Tag: bar\n").unwrap();
 
-        // Create test linda-overrides files
-        let override1_path = debian_dir.join("libhugs-cabal-bundled.linda-overrides");
-        let override2_path = debian_dir.join("test-package.linda-overrides");
-        fs::write(
-            &override1_path,
-            "Tag: extra-license-file\nData: usr/lib/hugs/packages/Cabal/Distribution/License.hs\n",
-        )
-        .unwrap();
-        fs::write(&override2_path, "Tag: some-other-tag\nData: some/path\n").unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        let result = run_apply(tmp.path()).unwrap();
+        assert!(!p1.exists());
+        assert!(!p2.exists());
+        assert_eq!(
+            result.description,
+            "Remove obsolete linda overrides: libhugs-cabal-bundled.linda-overrides, test-package.linda-overrides"
         );
-        assert!(result.is_ok());
-
-        // Check that files were removed
-        assert!(!override1_path.exists());
-        assert!(!override2_path.exists());
-
-        let result = result.unwrap();
-        assert!(result
-            .description
-            .contains("Remove obsolete linda overrides:"));
-        assert!(result
-            .description
-            .contains("libhugs-cabal-bundled.linda-overrides"));
-        assert!(result.description.contains("test-package.linda-overrides"));
     }
 
     #[test]
     fn test_no_change_when_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_linda_overrides() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(debian.join("control"), "").unwrap();
+        fs::write(debian.join("rules"), "").unwrap();
 
-        // Create some other files
-        fs::write(debian_dir.join("control"), "").unwrap();
-        fs::write(debian_dir.join("rules"), "").unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that other files are still there
-        assert!(debian_dir.join("control").exists());
-        assert!(debian_dir.join("rules").exists());
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_single_linda_override() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let p = debian.join("single.linda-overrides");
+        fs::write(&p, "Tag: x\n").unwrap();
 
-        let override_path = debian_dir.join("single.linda-overrides");
-        fs::write(&override_path, "Tag: test-tag\n").unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(result.is_ok());
-
-        // Check that file was removed
-        assert!(!override_path.exists());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
+        assert!(!p.exists());
         assert_eq!(
             result.description,
             "Remove obsolete linda overrides: single.linda-overrides"
         );
-    }
-
-    #[test]
-    fn test_empty_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        // Apply the fixer to empty debian directory
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }

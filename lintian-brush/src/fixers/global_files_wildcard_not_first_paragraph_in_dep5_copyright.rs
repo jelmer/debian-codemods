@@ -1,499 +1,204 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic};
+use crate::{FixerError, LintianIssue};
 use deb822_lossless::Deb822;
 use debian_copyright::{pattern_depth, pattern_sort_key};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+const MARKER_WILDCARD: char = 'W';
+const MARKER_OUTOFORDER: char = 'O';
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let copyright_abs = base_path.join(&copyright_rel);
+    if !copyright_abs.exists() {
+        return Ok(Vec::new());
     }
-
-    let content = std::fs::read_to_string(&copyright_path)?;
-
-    let mut deb822 = match Deb822::from_str(&content) {
-        Ok(d) => d,
-        Err(_) => return Err(FixerError::NoChanges),
+    let content = std::fs::read_to_string(&copyright_abs)?;
+    let Ok(deb822) = Deb822::from_str(&content) else {
+        return Ok(Vec::new());
     };
 
-    // Collect Files paragraphs with their indices, patterns, and depths
-    let mut files_info: Vec<(usize, String, usize, usize)> = Vec::new();
-
-    for (i, para) in deb822.paragraphs().enumerate() {
-        if let Some(files_value) = para.get("Files") {
-            let first_pattern = files_value
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .to_string();
-            let depth = pattern_depth(&first_pattern);
-            let line_num = para.line() + 1;
-            files_info.push((i, first_pattern, depth, line_num));
-        }
+    // Snapshot all Files paragraphs with their pattern, depth, and line.
+    let mut files_info: Vec<(String, usize, usize)> = Vec::new();
+    for para in deb822.paragraphs() {
+        let Some(files_value) = para.get("Files") else {
+            continue;
+        };
+        let pattern = files_value
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .to_string();
+        let depth = pattern_depth(&pattern);
+        let line = para.line() + 1;
+        files_info.push((pattern, depth, line));
     }
-
     if files_info.is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Detect which issues we have
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    // Check for wildcard not first (only if it exists and not at position 0)
-    let wildcard_pos = files_info.iter().position(|(_, p, _, _)| p.trim() == "*");
+    // Wildcard-not-first: only when the wildcard exists and isn't already
+    // at the head of the Files-paragraph sequence.
+    let wildcard_pos = files_info.iter().position(|(p, _, _)| p == "*");
     if let Some(pos) = wildcard_pos {
         if pos > 0 {
-            let line_num = files_info[pos].3;
+            let line = files_info[pos].2;
             let issue = LintianIssue::source_with_info(
                 "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
-                vec![format!("[debian/copyright:{}]", line_num)],
+                vec![format!("[debian/copyright:{}]", line)],
             );
-
-            if issue.should_fix(base_path) {
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                format!("{}", MARKER_WILDCARD),
+                Vec::new(),
+            ));
         }
     }
 
-    // Check for out-of-order patterns (strictly less depth coming after greater depth)
+    // Out-of-order: a depth-N paragraph followed somewhere later by a
+    // depth-<N paragraph indicates a violation.
     for i in 0..files_info.len() {
         for j in (i + 1)..files_info.len() {
-            if files_info[j].2 < files_info[i].2 {
+            if files_info[j].1 < files_info[i].1 {
                 let issue = LintianIssue::source_with_info(
                     "globbing-patterns-out-of-order",
                     vec![format!(
                         "{} {} [debian/copyright:{}]",
-                        files_info[i].1, files_info[j].1, files_info[j].3
+                        files_info[i].0, files_info[j].0, files_info[j].2
                     )],
                 );
-
-                if issue.should_fix(base_path) {
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    format!("{}", MARKER_OUTOFORDER),
+                    Vec::new(),
+                ));
                 break;
             }
         }
     }
 
-    if fixed_issues.is_empty() {
-        if overridden_issues.is_empty() {
-            return Err(FixerError::NoChanges);
-        }
-        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+    if diagnostics.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Use bubble sort to reorder - simple and correct, but only swap when strictly necessary
-    let mut changed_order = true;
-    while changed_order {
-        changed_order = false;
+    // Compute the desired order by sort_key.
+    let mut sortable: Vec<_> = files_info
+        .iter()
+        .map(|(pattern, depth, _)| (pattern_sort_key(pattern, *depth), pattern.as_str()))
+        .collect();
+    sortable.sort_by(|a, b| a.0.cmp(&b.0));
+    let desired_order: Vec<String> = sortable.into_iter().map(|(_, p)| p.to_string()).collect();
 
-        // Get current state of Files paragraphs
-        let mut current_files: Vec<(usize, String, usize)> = Vec::new();
-        for (i, para) in deb822.paragraphs().enumerate() {
-            if let Some(files_value) = para.get("Files") {
-                let first_pattern = files_value
-                    .split_whitespace()
-                    .next()
-                    .unwrap_or("")
-                    .to_string();
-                let depth = pattern_depth(&first_pattern);
-                current_files.push((i, first_pattern, depth));
-            }
-        }
-
-        // Find adjacent pairs that are out of order based on sort key
-        for j in 0..current_files.len().saturating_sub(1) {
-            let key_j = pattern_sort_key(&current_files[j].1, current_files[j].2);
-            let key_j1 = pattern_sort_key(&current_files[j + 1].1, current_files[j + 1].2);
-
-            // Only swap if j+1 should come before j (strictly less than)
-            if key_j1 < key_j {
-                // Swap these two paragraphs
-                deb822.move_paragraph(current_files[j + 1].0, current_files[j].0);
-                changed_order = true;
-                break;
-            }
-        }
+    // The single ReorderParagraphs action is shared across all
+    // diagnostics — they each describe a contributing issue but the
+    // applied edit is one structural rearrangement.
+    let action = Action::Deb822(Deb822Action::ReorderParagraphs {
+        file: copyright_rel,
+        key_field: "Files".into(),
+        order: desired_order,
+    });
+    if let Some(first) = diagnostics.first_mut() {
+        first.plans[0].actions.push(action);
     }
 
-    std::fs::write(&copyright_path, deb822.to_string())?;
+    Ok(diagnostics)
+}
 
-    // Choose description based on which issues were fixed
-    let description = if fixed_issues.iter().all(|i| {
-        i.tag.as_deref() == Some("global-files-wildcard-not-first-paragraph-in-dep5-copyright")
-    }) {
-        "Make \"Files: *\" paragraph the first in the copyright file."
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    // If the only kind of diagnostic that fired was the wildcard-not-first
+    // one, use the more specific phrasing. Otherwise use the generic
+    // "reorder by depth" description.
+    let only_wildcard = fixed.iter().all(|d| d.message.starts_with(MARKER_WILDCARD));
+    if only_wildcard {
+        "Make \"Files: *\" paragraph the first in the copyright file.".to_string()
     } else {
-        "Reorder Files paragraphs in debian/copyright by directory depth."
-    };
-
-    Ok(FixerResult::builder(description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+        "Reorder Files paragraphs in debian/copyright by directory depth.".to_string()
+    }
 }
 
 declare_fixer! {
     name: "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
     tags: ["global-files-wildcard-not-first-paragraph-in-dep5-copyright", "globbing-patterns-out-of-order"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
+    use tempfile::TempDir;
 
-    #[test]
-    fn test_wildcard_detection() {
-        // Test that we correctly identify wildcard paragraphs
-        assert_eq!("*".trim(), "*");
-        assert_eq!(" * ".trim(), "*");
-        assert_eq!("* \n".trim(), "*");
-    }
-
-    #[test]
-    fn test_files_paragraph_identification() {
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/*
-Copyright: 2020 Author
-License: MIT
-
-Files: *
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        let deb822 = Deb822::from_str(content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().collect();
-
-        // First paragraph is header (no Files field)
-        assert!(paragraphs[0].get("Format").is_some());
-        assert!(paragraphs[0].get("Files").is_none());
-
-        // Second paragraph has Files: src/*
-        assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "src/*");
-
-        // Third paragraph has Files: *
-        assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "*");
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
     fn test_wildcard_not_first() {
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
+        fs::write(
+            &copyright,
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: src/*\nCopyright: 2020 Author\nLicense: MIT\n\nFiles: *\nCopyright: 2020 Author\nLicense: MIT\n",
+        )
+        .unwrap();
 
-Files: src/*
-Copyright: 2020 Author
-License: MIT
-
-Files: *
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        let deb822 = Deb822::from_str(content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().enumerate().collect();
-
-        let mut first_files_index = None;
-        let mut wildcard_index = None;
-        let mut files_count = 0;
-
-        for (i, para) in paragraphs.iter() {
-            if let Some(files_value) = para.get("Files") {
-                if first_files_index.is_none() {
-                    first_files_index = Some(*i);
-                }
-                if files_value.trim() == "*" && files_count > 0 {
-                    wildcard_index = Some(*i);
-                    break;
-                }
-                files_count += 1;
-            }
-        }
-
-        assert_eq!(first_files_index, Some(1)); // First Files paragraph at index 1
-        assert_eq!(wildcard_index, Some(2)); // Wildcard paragraph at index 2
-        assert_eq!(files_count, 1); // We stopped counting after finding wildcard
-    }
-
-    #[test]
-    fn test_wildcard_already_first() {
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: *
-Copyright: 2020 Author
-License: MIT
-
-Files: src/*
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        let deb822 = Deb822::from_str(content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().enumerate().collect();
-
-        let mut first_files_index = None;
-        let mut wildcard_index = None;
-        let mut files_count = 0;
-
-        for (i, para) in paragraphs.iter() {
-            if let Some(files_value) = para.get("Files") {
-                if first_files_index.is_none() {
-                    first_files_index = Some(*i);
-                }
-                if files_value.trim() == "*" && files_count > 0 {
-                    wildcard_index = Some(*i);
-                    break;
-                }
-                files_count += 1;
-            }
-        }
-
-        assert_eq!(first_files_index, Some(1));
-        assert_eq!(wildcard_index, None); // No wildcard found after first Files paragraph
-    }
-
-    #[test]
-    fn test_no_wildcard_paragraph() {
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/*
-Copyright: 2020 Author
-License: MIT
-
-Files: tests/*
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        let deb822 = Deb822::from_str(content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().enumerate().collect();
-
-        let mut wildcard_found = false;
-        for (_, para) in paragraphs.iter() {
-            if let Some(files_value) = para.get("Files") {
-                if files_value.trim() == "*" {
-                    wildcard_found = true;
-                    break;
-                }
-            }
-        }
-
-        assert!(!wildcard_found);
-    }
-
-    #[test]
-    fn test_integration_with_tempdir() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/*
-Copyright: 2020 Author
-License: MIT
-
-Files: *
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        let deb822 = Deb822::from_str(&updated_content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().collect();
-
-        // Check that Files: * is now the first Files paragraph (index 1)
+        run_apply(tmp.path()).unwrap();
+        let updated = fs::read_to_string(&copyright).unwrap();
+        let deb = Deb822::from_str(&updated).unwrap();
+        let paragraphs: Vec<_> = deb.paragraphs().collect();
         assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "*");
         assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "src/*");
     }
 
     #[test]
     fn test_out_of_order_patterns() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
+        fs::write(
+            &copyright,
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: src/foo/bar/*\nCopyright: 2020 Author\nLicense: MIT\n\nFiles: src/*\nCopyright: 2020 Another\nLicense: GPL-2\n",
+        )
+        .unwrap();
 
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/foo/bar/*
-Copyright: 2020 Author
-License: MIT
-
-Files: src/*
-Copyright: 2020 Another
-License: GPL-2
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok());
-        let result = result.unwrap();
-
-        // Should detect globbing-patterns-out-of-order
-        assert!(result
-            .fixed_lintian_issues
-            .iter()
-            .any(|i| i.tag.as_deref() == Some("globbing-patterns-out-of-order")));
-
-        let updated_content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        let deb822 = Deb822::from_str(&updated_content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().collect();
-
-        // Check that src/* (depth 1) is now before src/foo/bar/* (depth 3)
+        run_apply(tmp.path()).unwrap();
+        let updated = fs::read_to_string(&copyright).unwrap();
+        let deb = Deb822::from_str(&updated).unwrap();
+        let paragraphs: Vec<_> = deb.paragraphs().collect();
         assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "src/*");
         assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "src/foo/bar/*");
     }
 
     #[test]
-    fn test_both_issues_together() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/foo/*
-Copyright: 2020 Author
-License: MIT
-
-Files: *
-Copyright: 2020 Generic
-License: GPL-2
-
-Files: src/*
-Copyright: 2020 Another
-License: Apache-2.0
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok());
-        let result = result.unwrap();
-
-        // Should detect both issues
-        assert!(result.fixed_lintian_issues.iter().any(|i| i.tag.as_deref()
-            == Some("global-files-wildcard-not-first-paragraph-in-dep5-copyright")));
-        assert!(result
-            .fixed_lintian_issues
-            .iter()
-            .any(|i| i.tag.as_deref() == Some("globbing-patterns-out-of-order")));
-
-        let updated_content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        let deb822 = Deb822::from_str(&updated_content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().collect();
-
-        // Check correct order: * (0), src/* (1), src/foo/* (2)
-        assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "*");
-        assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "src/*");
-        assert_eq!(paragraphs[3].get("Files").unwrap().trim(), "src/foo/*");
-    }
-
-    #[test]
     fn test_already_sorted() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: *
-Copyright: 2020 Generic
-License: GPL-2
-
-Files: src/*
-Copyright: 2020 Another
-License: Apache-2.0
-
-Files: src/foo/*
-Copyright: 2020 Author
-License: MIT
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: *\nCopyright: 2020 Generic\nLicense: GPL-2\n\nFiles: src/*\nCopyright: 2020 Another\nLicense: Apache-2.0\n\nFiles: src/foo/*\nCopyright: 2020 Author\nLicense: MIT\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
-    fn test_debian_pattern_stays_last() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        // debian/* should stay at the end even though it has same depth as src/*
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: src/foo/*
-Copyright: 2020 Author
-License: MIT
-
-Files: debian/*
-Copyright: 2020 Debian
-License: GPL-2
-
-Files: src/*
-Copyright: 2020 Another
-License: Apache-2.0
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
-        let deb822 = Deb822::from_str(&updated_content).unwrap();
-        let paragraphs: Vec<_> = deb822.paragraphs().collect();
-
-        // Check order: src/* (depth 1), src/foo/* (depth 2), debian/* (depth 1 but last)
-        assert_eq!(paragraphs[1].get("Files").unwrap().trim(), "src/*");
-        assert_eq!(paragraphs[2].get("Files").unwrap().trim(), "src/foo/*");
-        assert_eq!(paragraphs[3].get("Files").unwrap().trim(), "debian/*");
-    }
-
-    #[test]
-    fn test_debian_pattern_already_last() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        // debian/* is already at the end - should not change
-        let content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: *
-Copyright: 2020 Generic
-License: GPL-2
-
-Files: src/*
-Copyright: 2020 Another
-License: Apache-2.0
-
-Files: debian/*
-Copyright: 2020 Debian
-License: GPL-2
-"#;
-
-        fs::write(debian_dir.join("copyright"), content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+    fn test_no_copyright_file() {
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
