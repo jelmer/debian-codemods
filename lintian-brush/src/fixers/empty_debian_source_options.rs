@@ -1,113 +1,94 @@
-use crate::{FixerError, FixerResult};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let options_path = base_path.join("debian/source/options");
-
-    // Check if the file exists
-    if !options_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/source/options");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Read the file and check if it's empty or contains only whitespace
-    let content = fs::read_to_string(&options_path)?;
+    let content = std::fs::read_to_string(&abs)?;
     if !content.trim().is_empty() {
-        // File has content, don't remove it
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Remove the empty file
-    fs::remove_file(&options_path)?;
-
-    Ok(FixerResult::builder("Remove empty debian/source/options.")
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(vec![Diagnostic::untagged(
+        "Remove empty debian/source/options.",
+        vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "empty-debian-source-options",
     tags: [],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_empty_options() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let source_dir = base_path.join("debian/source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
-
         let options_path = source_dir.join("options");
-        fs::write(&options_path, "").unwrap(); // Empty file
+        fs::write(&options_path, "").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Remove empty debian/source/options.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
         assert!(!options_path.exists());
     }
 
     #[test]
     fn test_remove_whitespace_only_options() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let source_dir = base_path.join("debian/source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
-
         let options_path = source_dir.join("options");
-        fs::write(&options_path, "   \n\t  \n  ").unwrap(); // Only whitespace
+        fs::write(&options_path, "   \n\t  \n  ").unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
+        run_apply(tmp.path()).unwrap();
         assert!(!options_path.exists());
     }
 
     #[test]
     fn test_keep_non_empty_options() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let source_dir = base_path.join("debian/source");
+        let tmp = TempDir::new().unwrap();
+        let source_dir = tmp.path().join("debian/source");
         fs::create_dir_all(&source_dir).unwrap();
-
         let options_path = source_dir.join("options");
         fs::write(&options_path, "compression = xz\n").unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // File should still exist
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
         assert!(options_path.exists());
     }
 
     #[test]
     fn test_no_options_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let source_dir = base_path.join("debian/source");
-        fs::create_dir_all(&source_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("debian/source")).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
