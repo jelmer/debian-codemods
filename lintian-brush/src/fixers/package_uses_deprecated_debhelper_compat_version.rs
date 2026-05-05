@@ -1,31 +1,26 @@
 use crate::debhelper::detect_debhelper_buildsystem;
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
     read_debhelper_compat_file,
 };
 use debian_control::lossless::relations::Relations;
+use debian_control::lossless::Control;
 use debversion::Version;
 use makefile_lossless::{Makefile, Rule};
 use std::collections::HashSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-fn is_debcargo_package(base_path: &Path) -> bool {
-    base_path.join("debian/debcargo.toml").exists()
-}
 
 fn autoreconf_disabled(base_path: &Path) -> bool {
     let rules_path = base_path.join("debian/rules");
-    let Ok(file) = std::fs::File::open(&rules_path) else {
+    let Ok(text) = fs::read_to_string(&rules_path) else {
         return false;
     };
-
-    let mf = match Makefile::read(file) {
-        Ok(mf) => mf,
-        Err(_) => return false,
+    let Ok(mf) = Makefile::read_relaxed(text.as_bytes()) else {
+        return false;
     };
 
     // Check for --without.*autoreconf in any recipe
@@ -90,130 +85,148 @@ impl Transformations {
     }
 }
 
+/// Read binary package names from debian/control on disk.
+fn binary_package_names(base_path: &Path) -> Result<Vec<String>, FixerError> {
+    let abs = base_path.join("debian/control");
+    let Ok(content) = fs::read_to_string(&abs) else {
+        return Ok(Vec::new());
+    };
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    Ok(control.binaries().filter_map(|b| b.name()).collect())
+}
+
 // Upgrade to debhelper 10
 fn upgrade_to_debhelper_10(
     base_path: &Path,
-    _transforms: &mut Transformations,
+    actions: &mut Vec<Action>,
+    transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    // dh_installinit will no longer install a file named debian/package as an init script.
-    let control_path = base_path.join("debian/control");
-    if !control_path.exists() {
-        return Ok(());
-    }
-
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let debian_dir = base_path.join("debian");
-
-    for binary in editor.binaries() {
-        let name = binary
-            .as_deb822()
-            .get("Package")
-            .ok_or(FixerError::NoChanges)?;
-        let old_path = debian_dir.join(&name);
-        if old_path.is_file() {
-            let new_path = debian_dir.join(format!("{}.init", name));
-            fs::rename(&old_path, &new_path)?;
-            _transforms.add(format!("Rename debian/{} to debian/{}.init.", name, name));
+    // dh_installinit will no longer install a file named debian/package
+    // as an init script.
+    for name in binary_package_names(base_path)? {
+        let old_rel = PathBuf::from("debian").join(&name);
+        if !base_path.join(&old_rel).is_file() {
+            continue;
         }
+        let new_rel = PathBuf::from("debian").join(format!("{}.init", name));
+        actions.push(Action::Filesystem(FilesystemAction::Rename {
+            file: old_rel,
+            to: new_rel,
+        }));
+        transforms.add(format!("Rename debian/{} to debian/{}.init.", name, name));
     }
-
     Ok(())
 }
 
 // Upgrade to debhelper 11
 fn upgrade_to_debhelper_11(
     base_path: &Path,
+    actions: &mut Vec<Action>,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    upgrade_to_installsystemd(base_path, transforms)?;
+    upgrade_to_installsystemd(base_path, rules_mf, transforms)?;
 
     // Drop debian/*.upstart files and add rm_conffile to maintscript
     let debian_dir = base_path.join("debian");
-    if let Ok(entries) = fs::read_dir(&debian_dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            let parts: Vec<&str> = name_str.split('.').collect();
+    let Ok(entries) = fs::read_dir(&debian_dir) else {
+        return Ok(());
+    };
 
-            if parts.last() != Some(&"upstart") {
-                continue;
-            }
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        let parts: Vec<&str> = name_str.split('.').collect();
 
-            let (package, service) = if parts.len() == 3 {
-                (parts[0], parts[1])
-            } else if parts.len() == 2 {
-                (parts[0], parts[0])
-            } else {
-                continue;
-            };
+        if parts.last() != Some(&"upstart") {
+            continue;
+        }
 
-            let file_path = entry.path();
-            fs::remove_file(&file_path)?;
-            transforms.add(format!("Drop obsolete upstart file {}.", name_str));
+        let (package, service) = if parts.len() == 3 {
+            (parts[0], parts[1])
+        } else if parts.len() == 2 {
+            (parts[0], parts[0])
+        } else {
+            continue;
+        };
 
-            // Add maintscript entry
-            let current_version = get_current_package_version(base_path)?;
-            let maintscript_path = debian_dir.join(format!("{}.maintscript", package));
+        let file_rel = PathBuf::from("debian").join(name_str.as_ref());
+        actions.push(Action::Filesystem(FilesystemAction::Delete {
+            file: file_rel,
+        }));
+        transforms.add(format!("Drop obsolete upstart file {}.", name_str));
 
-            let mut content = if maintscript_path.exists() {
-                fs::read_to_string(&maintscript_path)?
-            } else {
-                String::new()
-            };
+        // Add maintscript entry: append `rm_conffile` to the package's
+        // maintscript (creating the file if it doesn't exist).
+        let current_version = get_current_package_version(base_path)?;
+        let maintscript_rel = PathBuf::from("debian").join(format!("{}.maintscript", package));
+        let existing = fs::read_to_string(base_path.join(&maintscript_rel)).unwrap_or_default();
 
-            let rm_conffile_line = format!(
-                "rm_conffile /etc/init/{}.conf {}\n",
-                service, current_version
-            );
+        let rm_conffile_line = format!(
+            "rm_conffile /etc/init/{}.conf {}\n",
+            service, current_version
+        );
 
-            if !content.contains(&rm_conffile_line) {
-                content.push_str(&rm_conffile_line);
-                fs::write(&maintscript_path, content)?;
-            }
+        if !existing.contains(&rm_conffile_line) {
+            let mut new_content = existing;
+            new_content.push_str(&rm_conffile_line);
+            actions.push(Action::Filesystem(FilesystemAction::Write {
+                file: maintscript_rel,
+                content: new_content.into_bytes(),
+            }));
         }
     }
 
     Ok(())
 }
 
+/// Lazily open debian/rules for in-memory mutation. Returns `None` if
+/// the file doesn't exist.
+fn get_rules<'a>(
+    base_path: &Path,
+    rules_mf: &'a mut Option<Makefile>,
+) -> Result<Option<&'a mut Makefile>, FixerError> {
+    if rules_mf.is_none() {
+        let rules_path = base_path.join("debian/rules");
+        if !rules_path.exists() {
+            return Ok(None);
+        }
+        let text = fs::read_to_string(&rules_path)?;
+        let mf = Makefile::read_relaxed(text.as_bytes())
+            .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
+        *rules_mf = Some(mf);
+    }
+    Ok(rules_mf.as_mut())
+}
+
 fn upgrade_to_installsystemd(
     base_path: &Path,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+    let Some(mf) = get_rules(base_path, rules_mf)? else {
         return Ok(());
-    }
+    };
 
-    let mut file = std::fs::File::open(&rules_path)
-        .map_err(|e| FixerError::Other(format!("Failed to open rules: {:?}", e)))?;
-    let mf = Makefile::from_reader(&mut file)
-        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
-    let mut changed = false;
-
-    // Process all rules directly - mutation methods modify in place
     for mut rule in mf.rules() {
         let targets: Vec<String> = rule.targets().collect();
 
-        // Rename targets using the mutation method
         if targets.contains(&"override_dh_systemd_enable".to_string()) {
             rule.rename_target("override_dh_systemd_enable", "override_dh_installsystemd")
                 .map_err(|e| FixerError::Other(format!("Failed to rename target: {:?}", e)))?;
-            changed = true;
         }
         if targets.contains(&"override_dh_systemd_start".to_string()) {
             rule.rename_target("override_dh_systemd_start", "override_dh_installsystemd")
                 .map_err(|e| FixerError::Other(format!("Failed to rename target: {:?}", e)))?;
-            changed = true;
         }
 
-        // Transform recipes using mutation methods
         let recipes: Vec<String> = rule.recipes().collect();
         for (recipe_idx, recipe) in recipes.iter().enumerate() {
             let mut new_recipe = recipe.clone();
             let mut recipe_changed = false;
 
-            // Drop --with=systemd
             if new_recipe.trim_start().starts_with("dh ") {
                 let old = new_recipe.clone();
                 new_recipe = debian_analyzer::rules::dh_invoke_drop_with(&new_recipe, "systemd");
@@ -222,8 +235,6 @@ fn upgrade_to_installsystemd(
                     recipe_changed = true;
                 }
             }
-
-            // Replace dh_systemd_enable with dh_installsystemd
             if new_recipe.contains("dh_systemd_enable") {
                 new_recipe = new_recipe.replace("dh_systemd_enable", "dh_installsystemd");
                 transforms.add(
@@ -231,8 +242,6 @@ fn upgrade_to_installsystemd(
                 );
                 recipe_changed = true;
             }
-
-            // Replace dh_systemd_start with dh_installsystemd
             if new_recipe.contains("dh_systemd_start") {
                 new_recipe = new_recipe.replace("dh_systemd_start", "dh_installsystemd");
                 transforms.add(
@@ -243,13 +252,8 @@ fn upgrade_to_installsystemd(
 
             if recipe_changed {
                 rule.replace_command(recipe_idx, &new_recipe);
-                changed = true;
             }
         }
-    }
-
-    if changed {
-        fs::write(&rules_path, mf.to_string())?;
     }
 
     Ok(())
@@ -269,9 +273,10 @@ fn uses_libexecdir(base_path: &Path) -> bool {
 
 fn upgrade_to_debhelper_12(
     base_path: &Path,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    update_rules_for_compat_12(base_path, transforms)?;
+    update_rules_for_compat_12(base_path, rules_mf, transforms)?;
 
     // In compat 12, autoconf and meson no longer pass --libexecdir explicitly.
     // Add an override so files still end up in /usr/libexec.
@@ -283,15 +288,9 @@ fn upgrade_to_debhelper_12(
         return Ok(());
     }
 
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+    let Some(mf) = get_rules(base_path, rules_mf)? else {
         return Ok(());
-    }
-
-    let mut file = std::fs::File::open(&rules_path)
-        .map_err(|e| FixerError::Other(format!("Failed to open rules: {:?}", e)))?;
-    let mut mf = Makefile::from_reader(&mut file)
-        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
+    };
 
     let mut changed = false;
     let has_override = mf
@@ -308,8 +307,6 @@ fn upgrade_to_debhelper_12(
                 if !recipe.trim_start().starts_with("dh_auto_configure") {
                     continue;
                 }
-                // Arguments after -- are passed to the underlying configure.
-                // Apply the option to the part after --.
                 if let Some(sep_pos) = recipe.find(" -- ") {
                     let (before, after) = recipe.split_at(sep_pos + 4);
                     let new_after = crate::rules::dh_invoke_set_option_argument_soft(
@@ -345,32 +342,24 @@ fn upgrade_to_debhelper_12(
         changed = true;
     }
 
-    if !changed {
-        return Ok(());
+    if changed {
+        transforms.add(format!(
+            "debian/rules: Add --libexecdir=/usr/libexec for {} build system.",
+            buildsystem
+        ));
     }
-
-    fs::write(&rules_path, mf.to_string())?;
-    transforms.add(format!(
-        "debian/rules: Add --libexecdir=/usr/libexec for {} build system.",
-        buildsystem
-    ));
 
     Ok(())
 }
 
 fn update_rules_for_compat_12(
     base_path: &Path,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+    let Some(mf) = get_rules(base_path, rules_mf)? else {
         return Ok(());
-    }
-
-    let mut file = std::fs::File::open(&rules_path)
-        .map_err(|e| FixerError::Other(format!("Failed to open rules: {:?}", e)))?;
-    let mut mf = Makefile::from_reader(&mut file)
-        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
+    };
 
     let mut changed = false;
     let mut need_override_missing = false;
@@ -588,12 +577,8 @@ fn update_rules_for_compat_12(
                     e
                 ))
             })?;
-            changed = true;
+            let _ = changed; // changed flag kept for symmetry; unused now
         }
-    }
-
-    if changed {
-        fs::write(&rules_path, mf.to_string())?;
     }
 
     Ok(())
@@ -636,63 +621,55 @@ fn fix_dh_argument_order(line: &str) -> String {
 // Upgrade to debhelper 13
 fn upgrade_to_debhelper_13(
     base_path: &Path,
+    actions: &mut Vec<Action>,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
     // Rename debian/*.tmpfile to debian/*.tmpfiles
-    let control_path = base_path.join("debian/control");
-    if control_path.exists() {
-        let editor = TemplatedControlEditor::open(&control_path)?;
-        let debian_dir = base_path.join("debian");
-
-        for binary in editor.binaries() {
-            let name = binary
-                .as_deb822()
-                .get("Package")
-                .ok_or(FixerError::NoChanges)?;
-            let tmpfile_path = debian_dir.join(format!("{}.tmpfile", name));
-            if tmpfile_path.is_file() {
-                let tmpfiles_path = debian_dir.join(format!("{}.tmpfiles", name));
-                fs::rename(&tmpfile_path, &tmpfiles_path)?;
-                transforms.add(format!(
-                    "Rename debian/{}.tmpfile to debian/{}.tmpfiles.",
-                    name, name
-                ));
-            }
+    for name in binary_package_names(base_path)? {
+        let tmpfile_rel = PathBuf::from("debian").join(format!("{}.tmpfile", name));
+        if !base_path.join(&tmpfile_rel).is_file() {
+            continue;
         }
+        let tmpfiles_rel = PathBuf::from("debian").join(format!("{}.tmpfiles", name));
+        actions.push(Action::Filesystem(FilesystemAction::Rename {
+            file: tmpfile_rel,
+            to: tmpfiles_rel,
+        }));
+        transforms.add(format!(
+            "Rename debian/{}.tmpfile to debian/{}.tmpfiles.",
+            name, name
+        ));
+    }
 
-        // Also check for generic tmpfile
-        let tmpfile_path = debian_dir.join("tmpfile");
-        if tmpfile_path.is_file() {
-            let tmpfiles_path = debian_dir.join("tmpfiles");
-            fs::rename(&tmpfile_path, &tmpfiles_path)?;
-            transforms.add("Rename debian/tmpfile to debian/tmpfiles.".to_string());
-        }
+    // Also check for generic tmpfile
+    let tmpfile_rel = PathBuf::from("debian/tmpfile");
+    if base_path.join(&tmpfile_rel).is_file() {
+        actions.push(Action::Filesystem(FilesystemAction::Rename {
+            file: tmpfile_rel,
+            to: PathBuf::from("debian/tmpfiles"),
+        }));
+        transforms.add("Rename debian/tmpfile to debian/tmpfiles.".to_string());
     }
 
     // Drop --fail-missing from dh_missing calls
-    drop_dh_missing_fail(base_path, transforms)?;
+    drop_dh_missing_fail(base_path, rules_mf, transforms)?;
 
     // Remove DEB_BUILD_OPTIONS nocheck wrapper from override_dh_auto_test
-    remove_nocheck_wrapper(base_path, transforms)?;
+    remove_nocheck_wrapper(base_path, rules_mf, transforms)?;
 
     Ok(())
 }
 
 fn drop_dh_missing_fail(
     base_path: &Path,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+    let Some(mf) = get_rules(base_path, rules_mf)? else {
         return Ok(());
-    }
+    };
 
-    let mut file = std::fs::File::open(&rules_path)
-        .map_err(|e| FixerError::Other(format!("Failed to open rules: {:?}", e)))?;
-    let mf = Makefile::from_reader(&mut file)
-        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
-
-    let mut changed = false;
     let mut rules_to_remove = Vec::new();
 
     // Process rules directly with mutation methods
@@ -727,7 +704,6 @@ fn drop_dh_missing_fail(
                 }
 
                 rule.replace_command(recipe_idx, &new_recipe);
-                changed = true;
             }
         }
 
@@ -748,13 +724,8 @@ fn drop_dh_missing_fail(
             if rules_to_remove.contains(&idx) {
                 rule.remove()
                     .map_err(|e| FixerError::Other(format!("Failed to remove rule: {:?}", e)))?;
-                changed = true;
             }
         }
-    }
-
-    if changed {
-        fs::write(&rules_path, mf.to_string())?;
     }
 
     Ok(())
@@ -762,18 +733,12 @@ fn drop_dh_missing_fail(
 
 fn remove_nocheck_wrapper(
     base_path: &Path,
+    rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+    let Some(mf) = get_rules(base_path, rules_mf)? else {
         return Ok(());
-    }
-
-    let mut file = std::fs::File::open(&rules_path)?;
-    let mf = Makefile::from_reader(&mut file)
-        .map_err(|e| FixerError::Other(format!("Failed to read makefile: {:?}", e)))?;
-
-    let mut changed = false;
+    };
 
     for rule in mf.rules() {
         let targets: Vec<String> = rule.targets().collect();
@@ -784,44 +749,35 @@ fn remove_nocheck_wrapper(
         // Iterate through rule items to find conditionals
         for item in rule.items() {
             if let makefile_lossless::RuleItem::Conditional(mut cond) = item {
-                // Check if it's a DEB_BUILD_OPTIONS nocheck wrapper
                 let cond_str = cond.to_string();
                 if cond_str.contains("ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))") {
                     transforms.add(
                         "Drop check for DEB_BUILD_OPTIONS containing \"nocheck\", since debhelper now does this.".to_string(),
                     );
-
-                    // Unwrap the conditional, keeping its contents
                     cond.unwrap().map_err(|e| {
                         FixerError::Other(format!("Failed to unwrap conditional: {:?}", e))
                     })?;
-                    changed = true;
                 }
             }
         }
     }
 
-    if changed {
-        fs::write(&rules_path, mf.to_string())?;
-    }
-
     Ok(())
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    // Get the compat_release from preferences, defaulting to "sid"
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let compat_release = preferences.compat_release.as_deref().unwrap_or("sid");
-
     let mut new_debhelper_compat_version = maximum_debhelper_compat_version(compat_release);
 
-    // Check if the package uses CDBS
-    let uses_cdbs = debian_analyzer::rules::check_cdbs(&base_path.join("debian/rules"));
-    if uses_cdbs {
-        // cdbs doesn't appear to support debhelper 11 or 12 just yet..
+    // CDBS doesn't support debhelper 11 or 12 yet, cap to 10.
+    if debian_analyzer::rules::check_cdbs(&base_path.join("debian/rules")) {
         new_debhelper_compat_version = new_debhelper_compat_version.min(10);
     }
 
-    // Check if autoreconf is disabled
+    // Autoreconf disabled and old configure → cap to 10.
     if autoreconf_disabled(base_path) {
         let configure_path = base_path.join("configure");
         if configure_path.exists() {
@@ -833,53 +789,65 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         }
     }
 
-    let compat_path = base_path.join("debian/compat");
-    let control_path = base_path.join("debian/control");
+    let compat_rel = PathBuf::from("debian/compat");
+    let compat_abs = base_path.join(&compat_rel);
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
 
     let current_debhelper_compat_version: u8;
     let mut transforms = Transformations::new();
+    let mut actions: Vec<Action> = Vec::new();
+    // Lazy in-memory Makefile for debian/rules. If still `None` at the
+    // end, no rules-touching helper opened the file.
+    let mut rules_mf: Option<Makefile> = None;
+    let original_rules_text =
+        fs::read_to_string(base_path.join("debian/rules")).unwrap_or_default();
 
-    if compat_path.exists() {
-        // Package currently stores compat version in debian/compat
-        current_debhelper_compat_version = match read_debhelper_compat_file(&compat_path)? {
+    if compat_abs.exists() {
+        // Compat version is stored in debian/compat.
+        current_debhelper_compat_version = match read_debhelper_compat_file(&compat_abs)? {
             Some(v) => v,
-            None => return Err(FixerError::NoChanges),
+            None => return Ok(Vec::new()),
         };
-
         if current_debhelper_compat_version >= new_debhelper_compat_version {
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
 
-        // Update debian/compat
-        fs::write(&compat_path, format!("{}\n", new_debhelper_compat_version))?;
+        // Update debian/compat (overwrite with new version).
+        actions.push(Action::Filesystem(FilesystemAction::Write {
+            file: compat_rel,
+            content: format!("{}\n", new_debhelper_compat_version).into_bytes(),
+        }));
 
-        // Update Build-Depends in debian/control
-        let editor = TemplatedControlEditor::open(&control_path)?;
-        if let Some(mut source) = editor.source() {
+        // Update Build-Depends to require the new debhelper.
+        let control_text = fs::read_to_string(&control_abs)?;
+        let control = Control::from_str(&control_text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse control: {:?}", e)))?;
+        if let Some(source) = control.source() {
             let mut build_depends = source.build_depends().unwrap_or_default();
             let version = Version::from_str(&format!("{}~", new_debhelper_compat_version))
                 .map_err(|e| FixerError::Other(format!("Failed to parse version: {:?}", e)))?;
             build_depends.ensure_minimum_version("debhelper", &version);
-            source.set_build_depends(&build_depends);
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Build-Depends".into(),
+                value: build_depends.to_string(),
+            }));
         }
-        editor.commit()?;
     } else {
-        // Assume that the compat version is set in Build-Depends
-        if !control_path.exists() {
-            // debcargo packages just use the latest version and don't store debhelper
-            // version explicitly.
-            if is_debcargo_package(base_path) {
-                return Err(FixerError::NoChanges);
-            }
-            return Err(FixerError::NoChanges);
+        // Compat version is set via Build-Depends: debhelper-compat (= N).
+        if !control_abs.exists() {
+            return Ok(Vec::new());
         }
 
-        let editor = TemplatedControlEditor::open(&control_path)?;
-
-        let mut source = editor.source().ok_or(FixerError::NoChanges)?;
+        let control_text = fs::read_to_string(&control_abs)?;
+        let control = Control::from_str(&control_text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse control: {:?}", e)))?;
+        let Some(source) = control.source() else {
+            return Ok(Vec::new());
+        };
         let build_depends_str = source.as_deb822().get("Build-Depends").unwrap_or_default();
-
-        // Parse the relations to find debhelper-compat
         let (relations, _) = Relations::parse_relaxed(&build_depends_str, true);
 
         let debhelper_compat_relations: Vec<_> = relations
@@ -888,52 +856,80 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
             .filter(|rel| rel.try_name().as_deref() == Some("debhelper-compat"))
             .collect();
 
-        if debhelper_compat_relations.is_empty() {
-            return Err(FixerError::NoChanges);
+        if debhelper_compat_relations.len() != 1 {
+            return Ok(Vec::new());
         }
-
-        if debhelper_compat_relations.len() > 1 {
-            // Not sure how to deal with this
-            return Err(FixerError::NoChanges);
-        }
-
         let rel = &debhelper_compat_relations[0];
-        let version_constraint = rel.version().ok_or(FixerError::NoChanges)?;
-
+        let Some(version_constraint) = rel.version() else {
+            return Ok(Vec::new());
+        };
         if version_constraint.0 != debian_control::relations::VersionConstraint::Equal {
-            // Not sure how to deal with this
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
-
-        current_debhelper_compat_version = version_constraint
-            .1
-            .to_string()
-            .parse()
-            .map_err(|_| FixerError::NoChanges)?;
-
+        current_debhelper_compat_version = match version_constraint.1.to_string().parse() {
+            Ok(v) => v,
+            Err(_) => return Ok(Vec::new()),
+        };
         if current_debhelper_compat_version >= new_debhelper_compat_version {
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
 
-        // Update the Build-Depends
         let mut build_depends = source.build_depends().unwrap_or_default();
         let version = Version::from_str(&format!("{}", new_debhelper_compat_version))
             .map_err(|e| FixerError::Other(format!("Failed to parse version: {:?}", e)))?;
         build_depends.ensure_exact_version("debhelper-compat", &version);
-        source.set_build_depends(&build_depends);
-
-        editor.commit()?;
+        actions.push(Action::Deb822(Deb822Action::SetField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            value: build_depends.to_string(),
+        }));
     }
 
-    // Apply version-specific upgrades
+    // Apply version-specific upgrades.
     for version in (current_debhelper_compat_version + 1)..=new_debhelper_compat_version {
         match version {
-            10 => upgrade_to_debhelper_10(base_path, &mut transforms)?,
-            11 => upgrade_to_debhelper_11(base_path, &mut transforms)?,
-            12 => upgrade_to_debhelper_12(base_path, &mut transforms)?,
-            13 => upgrade_to_debhelper_13(base_path, &mut transforms)?,
+            10 => upgrade_to_debhelper_10(base_path, &mut actions, &mut transforms)?,
+            11 => upgrade_to_debhelper_11(base_path, &mut actions, &mut rules_mf, &mut transforms)?,
+            12 => upgrade_to_debhelper_12(base_path, &mut rules_mf, &mut transforms)?,
+            13 => upgrade_to_debhelper_13(base_path, &mut actions, &mut rules_mf, &mut transforms)?,
             _ => {}
         }
+    }
+
+    // Emit a single Write for debian/rules if any rules-touching helper
+    // opened it AND the resulting content differs from the original.
+    if let Some(mf) = rules_mf {
+        let mut new_text = mf.to_string();
+        // Normalize trailing newlines to match the original file: the
+        // makefile-lossless renderer can add a trailing blank line that
+        // wasn't in the source after rule removal/insertion.
+        let orig_trailing_nls = original_rules_text
+            .as_bytes()
+            .iter()
+            .rev()
+            .take_while(|&&b| b == b'\n')
+            .count();
+        let new_trailing_nls = new_text
+            .as_bytes()
+            .iter()
+            .rev()
+            .take_while(|&&b| b == b'\n')
+            .count();
+        if new_trailing_nls > orig_trailing_nls {
+            let drop = new_trailing_nls - orig_trailing_nls;
+            new_text.truncate(new_text.len() - drop);
+        }
+        if new_text != original_rules_text {
+            actions.push(Action::Filesystem(FilesystemAction::Write {
+                file: PathBuf::from("debian/rules"),
+                content: new_text.into_bytes(),
+            }));
+        }
+    }
+
+    if actions.is_empty() {
+        return Ok(Vec::new());
     }
 
     let kind = if current_debhelper_compat_version < lowest_non_deprecated_compat_level() {
@@ -946,8 +942,6 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         "Bump debhelper from {} {} to {}.",
         kind, current_debhelper_compat_version, new_debhelper_compat_version
     );
-
-    // Add transform details to description
     if !transforms.subitems.is_empty() {
         let mut sorted_transforms: Vec<_> = transforms.subitems.iter().collect();
         sorted_transforms.sort();
@@ -957,49 +951,54 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         }
     }
 
-    let mut result = FixerResult::builder(description);
-
-    if current_debhelper_compat_version < lowest_non_deprecated_compat_level() {
-        result = result.fixed_issue(LintianIssue {
+    let issue = if current_debhelper_compat_version < lowest_non_deprecated_compat_level() {
+        LintianIssue {
             package: None,
             package_type: Some(crate::PackageType::Source),
             tag: Some("package-uses-deprecated-debhelper-compat-version".to_string()),
             info: Some(current_debhelper_compat_version.to_string()),
-        });
+        }
     } else {
-        result = result.fixed_issue(LintianIssue {
+        LintianIssue {
             package: None,
             package_type: Some(crate::PackageType::Source),
             tag: Some("package-uses-old-debhelper-compat-version".to_string()),
             info: Some(current_debhelper_compat_version.to_string()),
-        });
-    }
+        }
+    };
 
-    Ok(result.build())
+    Ok(vec![Diagnostic::with_actions(issue, description, actions)])
 }
 
 declare_fixer! {
     name: "package-uses-deprecated-debhelper-compat-version",
     tags: ["package-uses-deprecated-debhelper-compat-version", "package-uses-old-debhelper-compat-version"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version as DebVersion;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path, prefs: &FixerPreferences) -> Result<crate::FixerResult, FixerError> {
+        let v: DebVersion = "1.0-1".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &v, prefs)
+    }
 
     #[test]
     fn test_no_compat_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let preferences = FixerPreferences::default();
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let prefs = FixerPreferences::default();
+        assert!(matches!(
+            run_apply(temp_dir.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -1009,10 +1008,7 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        // Create a compat file with version 9
         fs::write(debian_dir.join("compat"), "9\n").unwrap();
-
-        // Create a control file
         fs::write(
             debian_dir.join("control"),
             "Source: test-package\nBuild-Depends: debhelper (>= 9)\n\nPackage: test-package\n",
@@ -1022,10 +1018,8 @@ mod tests {
         let mut preferences = FixerPreferences::default();
         preferences.compat_release = Some("sid".to_string());
 
-        let result = run(base_path, &preferences);
-        assert!(result.is_ok());
+        run_apply(base_path, &preferences).unwrap();
 
-        // Check that compat was updated
         let compat_content = fs::read_to_string(debian_dir.join("compat")).unwrap();
         assert!(!compat_content.starts_with("9"));
         assert!(compat_content.trim().parse::<u8>().unwrap() > 9);
@@ -1038,7 +1032,6 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        // Create a control file with debhelper-compat
         fs::write(
             debian_dir.join("control"),
             "Source: test-package\nBuild-Depends: debhelper-compat (= 9)\n\nPackage: test-package\n",
@@ -1048,10 +1041,8 @@ mod tests {
         let mut preferences = FixerPreferences::default();
         preferences.compat_release = Some("sid".to_string());
 
-        let result = run(base_path, &preferences);
-        assert!(result.is_ok());
+        run_apply(base_path, &preferences).unwrap();
 
-        // Check that control was updated
         let control_content = fs::read_to_string(debian_dir.join("control")).unwrap();
         assert!(!control_content.contains("debhelper-compat (= 9)"));
     }
@@ -1063,14 +1054,11 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        // Create a compat file with the maximum version for sid
         let mut preferences = FixerPreferences::default();
         preferences.compat_release = Some("sid".to_string());
         let latest = maximum_debhelper_compat_version("sid");
 
         fs::write(debian_dir.join("compat"), format!("{}\n", latest)).unwrap();
-
-        // Create a control file
         fs::write(
             debian_dir.join("control"),
             format!(
@@ -1080,8 +1068,10 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(base_path, &preferences),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -1102,6 +1092,15 @@ mod tests {
         assert!(uses_libexecdir(base_path));
     }
 
+    /// Helper to drive `upgrade_to_debhelper_12` directly against a
+    /// scratch directory, returning the resulting debian/rules content.
+    fn run_upgrade_12(base_path: &Path) -> String {
+        let mut transforms = Transformations::new();
+        let mut rules_mf: Option<Makefile> = None;
+        upgrade_to_debhelper_12(base_path, &mut rules_mf, &mut transforms).unwrap();
+        rules_mf.map(|mf| mf.to_string()).unwrap_or_default()
+    }
+
     #[test]
     fn test_upgrade_to_12_adds_libexecdir_override() {
         let temp_dir = TempDir::new().unwrap();
@@ -1109,7 +1108,6 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        // Autoconf package that uses libexecdir
         fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
         fs::write(base_path.join("Makefile.am"), "libexecdir = @libexecdir@\n").unwrap();
         fs::write(
@@ -1118,10 +1116,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut transforms = Transformations::new();
-        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
-
-        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        let rules = run_upgrade_12(base_path);
         assert!(rules.contains("override_dh_auto_configure"));
         assert!(rules.contains("--libexecdir=/usr/libexec"));
     }
@@ -1141,10 +1136,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut transforms = Transformations::new();
-        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
-
-        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        let rules = run_upgrade_12(base_path);
         assert!(rules.contains("--libexecdir=/usr/libexec"));
         assert!(rules.contains("--prefix=/usr"));
     }
@@ -1161,10 +1153,7 @@ mod tests {
         let original = "#!/usr/bin/make -f\n\noverride_dh_auto_configure:\n\tdh_auto_configure -- --libexecdir=/custom/path\n\n%:\n\tdh $@\n";
         fs::write(debian_dir.join("rules"), original).unwrap();
 
-        let mut transforms = Transformations::new();
-        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
-
-        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        let rules = run_upgrade_12(base_path);
         assert!(rules.contains("--libexecdir=/custom/path"));
         assert!(!rules.contains("--libexecdir=/usr/libexec"));
     }
@@ -1176,15 +1165,19 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
 
-        // Autoconf package that doesn't use libexecdir
         fs::write(base_path.join("configure.ac"), "AC_INIT\n").unwrap();
         let original = "#!/usr/bin/make -f\n\n%:\n\tdh $@\n";
         fs::write(debian_dir.join("rules"), original).unwrap();
 
+        // No libexecdir usage → upgrade_to_debhelper_12 should not touch
+        // rules. update_rules_for_compat_12 may still open it but won't
+        // change anything; the resulting text should equal the original.
         let mut transforms = Transformations::new();
-        upgrade_to_debhelper_12(base_path, &mut transforms).unwrap();
-
-        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
-        assert_eq!(rules, original);
+        let mut rules_mf: Option<Makefile> = None;
+        upgrade_to_debhelper_12(base_path, &mut rules_mf, &mut transforms).unwrap();
+        let rendered = rules_mf.map(|mf| mf.to_string()).unwrap_or_default();
+        // Either rules wasn't opened at all, or its rendering equals
+        // the input.
+        assert!(rendered.is_empty() || rendered == original);
     }
 }
