@@ -112,11 +112,46 @@ pub enum Action {
     Filesystem(FilesystemAction),
 }
 
+/// Continuation-line indent pattern for multi-line deb822 field values.
+///
+/// Mirrors [`deb822_lossless::IndentPattern`] but is `serde`-serialisable
+/// so it can travel over the LSP wire alongside actions.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum IndentPattern {
+    /// All continuation lines use exactly `spaces` leading spaces.
+    Fixed {
+        /// Number of leading spaces (typically `1` for DEP-5 / Description).
+        spaces: usize,
+    },
+    /// Continuation lines align with the column after the field name and
+    /// `": "`, i.e. `field_name.len() + 2` spaces. The deb822 default for
+    /// most fields.
+    FieldNameLength,
+}
+
+impl IndentPattern {
+    /// Convert to the underlying `deb822_lossless` pattern for the
+    /// applier.
+    pub fn to_deb822(&self) -> deb822_lossless::IndentPattern {
+        match self {
+            IndentPattern::Fixed { spaces } => deb822_lossless::IndentPattern::Fixed(*spaces),
+            IndentPattern::FieldNameLength => deb822_lossless::IndentPattern::FieldNameLength,
+        }
+    }
+}
+
 /// Edits to a deb822 file.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Deb822Action {
     /// Set a field value, inserting it if missing.
+    ///
+    /// Continuation-line indentation for multi-line values follows the
+    /// deb822 default: align continuations to the field-name column. Use
+    /// [`SetFieldWithIndent`](Self::SetFieldWithIndent) when a field
+    /// needs a specific indent (e.g. Description / DEP-5 mandate a
+    /// single-space indent).
     SetField {
         /// File to edit, relative to the package root.
         file: PathBuf,
@@ -126,6 +161,23 @@ pub enum Deb822Action {
         field: String,
         /// New value.
         value: String,
+    },
+    /// Like [`SetField`](Self::SetField), but with an explicit
+    /// continuation-line indent pattern. Used for fields whose
+    /// formatting convention diverges from the deb822 default — most
+    /// notably binary-package `Description:` (single-space indent per
+    /// DEP-5) and debian/copyright bodies.
+    SetFieldWithIndent {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Field name.
+        field: String,
+        /// New value.
+        value: String,
+        /// Continuation-line indent pattern.
+        indent: IndentPattern,
     },
     /// Remove a field if present.
     RemoveField {
