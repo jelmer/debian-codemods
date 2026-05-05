@@ -1,7 +1,8 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue, PackageType};
+use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
 use regex::bytes::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn previous_release(release: &str) -> Option<String> {
     use chrono::Utc;
@@ -170,20 +171,26 @@ fn migration_done(rels: &Relations, preferences: &FixerPreferences) -> bool {
     true
 }
 
+/// Result of analyzing a recipe line: the rewritten text (if it should
+/// change) and the lintian issue reported for the eliminated migration.
+struct RecipeRewrite {
+    new_text: Vec<u8>,
+    issue: LintianIssue,
+}
+
 fn eliminate_dbgsym_migration(
     line: &[u8],
     line_no: usize,
-    basedir: &Path,
     preferences: &FixerPreferences,
-    fixed_issues: &mut Vec<LintianIssue>,
-    overridden_issues: &mut Vec<LintianIssue>,
-) -> Vec<u8> {
+) -> Option<RecipeRewrite> {
     if !line.starts_with(b"dh_strip") {
-        return line.to_vec();
+        return None;
     }
 
     let re = Regex::new(r#"([ \t]+)--dbgsym-migration[= ]('[^']+'|"[^"]+"|[^ ]+)"#).unwrap();
 
+    let mut matched_text: Option<Vec<u8>> = None;
+    let mut any_eliminated = false;
     let result = re
         .replace_all(line, |caps: &regex::bytes::Captures| {
             let migration_arg = caps.get(2).unwrap().as_bytes();
@@ -201,123 +208,179 @@ fn eliminate_dbgsym_migration(
                 Ok(s) => s,
                 Err(_) => return caps.get(0).unwrap().as_bytes().to_vec(),
             };
-
-            // Check for variables - too complicated
             if stripped_str.contains('$') {
                 return caps.get(0).unwrap().as_bytes().to_vec();
             }
 
-            // Parse the relations
             let (rels, _errors) = Relations::parse_relaxed(stripped_str, true);
-            let is_done = migration_done(&rels, preferences);
-            if is_done {
-                let issue = LintianIssue {
-                    package: None,
-                    package_type: Some(PackageType::Source),
-                    tag: Some("debug-symbol-migration-possibly-complete".to_string()),
-                    info: Some(format!(
-                        "{} [debian/rules:{}]",
-                        String::from_utf8_lossy(caps.get(0).unwrap().as_bytes()).trim(),
-                        line_no
-                    )),
-                };
-
-                if issue.should_fix(basedir) {
-                    fixed_issues.push(issue);
-                    return b"".to_vec();
-                } else {
-                    overridden_issues.push(issue);
+            if migration_done(&rels, preferences) {
+                if matched_text.is_none() {
+                    matched_text = Some(caps.get(0).unwrap().as_bytes().to_vec());
                 }
+                any_eliminated = true;
+                return b"".to_vec();
             }
             caps.get(0).unwrap().as_bytes().to_vec()
         })
         .to_vec();
 
-    // Handle case where we end up with "dh_strip || dh_strip"
-    if result == b"dh_strip || dh_strip" {
+    if !any_eliminated {
+        return None;
+    }
+
+    // Collapse "dh_strip || dh_strip" → "dh_strip".
+    let new_text = if result == b"dh_strip || dh_strip" {
         b"dh_strip".to_vec()
     } else {
         result
-    }
+    };
+
+    let matched = matched_text.unwrap_or_default();
+    let issue = LintianIssue {
+        package: None,
+        package_type: Some(PackageType::Source),
+        tag: Some("debug-symbol-migration-possibly-complete".to_string()),
+        info: Some(format!(
+            "{} [debian/rules:{}]",
+            String::from_utf8_lossy(&matched).trim(),
+            line_no
+        )),
+    };
+
+    Some(RecipeRewrite { new_text, issue })
 }
 
-pub fn run(
-    basedir: &Path,
-    _package_name: &str,
+pub fn detect(
+    base_path: &Path,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    let rules_path = basedir.join("debian/rules");
-
-    if !rules_path.exists() {
-        return Err(FixerError::ScriptNotFound(rules_path));
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_rel = PathBuf::from("debian/rules");
+    let rules_abs = base_path.join(&rules_rel);
+    if !rules_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = std::fs::read(&rules_path)?;
-    let mut makefile = makefile_lossless::Makefile::read_relaxed(content.as_slice())
+    let content = std::fs::read(&rules_abs)?;
+    let makefile = makefile_lossless::Makefile::read_relaxed(content.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/rules: {}", e)))?;
 
-    let mut made_changes = false;
-    let mut rules_to_check: Vec<usize> = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    for (rule_idx, rule) in makefile.rules().enumerate() {
-        let mut rule_modified = false;
-
-        for mut recipe_node in rule.recipe_nodes() {
+    for rule in makefile.rules() {
+        // Compute the rewrites for each recipe in this rule.
+        let mut per_recipe: Vec<(String, Option<RecipeRewrite>)> = Vec::new();
+        for recipe_node in rule.recipe_nodes() {
             let recipe = recipe_node.text();
             let line_no = recipe_node.line() + 1;
-            let ret = eliminate_dbgsym_migration(
-                recipe.as_bytes(),
-                line_no,
-                basedir,
-                preferences,
-                &mut fixed_issues,
-                &mut overridden_issues,
-            );
-            if !ret.is_empty() && ret != recipe.as_bytes() {
-                // Command should be updated - use replace_text() directly on Recipe
-                recipe_node.replace_text(&String::from_utf8_lossy(&ret));
-                made_changes = true;
-                rule_modified = true;
+            let rewrite = eliminate_dbgsym_migration(recipe.as_bytes(), line_no, preferences);
+            per_recipe.push((recipe, rewrite));
+        }
+        // Skip rules with no rewrites.
+        if !per_recipe.iter().any(|(_, r)| r.is_some()) {
+            continue;
+        }
+
+        let primary_target = rule.targets().next().unwrap_or_default();
+        let target_str = primary_target.to_string();
+
+        // Compute the post-edit recipes (for detecting pointless overrides).
+        let post_edit: Vec<String> = per_recipe
+            .iter()
+            .map(|(orig, r)| match r {
+                Some(rw) => String::from_utf8_lossy(&rw.new_text).to_string(),
+                None => orig.clone(),
+            })
+            .collect();
+        let effective: Vec<&String> = post_edit.iter().filter(|l| !l.trim().is_empty()).collect();
+
+        let mut prereqs = rule.prerequisites();
+        let has_prereqs = prereqs.next().is_some();
+        let is_override = target_str.starts_with("override_");
+        let command = if is_override {
+            &target_str["override_".len()..]
+        } else {
+            target_str.as_str()
+        };
+        let pointless =
+            is_override && !has_prereqs && effective.len() == 1 && effective[0].trim() == command;
+
+        if pointless {
+            // Drop the entire rule. The first issue (any) carries the
+            // tag; subsequent rewrites don't need their own actions
+            // because removing the rule subsumes them.
+            let issues: Vec<_> = per_recipe
+                .iter()
+                .filter_map(|(_, r)| r.as_ref().map(|rw| rw.issue.clone()))
+                .collect();
+            // Emit a single diagnostic for the rule removal, plus one
+            // empty-action diagnostic per remaining issue so they all
+            // show up in fixed-issues.
+            let mut issues_iter = issues.into_iter();
+            if let Some(first_issue) = issues_iter.next() {
+                diagnostics.push(Diagnostic::with_actions(
+                    first_issue,
+                    String::new(),
+                    vec![
+                        Action::Makefile(MakefileAction::RemoveRule {
+                            file: rules_rel.clone(),
+                            target: target_str.clone(),
+                        }),
+                        Action::Makefile(MakefileAction::RemovePhonyTarget {
+                            file: rules_rel.clone(),
+                            target: target_str.clone(),
+                        }),
+                    ],
+                ));
+            }
+            for extra_issue in issues_iter {
+                diagnostics.push(Diagnostic::with_actions(
+                    extra_issue,
+                    String::new(),
+                    Vec::new(),
+                ));
+            }
+        } else {
+            // Per-recipe rewrites.
+            for (orig, r) in per_recipe {
+                let Some(rewrite) = r else { continue };
+                let new_text_str = String::from_utf8_lossy(&rewrite.new_text).to_string();
+                let action = if new_text_str.trim().is_empty() {
+                    Action::Makefile(MakefileAction::RemoveRecipe {
+                        file: rules_rel.clone(),
+                        target: target_str.clone(),
+                        recipe: orig.clone(),
+                    })
+                } else {
+                    Action::Makefile(MakefileAction::ReplaceRecipe {
+                        file: rules_rel.clone(),
+                        target: target_str.clone(),
+                        recipe: orig.clone(),
+                        new_recipe: new_text_str,
+                    })
+                };
+                diagnostics.push(Diagnostic::with_actions(
+                    rewrite.issue,
+                    String::new(),
+                    vec![action],
+                ));
             }
         }
-
-        // Track rules that need discard_pointless_override check
-        if rule_modified {
-            rules_to_check.push(rule_idx);
-        }
     }
 
-    // Discard pointless overrides for modified rules
-    let all_rules: Vec<_> = makefile.rules().collect();
-    for rule_idx in rules_to_check {
-        if let Some(rule) = all_rules.get(rule_idx) {
-            debian_analyzer::rules::discard_pointless_override(&mut makefile, rule);
-        }
-    }
+    Ok(diagnostics)
+}
 
-    if !made_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    std::fs::write(&rules_path, makefile.to_string())?;
-
-    Ok(
-        FixerResult::builder("Drop transition for old debug package migration.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    "Drop transition for old debug package migration.".to_string()
 }
 
 declare_fixer! {
     name: "debug-symbol-migration-possibly-complete",
     tags: ["debug-symbol-migration-possibly-complete"],
-    apply: |basedir, package, _version, preferences| {
-        run(basedir, package, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
