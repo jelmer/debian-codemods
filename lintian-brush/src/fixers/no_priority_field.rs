@@ -1,10 +1,11 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::control::TemplatedControlEditor;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::str::FromStr;
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
+pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<Vec<Diagnostic>, FixerError> {
     let control_path = base_path.join("debian/control");
 
     if !control_path.exists() {
@@ -36,121 +37,140 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
         if let Some(priority) = source.as_deb822().get("Priority") {
             if priority == "optional" && default_priority_is_optional {
                 // Remove redundant Priority: optional from source stanza
-                let mut source = editor.source().unwrap();
-                source.as_mut_deb822().remove("Priority");
-                editor.commit()?;
-                return Ok(FixerResult::builder(
-                    "Remove Priority: optional from source stanza (it is now the default).",
-                )
-                .certainty(crate::Certainty::Confident)
-                .build());
+                let issue = LintianIssue::source_with_info(
+                    "redundant-field",
+                    vec![format!("debian/control Source Priority")],
+                );
+                let plans = vec![ActionPlan {
+                    label: Some("Remove redundant Priority: optional from source stanza.".to_string()),
+                    actions: vec![Action::Deb822(Deb822Action::RemoveField {
+                        file: control_path.clone(),
+                        paragraph: ParagraphSelector::Source,
+                        field: "Priority".to_string(),
+                    })],
+                }];
+                let diagnostic = Diagnostic {
+                    issue: Some(issue),
+                    message: "Priority: optional in source stanza is redundant with dpkg >= 1.
+22.13 and can be removed.".to_string(),
+                    plans,
+                    certainty: Some(crate::Certainty::Confident),
+                };
+                return Ok(vec![diagnostic]);
             }
             return Err(FixerError::NoChanges);
         }
     }
 
     let mut binary_priorities = HashSet::new();
-    let mut updated = HashMap::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut missing_priorities = Vec::new();
+    let mut any_explicit = false;
 
     // Collect binaries to process
     let binaries: Vec<_> = editor.binaries().collect();
 
-    for mut binary in binaries {
-        let paragraph = binary.as_mut_deb822();
+    for binary in binaries {
+        let paragraph = binary.as_deb822();
         let package_name = paragraph.get("Package").unwrap_or_default().to_string();
 
         if let Some(priority) = paragraph.get("Priority") {
             binary_priorities.insert(priority.to_string());
+            any_explicit = true;
         } else {
-            // Only add Priority: optional if dpkg < 1.22.13
-            if !default_priority_is_optional {
-                // Create issue for missing priority field
-                let issue = LintianIssue::source_with_info(
-                    "recommended-field",
-                    vec![format!("debian/control Priority")],
-                );
-                if issue.should_fix(base_path) {
-                    // Set priority to "optional" for binaries without it
-                    paragraph.set("Priority", "optional");
-                    binary_priorities.insert("optional".to_string());
-                    updated.insert(package_name, "optional".to_string());
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            } else {
-                // Priority: optional is the default, so we don't need to add it
-                binary_priorities.insert("optional".to_string());
-            }
+            missing_priorities.push(package_name);
+            binary_priorities.insert("optional".to_string());
+            // Since it's missing, it's not explicit yet, but we're implicitly adding "optional".
         }
     }
 
-    // If all issues were overridden, return NoChangesAfterOverrides
-    if fixed_issues.is_empty() && !overridden_issues.is_empty() {
-        return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-    }
+    let mut diagnostics = Vec::new();
 
     // If all binaries have the same priority, move it to source (only if it's not the default)
     if binary_priorities.len() == 1 {
         let common_priority = binary_priorities.iter().next().unwrap().clone();
 
-        // Check if any binary actually has Priority set explicitly
-        let binaries: Vec<_> = editor.binaries().collect();
-        let any_explicit = binaries
-            .iter()
-            .any(|b| b.as_deb822().get("Priority").is_some());
+        // If we added it implicitly to all missing ones, it's as if they were explicit 
+        // if we are going to write it to source anyway.
+        // But wait! If none had it explicitly, we only write to source if we actually needed to add it (i.e. !default_priority_is_optional).
+        if any_explicit || !default_priority_is_optional {
+            if common_priority != "optional" || !default_priority_is_optional {
+                let mut actions = vec![Action::Deb822(Deb822Action::SetField {
+                    file: control_path.clone(),
+                    paragraph: ParagraphSelector::Source,
+                    field: "Priority".to_string(),
+                    value: common_priority.clone(),
+                })];
 
-        // Only set Priority in source if:
-        // 1. At least one binary has it set explicitly
-        // 2. Either the priority is not "optional" OR dpkg < 1.22.13
-        if any_explicit && (common_priority != "optional" || !default_priority_is_optional) {
-            // Set priority in source
-            if let Some(mut source) = editor.source() {
-                source.as_mut_deb822().set("Priority", &common_priority);
+                let binaries: Vec<_> = editor.binaries().collect();
+                for binary in binaries {
+                    let package_name = binary.as_deb822().get("Package").unwrap_or_default().to_string();
+                    if binary.as_deb822().get("Priority").is_some() {
+                        actions.push(Action::Deb822(Deb822Action::RemoveField {
+                            file: control_path.clone(),
+                            paragraph: ParagraphSelector::Binary {
+                                package: package_name,
+                            },
+                            field: "Priority".to_string(),
+                        }));
+                    }
+                }
+
+                let issue = if !missing_priorities.is_empty() {
+                    Some(LintianIssue::source_with_info(
+                        "recommended-field",
+                        vec![format!("debian/control Priority")],
+                    ))
+                } else {
+                    None
+                };
+
+                let plans = vec![ActionPlan {
+                    label: Some("Set priority in source stanza, since it is the same for all packages.".to_string()),
+                    actions,
+                }];
+
+                diagnostics.push(Diagnostic {
+                    issue,
+                    message: "Set priority in source stanza, since it is the same for all packages.".to_string(),
+                    plans,
+                    certainty: Some(crate::Certainty::Confident),
+                });
             }
+        }
+    } 
 
-            // Remove priority from all binaries
-            let binaries: Vec<_> = editor.binaries().collect();
-            for mut binary in binaries {
-                binary.as_mut_deb822().remove("Priority");
-            }
-
-            editor.commit()?;
-
-            let mut result_builder = FixerResult::builder(
-                "Set priority in source stanza, since it is the same for all packages.",
-            )
-            .certainty(crate::Certainty::Confident);
-
-            // Add fixed and overridden issues
-            if !fixed_issues.is_empty() {
-                result_builder = result_builder.fixed_issues(fixed_issues);
-            }
-            if !overridden_issues.is_empty() {
-                result_builder = result_builder.overridden_issues(overridden_issues);
-            }
-
-            return Ok(result_builder.build());
+    if diagnostics.is_empty() && !default_priority_is_optional {
+        // We couldn't move it to source, so we must add it to the binaries that are missing it
+        for package_name in missing_priorities {
+            let issue = LintianIssue::source_with_info(
+                "recommended-field",
+                vec![format!("debian/control Priority")],
+            );
+            let plans = vec![ActionPlan {
+                label: Some("Set priority to 'optional' for this binary package.".to_string()),
+                actions: vec![Action::Deb822(Deb822Action::SetField {
+                    file: control_path.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: package_name.clone(),
+                    },
+                    field: "Priority".to_string(),
+                    value: "optional".to_string(),
+                })],
+            }];
+            diagnostics.push(Diagnostic {
+                issue: Some(issue),
+                message: format!(
+                    "Binary package '{}' is missing a Priority field.",
+                    package_name
+                ),
+                plans,
+                certainty: None,
+            });
         }
     }
 
-    if !updated.is_empty() {
-        editor.commit()?;
-
-        let packages_str: Vec<String> = updated
-            .iter()
-            .map(|(pkg, prio)| format!("{} ({})", pkg, prio))
-            .collect();
-
-        return Ok(FixerResult::builder(format!(
-            "Set priority for binary packages {:?}.",
-            packages_str
-        ))
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build());
+    if !diagnostics.is_empty() {
+        return Ok(diagnostics);
     }
 
     Err(FixerError::NoChanges)
@@ -159,7 +179,7 @@ pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResu
 declare_fixer! {
     name: "no-priority-field",
     tags: ["recommended-field"],
-    apply: |basedir, _package, _version, preferences| {
+    diagnose: |basedir, _package, _version, preferences| {
         run(basedir, preferences)
     }
 }
