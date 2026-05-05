@@ -1,226 +1,180 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Dep3Action, Diagnostic};
+use crate::{Certainty, FixerError, LintianIssue};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let patches_path = base_path.join("debian/patches");
-
-    if !patches_path.exists() || !patches_path.is_dir() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let patches_rel = PathBuf::from("debian/patches");
+    let patches_abs = base_path.join(&patches_rel);
+    if !patches_abs.is_dir() {
+        return Ok(Vec::new());
     }
-
-    let series_path = patches_path.join("series");
+    let series_path = patches_abs.join("series");
     if !series_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    let series_file = fs::File::open(&series_path)?;
+    let series_file = std::fs::File::open(&series_path)?;
     let series = Series::read(series_file)
         .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
 
-    if series.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
+    let mut diagnostics = Vec::new();
     for entry in &series.entries {
-        if let SeriesEntry::Patch { name, .. } = entry {
-            let patch_path = patches_path.join(name);
+        let SeriesEntry::Patch { name, .. } = entry else {
+            continue;
+        };
+        let patch_abs = patches_abs.join(name);
+        let Ok(content) = std::fs::read_to_string(&patch_abs) else {
+            continue;
+        };
 
-            let content = match fs::read_to_string(&patch_path) {
-                Ok(content) => content,
-                Err(_) => continue, // Skip if patch file doesn't exist
-            };
-
-            // Find where the diff starts
-            let mut header_end = content.len();
-            for (i, line) in content.lines().enumerate() {
-                if line.starts_with("---")
-                    || line.starts_with("diff ")
-                    || line.starts_with("Index:")
-                {
-                    // Count bytes up to this line
-                    header_end = content.lines().take(i).map(|l| l.len() + 1).sum();
-                    break;
-                }
-            }
-
-            let header_str = &content[..header_end];
-            let body = &content[header_end..];
-
-            let mut header = match header_str.parse::<PatchHeader>() {
-                Ok(h) => h,
-                Err(_) => continue, // Skip if we can't parse the header
-            };
-
-            // Check if there's an Origin field with an email address
-            if let Some((_category, origin)) = header.origin() {
-                let origin_str = origin.to_string();
-                if origin_str.contains('@') {
-                    let issue = LintianIssue::source_with_info(
-                        "dep3-format-patch-author-or-from-is-better",
-                        vec![format!("[debian/patches/{}]", name)],
-                    );
-
-                    if issue.should_fix(base_path) {
-                        // Set it as Author instead
-                        header.set_author(&origin_str);
-
-                        // Remove the Origin field
-                        header.as_deb822_mut().remove("Origin");
-
-                        // Reconstruct the patch file
-                        let new_content = format!("{}{}", header, body);
-
-                        fs::write(&patch_path, new_content)?;
-                        fixed_issues.push(issue);
-                    } else {
-                        overridden_issues.push(issue);
-                    }
-                }
-            }
+        let header_end = find_header_end(&content);
+        let header_str = &content[..header_end];
+        let Ok(header) = header_str.parse::<PatchHeader>() else {
+            continue;
+        };
+        let Some((_category, origin)) = header.origin() else {
+            continue;
+        };
+        let origin_str = origin.to_string();
+        if !origin_str.contains('@') {
+            continue;
         }
+
+        let issue = LintianIssue::source_with_info(
+            "dep3-format-patch-author-or-from-is-better",
+            vec![format!("[debian/patches/{}]", name)],
+        );
+        let patch_rel = patches_rel.join(name);
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                "Use Author instead of Origin in patch headers.",
+                vec![
+                    Action::Dep3(Dep3Action::SetField {
+                        file: patch_rel.clone(),
+                        field: "Author".into(),
+                        value: origin_str,
+                    }),
+                    Action::Dep3(Dep3Action::RemoveField {
+                        file: patch_rel,
+                        field: "Origin".into(),
+                    }),
+                ],
+            )
+            .with_certainty(Certainty::Confident),
+        );
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    Ok(
-        FixerResult::builder("Use Author instead of Origin in patch headers.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .certainty(Certainty::Confident)
-            .build(),
-    )
+fn find_header_end(content: &str) -> usize {
+    let mut offset = 0;
+    for line in content.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\r', '\n']);
+        if trimmed.starts_with("---")
+            || trimmed.starts_with("diff ")
+            || trimmed.starts_with("Index:")
+        {
+            return offset;
+        }
+        offset += line.len();
+    }
+    content.len()
 }
 
 declare_fixer! {
     name: "dep3-format-patch-author-or-from-is-better",
     tags: ["dep3-format-patch-author-or-from-is-better"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_replace_origin_with_author() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian/patches");
-        fs::create_dir_all(&patches_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "fix-typo.patch\n").unwrap();
+        let patch = patches.join("fix-typo.patch");
+        fs::write(
+            &patch,
+            "Description: Fix a typo\nOrigin: john@example.com\nBug: https://example.com/bugs/123\n\n--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-teh\n+the\n",
+        )
+        .unwrap();
 
-        let series_content = "fix-typo.patch\n";
-        fs::write(patches_dir.join("series"), series_content).unwrap();
-
-        let patch_content = r#"Description: Fix a typo
-Origin: john@example.com
-Bug: https://example.com/bugs/123
-
---- a/file.txt
-+++ b/file.txt
-@@ -1 +1 @@
--teh
-+the
-"#;
-        fs::write(patches_dir.join("fix-typo.patch"), patch_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Error: {:?}", result);
-
-        let updated_content = fs::read_to_string(patches_dir.join("fix-typo.patch")).unwrap();
-        assert!(updated_content.contains("Author: john@example.com"));
-        assert!(!updated_content.contains("Origin:"));
+        run_apply(tmp.path()).unwrap();
+        let updated = fs::read_to_string(&patch).unwrap();
+        assert!(updated.contains("Author: john@example.com"));
+        assert!(!updated.contains("Origin:"));
+        assert!(updated.contains("--- a/file.txt"));
+        assert!(updated.contains("+the"));
     }
 
     #[test]
     fn test_no_changes_when_origin_without_email() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian/patches");
-        fs::create_dir_all(&patches_dir).unwrap();
-
-        let series_content = "fix-typo.patch\n";
-        fs::write(patches_dir.join("series"), series_content).unwrap();
-
-        let patch_content = r#"Description: Fix a typo
-Origin: upstream
-
---- a/file.txt
-+++ b/file.txt
-"#;
-        fs::write(patches_dir.join("fix-typo.patch"), patch_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "fix-typo.patch\n").unwrap();
+        fs::write(
+            patches.join("fix-typo.patch"),
+            "Description: Fix a typo\nOrigin: upstream\n\n--- a/file.txt\n+++ b/file.txt\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changes_when_no_origin() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian/patches");
-        fs::create_dir_all(&patches_dir).unwrap();
-
-        let series_content = "fix-typo.patch\n";
-        fs::write(patches_dir.join("series"), series_content).unwrap();
-
-        let patch_content = r#"Description: Fix a typo
-Author: jane@example.com
-
---- a/file.txt
-+++ b/file.txt
-"#;
-        fs::write(patches_dir.join("fix-typo.patch"), patch_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "fix-typo.patch\n").unwrap();
+        fs::write(
+            patches.join("fix-typo.patch"),
+            "Description: Fix a typo\nAuthor: jane@example.com\n\n--- a/file.txt\n+++ b/file.txt\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_multiple_patches() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian/patches");
-        fs::create_dir_all(&patches_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "patch1.patch\npatch2.patch\n").unwrap();
+        fs::write(
+            patches.join("patch1.patch"),
+            "Description: Patch 1\nOrigin: user1@example.com\n\n--- a/file1.txt\n+++ b/file1.txt\n",
+        )
+        .unwrap();
+        fs::write(
+            patches.join("patch2.patch"),
+            "Description: Patch 2\nOrigin: user2@example.com\n\n--- a/file2.txt\n+++ b/file2.txt\n",
+        )
+        .unwrap();
 
-        let series_content = "patch1.patch\npatch2.patch\n";
-        fs::write(patches_dir.join("series"), series_content).unwrap();
-
-        let patch1_content = r#"Description: Patch 1
-Origin: user1@example.com
-
---- a/file1.txt
-+++ b/file1.txt
-"#;
-        fs::write(patches_dir.join("patch1.patch"), patch1_content).unwrap();
-
-        let patch2_content = r#"Description: Patch 2
-Origin: user2@example.com
-
---- a/file2.txt
-+++ b/file2.txt
-"#;
-        fs::write(patches_dir.join("patch2.patch"), patch2_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok());
-
-        let updated1 = fs::read_to_string(patches_dir.join("patch1.patch")).unwrap();
-        assert!(updated1.contains("Author: user1@example.com"));
-        assert!(!updated1.contains("Origin:"));
-
-        let updated2 = fs::read_to_string(patches_dir.join("patch2.patch")).unwrap();
-        assert!(updated2.contains("Author: user2@example.com"));
-        assert!(!updated2.contains("Origin:"));
+        run_apply(tmp.path()).unwrap();
+        let p1 = fs::read_to_string(patches.join("patch1.patch")).unwrap();
+        assert!(p1.contains("Author: user1@example.com") && !p1.contains("Origin:"));
+        let p2 = fs::read_to_string(patches.join("patch2.patch")).unwrap();
+        assert!(p2.contains("Author: user2@example.com") && !p2.contains("Origin:"));
     }
 }

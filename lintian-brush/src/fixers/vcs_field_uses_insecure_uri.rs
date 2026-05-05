@@ -1,34 +1,30 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::abstract_control::AbstractSource;
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use debian_control::lossless::Control;
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-/// Find a secure VCS URL
+const SEP: char = '\t';
+
+/// Find a secure VCS URL using upstream-ontologist's host knowledge.
 async fn find_secure_vcs_url(
     url: &str,
     net_access: bool,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    // Parse the VCS URL into components
     let parsed: debian_control::vcs::ParsedVcs = url.parse()?;
-
-    // Parse the repository URL
     let repo_url = match url::Url::parse(&parsed.repo_url) {
         Ok(u) => u,
         Err(_) => return Ok(None),
     };
-
-    // Find secure repository URL
     let secure_repo_url = upstream_ontologist::vcs::find_secure_repo_url(
         repo_url,
         parsed.branch.as_deref(),
         Some(net_access),
     )
     .await;
-
     match secure_repo_url {
         Some(secure_url) => {
-            // Reconstruct the VCS URL with the secure repository URL
             let result = debian_control::vcs::ParsedVcs {
                 repo_url: secure_url.to_string(),
                 branch: parsed.branch,
@@ -40,136 +36,153 @@ async fn find_secure_vcs_url(
     }
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+const VCS_TYPES: &[&str] = &[
+    "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
+];
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fields_changed = BTreeSet::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut lp_note = false;
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(source_name) = source.as_deb822().get("Source") else {
+        return Ok(Vec::new());
+    };
+    let para = source.as_deb822();
 
-    let net_access_allowed = preferences.net_access.unwrap_or(false);
+    let net_access = preferences.net_access.unwrap_or(false);
+    let Ok(rt) = tokio::runtime::Runtime::new() else {
+        return Ok(Vec::new());
+    };
 
-    if let Some(mut source) = editor.source() {
-        // Check all VCS fields
-        let vcs_types = vec![
-            "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
-        ];
-
-        // Create a tokio runtime for async operations
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| FixerError::Other(format!("Failed to create runtime: {}", e)))?;
-
-        for vcs_type in vcs_types {
-            if let Some(url) = source.get_vcs_url(vcs_type) {
-                // Check for lp: prefix (Launchpad)
-                if url.starts_with("lp:") {
-                    lp_note = true;
-                }
-
-                // Find secure URL
-                let new_value = rt
-                    .block_on(find_secure_vcs_url(&url, net_access_allowed))
-                    .map_err(|e| FixerError::Other(format!("Failed to find secure URL: {}", e)))?;
-
-                if let Some(new_url) = new_value {
-                    if new_url != url {
-                        let field_name = format!("Vcs-{}", vcs_type);
-                        let issue = LintianIssue::source_with_info(
-                            "vcs-field-uses-insecure-uri",
-                            vec![format!("{} {}", field_name, url)],
-                        );
-
-                        if !issue.should_fix(base_path) {
-                            overridden_issues.push(issue);
-                        } else {
-                            source.set_vcs_url(vcs_type, &new_url);
-                            fields_changed.insert(field_name);
-                            fixed_issues.push(issue);
-                        }
-                    }
-                }
-            }
+    let mut diagnostics = Vec::new();
+    let mut lp_seen = false;
+    for vcs_type in VCS_TYPES {
+        let field = format!("Vcs-{}", vcs_type);
+        let Some(url) = para.get(&field) else {
+            continue;
+        };
+        if url.starts_with("lp:") {
+            lp_seen = true;
         }
-    }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+        let Ok(Some(new_url)) = rt.block_on(find_secure_vcs_url(&url, net_access)) else {
+            continue;
+        };
+        if new_url == url {
+            continue;
         }
-        return Err(FixerError::NoChanges);
-    }
 
-    editor.commit()?;
-
-    // Build description
-    let mut description_lines = Vec::new();
-    if fields_changed.len() == 1 {
-        let field = fields_changed.iter().next().unwrap();
-        description_lines.push(format!("Use secure URI in Vcs control header {}.", field));
-    } else {
-        let fields_list = fields_changed
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-        description_lines.push(format!(
-            "Use secure URI in Vcs control headers: {}.",
-            fields_list
+        let issue = LintianIssue::source_with_info(
+            "vcs-field-uses-insecure-uri",
+            vec![format!("{} {}", field, url)],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!(
+                "field{}{}{}{}",
+                SEP,
+                field,
+                SEP,
+                if lp_seen { "1" } else { "0" }
+            ),
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::ByKey {
+                    field: "Source".into(),
+                    value: source_name.clone(),
+                },
+                field: field.clone(),
+                value: new_url,
+            })],
         ));
     }
 
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut fields: BTreeSet<String> = BTreeSet::new();
+    let mut lp_note = false;
+    for d in fixed {
+        let parts: Vec<&str> = d.message.split(SEP).collect();
+        if parts.len() == 3 && parts[0] == "field" {
+            fields.insert(parts[1].to_string());
+            if parts[2] == "1" {
+                lp_note = true;
+            }
+        }
+    }
+    let mut out = if fields.len() == 1 {
+        format!(
+            "Use secure URI in Vcs control header {}.",
+            fields.iter().next().unwrap()
+        )
+    } else {
+        format!(
+            "Use secure URI in Vcs control headers: {}.",
+            fields.iter().cloned().collect::<Vec<_>>().join(", ")
+        )
+    };
     if lp_note {
-        description_lines.push(String::new());
-        description_lines.push(
-            "The lp: prefix gets expanded to http://code.launchpad.net/ for users that are \
-             not logged in on some versions of Bazaar."
-                .to_string(),
+        out.push('\n');
+        out.push('\n');
+        out.push_str(
+            "The lp: prefix gets expanded to http://code.launchpad.net/ for users that are not logged in on some versions of Bazaar.",
         );
     }
-
-    let description = description_lines.join("\n");
-
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .build())
+    out
 }
 
 declare_fixer! {
     name: "vcs-field-uses-insecure-uri",
     tags: ["vcs-field-uses-insecure-uri"],
-    // Must convert http to https after canonicalization and before format improvements
     after: ["vcs-field-not-canonical"],
     before: ["vcs-field-uses-not-recommended-uri-format"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(
+        base: &Path,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &version, preferences)
+    }
+
     #[test]
     fn test_http_to_https_no_net_access() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
         fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\n\
-             Vcs-Git: http://github.com/jelmer/test\n\n\
-             Package: test-package\n\
-             Description: Test\n Test test\n",
+            &control,
+            "Source: test-package\nVcs-Git: http://github.com/jelmer/test\n\nPackage: test-package\nDescription: Test\n Test test\n",
         )
         .unwrap();
 
@@ -177,30 +190,25 @@ mod tests {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences).unwrap();
-        assert!(result
-            .description
-            .contains("Use secure URI in Vcs control header"));
-
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Vcs-Git: https://github.com/jelmer/test"));
-        assert!(!content.contains("http://github.com"));
+        let result = run_apply(tmp.path(), &preferences).unwrap();
+        assert_eq!(
+            result.description,
+            "Use secure URI in Vcs control header Vcs-Git."
+        );
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-package\nVcs-Git: https://github.com/jelmer/test\n\nPackage: test-package\nDescription: Test\n Test test\n",
+        );
     }
 
     #[test]
     fn test_already_https() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\n\
-             Vcs-Git: https://github.com/jelmer/test\n\n\
-             Package: test-package\n\
-             Description: Test\n Test test\n",
+            debian.join("control"),
+            "Source: test-package\nVcs-Git: https://github.com/jelmer/test\n\nPackage: test-package\nDescription: Test\n Test test\n",
         )
         .unwrap();
 
@@ -208,25 +216,21 @@ mod tests {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &preferences),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_multiple_vcs_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
         fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\n\
-             Vcs-Git: http://github.com/jelmer/test\n\
-             Vcs-Browser: http://github.com/jelmer/test\n\n\
-             Package: test-package\n\
-             Description: Test\n Test test\n",
+            &control,
+            "Source: test-package\nVcs-Git: http://github.com/jelmer/test\nVcs-Browser: http://github.com/jelmer/test\n\nPackage: test-package\nDescription: Test\n Test test\n",
         )
         .unwrap();
 
@@ -234,29 +238,24 @@ mod tests {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences).unwrap();
-        assert!(result
-            .description
-            .contains("Use secure URI in Vcs control headers"));
-
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
+        let result = run_apply(tmp.path(), &preferences).unwrap();
+        assert_eq!(
+            result.description,
+            "Use secure URI in Vcs control headers: Vcs-Browser, Vcs-Git."
+        );
+        let content = fs::read_to_string(&control).unwrap();
         assert!(content.contains("Vcs-Git: https://github.com/jelmer/test"));
         assert!(content.contains("Vcs-Browser: https://github.com/jelmer/test"));
     }
 
     #[test]
     fn test_no_vcs_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\n\n\
-             Package: test-package\n\
-             Description: Test\n Test test\n",
+            debian.join("control"),
+            "Source: test-package\n\nPackage: test-package\nDescription: Test\n Test test\n",
         )
         .unwrap();
 
@@ -264,8 +263,9 @@ mod tests {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &preferences),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

@@ -1,7 +1,9 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use url::Url;
 
 const HOST_TO_VCS: &[(&str, &str)] = &[
@@ -10,156 +12,159 @@ const HOST_TO_VCS: &[(&str, &str)] = &[
     ("salsa.debian.org", "Git"),
 ];
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+const SEP: char = '\t';
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(source_name) = source.as_deb822().get("Source") else {
+        return Ok(Vec::new());
+    };
 
     let host_map: HashMap<&str, &str> = HOST_TO_VCS.iter().copied().collect();
+    let para = source.as_deb822();
+    let vcs_fields: Vec<String> = para
+        .keys()
+        .filter(|k| k.starts_with("Vcs-") && k.to_lowercase() != "vcs-browser")
+        .map(|k| k.to_string())
+        .collect();
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut old_vcs = String::new();
-    let mut new_vcs = String::new();
-
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        // Collect Vcs-* fields to check
-        let vcs_fields: Vec<String> = paragraph
-            .keys()
-            .filter(|key| key.starts_with("Vcs-") && key.to_lowercase() != "vcs-browser")
-            .map(|key| key.to_string())
-            .collect();
-
-        for field in vcs_fields {
-            let vcs_type = &field[4..]; // Remove "Vcs-" prefix
-            if let Some(vcs_url) = paragraph.get(&field) {
-                // Parse the URL to get the hostname
-                if let Ok(parsed_url) = Url::parse(&vcs_url) {
-                    if let Some(host) = parsed_url.host_str() {
-                        // Remove "user@" prefix if present
-                        let clean_host = host.split('@').next_back().unwrap_or(host);
-
-                        if let Some(&actual_vcs) = host_map.get(clean_host) {
-                            if actual_vcs != vcs_type {
-                                let vcs_url_value = vcs_url.to_string();
-
-                                let issue = LintianIssue::source_with_info(
-                                    "vcs-field-mismatch",
-                                    vec![format!(
-                                        "Vcs-{} != Vcs-{} {}",
-                                        vcs_type, actual_vcs, vcs_url_value
-                                    )],
-                                );
-
-                                if !issue.should_fix(base_path) {
-                                    overridden_issues.push(issue);
-                                } else {
-                                    // Rename the field
-                                    paragraph.rename(&field, &format!("Vcs-{}", actual_vcs));
-
-                                    old_vcs = vcs_type.to_string();
-                                    new_vcs = actual_vcs.to_string();
-                                    fixed_issues.push(issue);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    let mut diagnostics = Vec::new();
+    for field in vcs_fields {
+        let vcs_type = field.strip_prefix("Vcs-").unwrap_or(&field).to_string();
+        let Some(vcs_url) = para.get(&field) else {
+            continue;
+        };
+        let Ok(parsed_url) = Url::parse(&vcs_url) else {
+            continue;
+        };
+        let Some(host) = parsed_url.host_str() else {
+            continue;
+        };
+        let clean_host = host.split('@').next_back().unwrap_or(host);
+        let Some(&actual_vcs) = host_map.get(clean_host) else {
+            continue;
+        };
+        if actual_vcs == vcs_type {
+            continue;
         }
+
+        let issue = LintianIssue::source_with_info(
+            "vcs-field-mismatch",
+            vec![format!(
+                "Vcs-{} != Vcs-{} {}",
+                vcs_type, actual_vcs, vcs_url
+            )],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("rename{}{}{}{}", SEP, vcs_type, SEP, actual_vcs),
+            vec![Action::Deb822(Deb822Action::RenameField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::ByKey {
+                    field: "Source".into(),
+                    value: source_name.clone(),
+                },
+                from: field.clone(),
+                to: format!("Vcs-{}", actual_vcs),
+            })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let Some(first) = fixed.first() else {
+        return "Fix Vcs-* type mismatch.".to_string();
+    };
+    let parts: Vec<&str> = first.message.split(SEP).collect();
+    if parts.len() == 3 && parts[0] == "rename" {
+        format!(
+            "Changed vcs type from {} to {} based on URL.",
+            parts[1], parts[2]
+        )
+    } else {
+        "Fix Vcs-* type mismatch.".to_string()
     }
-
-    editor.commit()?;
-
-    Ok(FixerResult::builder(format!(
-        "Changed vcs type from {} to {} based on URL.",
-        old_vcs, new_vcs
-    ))
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
 }
 
 declare_fixer! {
     name: "vcs-field-mismatch",
     tags: ["vcs-field-mismatch"],
-    // Must fix type mismatches after broken URIs and before canonicalization
     after: ["vcs-broken-uri"],
     before: ["vcs-field-not-canonical"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
         fs::write(
-            &control_path,
+            &control,
             "Source: lintian-brush\nVcs-Bzr: https://salsa.debian.org/jelmer/dulwich.git\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Changed vcs type from Bzr to Git based on URL."
         );
-        assert_eq!(result.certainty, None);
-
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(!content.contains("Vcs-Bzr"));
-        assert!(content.contains("Vcs-Git: https://salsa.debian.org/jelmer/dulwich.git"));
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: lintian-brush\nVcs-Git: https://salsa.debian.org/jelmer/dulwich.git\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        );
     }
 
     #[test]
     fn test_no_op() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &control_path,
+            debian.join("control"),
             "Source: lintian-brush\nVcs-Git: https://salsa.debian.org/jelmer/lintian-brush.git\nHomepage: https://www.jelmer.uk/lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         )
         .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

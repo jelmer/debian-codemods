@@ -1,6 +1,6 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
 const EXPECTED_HEADER: &[u8] =
     b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0";
@@ -27,7 +27,6 @@ fn value_offset(line: &[u8]) -> Option<usize> {
     if line.starts_with(b"\t") || line.starts_with(b" ") {
         return Some(whitespace_prefix_length(line));
     }
-    // Look for key: value
     line.iter()
         .position(|&b| b == b':')
         .map(|colon_pos| colon_pos + 1 + whitespace_prefix_length(&line[colon_pos + 1..]))
@@ -37,7 +36,6 @@ fn split_bytes(data: &[u8], separator: &[u8]) -> Vec<Vec<u8>> {
     let mut result = Vec::new();
     let mut current = Vec::new();
     let mut i = 0;
-
     while i < data.len() {
         if i + separator.len() <= data.len() && &data[i..i + separator.len()] == separator {
             result.push(current);
@@ -63,23 +61,19 @@ fn join_bytes(parts: Vec<Vec<u8>>, separator: &[u8]) -> Vec<u8> {
     result
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let copyright_abs = base_path.join(&copyright_rel);
+    if !copyright_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read(&copyright_path)?;
+    let content = std::fs::read(&copyright_abs)?;
     let mut lines = content.split_inclusive(|&b| b == b'\n').peekable();
-
-    // Check the first line for the expected header
-    let first_line = match lines.peek() {
-        Some(&line) => line,
-        None => return Err(FixerError::NoChanges),
+    let Some(first_line) = lines.peek().copied() else {
+        return Ok(Vec::new());
     };
 
-    // Strip whitespace, then trailing slashes (like Python's .rstrip().rstrip(b"/"))
     let mut trimmed = first_line;
     while trimmed.last().is_some_and(|&b| is_whitespace(b)) {
         trimmed = &trimmed[..trimmed.len() - 1];
@@ -87,57 +81,44 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     while trimmed.last() == Some(&b'/') {
         trimmed = &trimmed[..trimmed.len() - 1];
     }
-
     if trimmed != EXPECTED_HEADER {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut new_lines = Vec::new();
+    let mut new_lines: Vec<Vec<u8>> = Vec::new();
     let mut unicode_linebreaks_replaced = false;
     let mut prev_value_offset: Option<usize> = None;
-    let mut fixed_tab_issues = Vec::new();
-    let mut overridden_tab_issues = Vec::new();
-    let mut line_number = 0;
+    let mut tab_issues: Vec<LintianIssue> = Vec::new();
+    let mut line_number = 0usize;
 
     for line in lines {
         line_number += 1;
         let mut line = line.to_vec();
 
-        // Handle tabs at the start of continuation lines
         if line.starts_with(b"\t") {
-            let issue = LintianIssue::source_with_info(
+            tab_issues.push(LintianIssue::source_with_info(
                 "tab-in-license-text",
                 vec![format!("debian/copyright:{}", line_number)],
-            );
+            ));
 
-            if issue.should_fix(base_path) {
-                // Try different replacement options to maintain alignment
-                let make_option = |prefix: &[u8], skip: usize| {
-                    let mut v = prefix.to_vec();
-                    if line.len() > skip {
-                        v.extend_from_slice(&line[skip..]);
-                    }
-                    v
-                };
-
-                let options = [
-                    make_option(b" \t", 1),
-                    make_option(b" \t", 2),
-                    make_option(&[b' '; 8], 1),
-                ];
-
-                line = options
-                    .into_iter()
-                    .find(|opt| value_offset(opt) == prev_value_offset)
-                    .unwrap_or_else(|| make_option(b" \t", 1));
-
-                fixed_tab_issues.push(issue);
-            } else {
-                overridden_tab_issues.push(issue);
-            }
+            let make_option = |prefix: &[u8], skip: usize| {
+                let mut v = prefix.to_vec();
+                if line.len() > skip {
+                    v.extend_from_slice(&line[skip..]);
+                }
+                v
+            };
+            let options = [
+                make_option(b" \t", 1),
+                make_option(b" \t", 2),
+                make_option(&[b' '; 8], 1),
+            ];
+            line = options
+                .into_iter()
+                .find(|opt| value_offset(opt) == prev_value_offset)
+                .unwrap_or_else(|| make_option(b" \t", 1));
         }
 
-        // Handle unicode paragraph separator (replace with two line breaks)
         if line
             .windows(UNICODE_PARAGRAPH_SEPARATOR.len())
             .any(|w| w == UNICODE_PARAGRAPH_SEPARATOR)
@@ -147,14 +128,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             line = join_bytes(parts, &separator);
         }
 
-        // Handle unicode line breaks
         if line
             .windows(UNICODE_LINE_BREAK.len())
             .any(|w| w == UNICODE_LINE_BREAK)
         {
             unicode_linebreaks_replaced = true;
             let parts = split_bytes(&line, UNICODE_LINE_BREAK);
-
             let new_parts: Vec<_> = parts
                 .into_iter()
                 .enumerate()
@@ -167,7 +146,6 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     }
                 })
                 .collect();
-
             line = join_bytes(new_parts, b"\n");
         }
 
@@ -175,18 +153,14 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         new_lines.push(line);
     }
 
-    if fixed_tab_issues.is_empty() && !unicode_linebreaks_replaced {
-        if !overridden_tab_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_tab_issues));
-        }
-        return Err(FixerError::NoChanges);
+    if tab_issues.is_empty() && !unicode_linebreaks_replaced {
+        return Ok(Vec::new());
     }
 
-    let output: Vec<u8> = new_lines.into_iter().flatten().collect();
-    fs::write(&copyright_path, output)?;
+    let new_content: Vec<u8> = new_lines.into_iter().flatten().collect();
 
     let mut description = "debian/copyright: ".to_string();
-    if !fixed_tab_issues.is_empty() {
+    if !tab_issues.is_empty() {
         description.push_str("use spaces rather than tabs to start continuation lines");
         if unicode_linebreaks_replaced {
             description.push_str(", ");
@@ -197,132 +171,128 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     }
     description.push('.');
 
-    Ok(FixerResult::builder(description)
-        .fixed_issues(fixed_tab_issues)
-        .overridden_issues(overridden_tab_issues)
-        .build())
+    let action = Action::Filesystem(FilesystemAction::Write {
+        file: copyright_rel,
+        content: new_content,
+    });
+
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    if tab_issues.is_empty() {
+        diagnostics.push(Diagnostic::untagged(description.clone(), vec![action]));
+    } else {
+        for (i, issue) in tab_issues.into_iter().enumerate() {
+            let actions = if i == 0 {
+                vec![action.clone()]
+            } else {
+                Vec::new()
+            };
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                description.clone(),
+                actions,
+            ));
+        }
+    }
+
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "copyright-continued-lines-with-space",
     tags: ["tab-in-license-text"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_replace_tabs() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
         fs::write(
-            &copyright_path,
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\
-License: GPL-3+\n\
-\tThis is a continuation line\n",
+            &copyright,
+            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n\tThis is a continuation line\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert!(result
-            .description
-            .contains("use spaces rather than tabs to start continuation lines"));
-
-        // Verify LintianIssue was created correctly
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "debian/copyright: use spaces rather than tabs to start continuation lines."
+        );
         assert_eq!(result.fixed_lintian_issues.len(), 1);
         assert_eq!(
             result.fixed_lintian_issues[0].tag,
             Some("tab-in-license-text".to_string())
         );
         assert_eq!(
-            result.fixed_lintian_issues[0].info,
-            Some("debian/copyright:3".to_string())
+            fs::read(&copyright).unwrap(),
+            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n \tThis is a continuation line\n",
         );
-        assert_eq!(result.overridden_lintian_issues.len(), 0);
-
-        let content = fs::read(&copyright_path).unwrap();
-        let expected = b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n \tThis is a continuation line\n";
-        assert_eq!(content, expected);
     }
 
     #[test]
     fn test_no_changes() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &copyright_path,
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\
-License: GPL-3+\n\
- This is a continuation line\n",
+            debian.join("copyright"),
+            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n This is a continuation line\n",
         )
         .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            &copyright_path,
-            b"This is a regular copyright file\n\
-Copyright (c) 2024 Someone\n",
+            debian.join("copyright"),
+            b"This is a regular copyright file\nCopyright (c) 2024 Someone\n",
         )
         .unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_unicode_linebreaks() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_path = debian_dir.join("copyright");
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let copyright = debian.join("copyright");
         let mut content = b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n Line one".to_vec();
         content.extend_from_slice(UNICODE_LINE_BREAK);
         content.extend_from_slice(b"Line two\n");
-        fs::write(&copyright_path, &content).unwrap();
+        fs::write(&copyright, &content).unwrap();
 
-        let result = run(base_path).unwrap();
-        assert!(result
-            .description
-            .contains("replace unicode linebreaks with regular linebreaks"));
-
-        let new_content = fs::read(&copyright_path).unwrap();
-        let expected = b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n Line one\n Line two\n";
-        assert_eq!(new_content, expected);
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read(&copyright).unwrap(),
+            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n Line one\n Line two\n",
+        );
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

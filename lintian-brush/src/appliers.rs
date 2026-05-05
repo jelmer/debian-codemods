@@ -7,8 +7,8 @@
 //! on the source produces a single rewrite of `debian/control`.
 
 use crate::diagnostic::{
-    Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, ParagraphSelector,
-    SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    Action, ChangelogAction, Deb822Action, Dep3Action, DesktopIniAction, FilesystemAction,
+    MakefileAction, ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -95,7 +95,27 @@ fn action_file(action: &Action) -> &Path {
             | ChangelogAction::SetEntryVersion { file, .. } => file,
         },
         Action::Watch(a) => match a {
-            WatchAction::SetEntryMatchingPattern { file, .. } => file,
+            WatchAction::SetEntryMatchingPattern { file, .. }
+            | WatchAction::RemoveEntryOption { file, .. }
+            | WatchAction::SetEntryOption { file, .. }
+            | WatchAction::SetEntryUrl { file, .. } => file,
+        },
+        Action::Makefile(a) => match a {
+            MakefileAction::ReplaceRecipe { file, .. }
+            | MakefileAction::RemoveRecipe { file, .. }
+            | MakefileAction::SetVariable { file, .. }
+            | MakefileAction::RemoveVariable { file, .. }
+            | MakefileAction::RemoveRule { file, .. }
+            | MakefileAction::RemovePhonyTarget { file, .. }
+            | MakefileAction::RenameRuleTarget { file, .. }
+            | MakefileAction::AddRule { file, .. }
+            | MakefileAction::AddPhonyTarget { file, .. }
+            | MakefileAction::AddInclude { file, .. } => file,
+        },
+        Action::Dep3(a) => match a {
+            Dep3Action::SetField { file, .. }
+            | Dep3Action::RemoveField { file, .. }
+            | Dep3Action::RenameField { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -131,6 +151,8 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Yaml(_) => apply_yaml_group(base, rel, group),
         Action::Changelog(_) => apply_changelog_group(base, rel, group),
         Action::Watch(_) => apply_watch_group(base, rel, group),
+        Action::Makefile(_) => apply_makefile_group(base, rel, group),
+        Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -189,7 +211,7 @@ fn apply_control_deb822_group(
             rel.display()
         )));
     }
-    let editor = TemplatedControlEditor::open(&abs)?;
+    let mut editor = TemplatedControlEditor::open(&abs)?;
     let mut any_change = false;
 
     for action in group {
@@ -225,10 +247,16 @@ fn apply_control_deb822_group(
                 }
             }
             Deb822Action::RemoveParagraph { paragraph, .. } => {
-                return Err(FixerError::Other(format!(
-                    "deb822 RemoveParagraph not supported on debian/control via the typed editor (selector: {:?})",
-                    paragraph
-                )));
+                if let ParagraphSelector::Binary { package } = paragraph {
+                    if editor.remove_binary(package) {
+                        any_change = true;
+                    }
+                } else {
+                    return Err(FixerError::Other(format!(
+                        "deb822 RemoveParagraph not supported on debian/control for selector {:?}",
+                        paragraph
+                    )));
+                }
             }
             Deb822Action::AppendParagraph { .. } => {
                 return Err(FixerError::Other(
@@ -919,16 +947,22 @@ fn ensure_relation_compute(
     let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
 
     let changed = if let Some((constraint, ver)) = version {
-        if !matches!(
-            constraint,
-            debian_control::relations::VersionConstraint::Equal
-        ) {
-            return Err(FixerError::Other(format!(
-                "EnsureRelation only supports `=` version constraints, got {:?} in {:?}",
-                constraint, entry
-            )));
+        match constraint {
+            debian_control::relations::VersionConstraint::Equal => {
+                debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
+            }
+            debian_control::relations::VersionConstraint::GreaterThanEqual => {
+                let before = relations.to_string();
+                relations.ensure_minimum_version(&name, &ver);
+                relations.to_string() != before
+            }
+            other => {
+                return Err(FixerError::Other(format!(
+                    "EnsureRelation only supports `=` and `>=` version constraints, got {:?} in {:?}",
+                    other, entry
+                )));
+            }
         }
-        debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
     } else {
         // Pass the original entry string through verbatim so build-profile
         // suffixes like `pkg <!nocheck>` round-trip correctly via
@@ -1748,6 +1782,55 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     continue;
                 }
             }
+            WatchAction::RemoveEntryOption { url, option, .. } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if entry.get_option(option).is_none() {
+                        break;
+                    }
+                    match &mut entry {
+                        debian_watch::parse::ParsedEntry::LineBased(e) => e.del_opt_str(option),
+                        debian_watch::parse::ParsedEntry::Deb822(e) => e.delete_option_str(option),
+                    }
+                    any_change = true;
+                    break;
+                }
+            }
+            WatchAction::SetEntryOption {
+                url, option, value, ..
+            } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if entry.get_option(option).as_deref() == Some(value.as_str()) {
+                        break;
+                    }
+                    match &mut entry {
+                        debian_watch::parse::ParsedEntry::LineBased(e) => e.set_opt(option, value),
+                        debian_watch::parse::ParsedEntry::Deb822(e) => {
+                            e.set_option_str(option, value)
+                        }
+                    }
+                    any_change = true;
+                    break;
+                }
+            }
+            WatchAction::SetEntryUrl { url, new_url, .. } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if &entry.url() == new_url {
+                        break;
+                    }
+                    entry.set_url(new_url);
+                    any_change = true;
+                    break;
+                }
+            }
         }
     }
 
@@ -1755,6 +1838,274 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
         std::fs::write(&abs, watch_file.to_string())?;
     }
     Ok(any_change)
+}
+
+fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "makefile action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let mut makefile = makefile_lossless::Makefile::read_relaxed(content.as_bytes())
+        .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", rel.display(), e)))?;
+
+    let mut any_change = false;
+    let mut rules: Vec<_> = makefile.rules().collect();
+    for action in group {
+        let Action::Makefile(m) = action else {
+            unreachable!("apply_makefile_group called with non-makefile action");
+        };
+        match m {
+            MakefileAction::ReplaceRecipe {
+                target,
+                recipe,
+                new_recipe,
+                ..
+            } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| &t == target) {
+                        continue;
+                    }
+                    let recipe_index = rule
+                        .recipe_nodes()
+                        .position(|r| r.text() == recipe.as_str());
+                    let Some(idx) = recipe_index else {
+                        continue;
+                    };
+                    let replacement =
+                        if new_recipe.chars().next().is_some_and(|c| c.is_whitespace()) {
+                            new_recipe.clone()
+                        } else {
+                            let indent: String =
+                                recipe.chars().take_while(|c| c.is_whitespace()).collect();
+                            format!("{}{}", indent, new_recipe)
+                        };
+                    if rule.replace_command(idx, &replacement) {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
+            MakefileAction::RemoveRecipe { target, recipe, .. } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| &t == target) {
+                        continue;
+                    }
+                    let recipe_index = rule
+                        .recipe_nodes()
+                        .position(|r| r.text() == recipe.as_str());
+                    let Some(idx) = recipe_index else {
+                        continue;
+                    };
+                    if rule.remove_command(idx) {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
+            MakefileAction::SetVariable { name, value, .. } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(name.as_str()))
+                {
+                    if var.raw_value().as_deref().map(str::trim) != Some(value.as_str()) {
+                        var.set_value(value);
+                        any_change = true;
+                    }
+                }
+            }
+            MakefileAction::RemoveVariable { name, .. } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(name.as_str()))
+                {
+                    var.remove();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RemoveRule { target, .. } => {
+                let idx = makefile
+                    .rules()
+                    .position(|r| r.targets().any(|t| t.trim() == target.as_str()));
+                if let Some(idx) = idx {
+                    makefile
+                        .remove_rule(idx)
+                        .map_err(|e| FixerError::Other(format!("Failed to remove rule: {}", e)))?;
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RemovePhonyTarget { target, .. } => {
+                let removed = makefile.remove_phony_target(target).map_err(|e| {
+                    FixerError::Other(format!("Failed to remove phony target: {}", e))
+                })?;
+                if removed {
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RenameRuleTarget {
+                from_target,
+                to_target,
+                ..
+            } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| t.trim() == from_target.as_str()) {
+                        continue;
+                    }
+                    let renamed = rule.rename_target(from_target, to_target).map_err(|e| {
+                        FixerError::Other(format!("Failed to rename target: {}", e))
+                    })?;
+                    if renamed {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
+            MakefileAction::AddRule {
+                target,
+                prerequisites,
+                ..
+            } => {
+                let mut rule = makefile.add_rule(target);
+                for prereq in prerequisites {
+                    rule.add_prerequisite(prereq).map_err(|e| {
+                        FixerError::Other(format!("Failed to add prerequisite: {}", e))
+                    })?;
+                }
+                rules = makefile.rules().collect();
+                any_change = true;
+            }
+            MakefileAction::AddPhonyTarget { target, .. } => {
+                let already = makefile
+                    .find_rule_by_target(".PHONY")
+                    .is_some_and(|r| r.prerequisites().any(|p| &p == target));
+                if already {
+                    continue;
+                }
+                makefile
+                    .add_phony_target(target)
+                    .map_err(|e| FixerError::Other(format!("Failed to add phony target: {}", e)))?;
+                rules = makefile.rules().collect();
+                any_change = true;
+            }
+            MakefileAction::AddInclude { path, .. } => {
+                if makefile.included_files().any(|f| &f == path) {
+                    continue;
+                }
+                // String-level insertion: place the include directive
+                // after the leading shebang/comment/blank-line block, so
+                // the shebang stays first. Splicing into the syntax tree
+                // via `add_include`/`insert_include` doesn't preserve that
+                // visual separation.
+                let current = makefile.code();
+                let mut split = 0usize;
+                let mut saw_non_comment = false;
+                for line in current.split_inclusive('\n') {
+                    let trimmed = line.trim_end_matches(['\r', '\n']);
+                    let is_shebang = split == 0 && trimmed.starts_with("#!");
+                    let is_comment = trimmed.starts_with('#') && !is_shebang;
+                    let is_blank = trimmed.is_empty();
+                    if is_shebang || is_comment || is_blank {
+                        split += line.len();
+                        continue;
+                    }
+                    saw_non_comment = true;
+                    break;
+                }
+                let insertion = format!("include {}\n", path);
+                let new_content = if saw_non_comment {
+                    format!("{}{}{}", &current[..split], insertion, &current[split..])
+                } else {
+                    format!("{}{}", &current[..split], insertion)
+                };
+                makefile = makefile_lossless::Makefile::read_relaxed(new_content.as_bytes())
+                    .map_err(|e| {
+                        FixerError::Other(format!("Failed to reparse {}: {}", rel.display(), e))
+                    })?;
+                rules = makefile.rules().collect();
+                any_change = true;
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, makefile.code())?;
+    }
+    Ok(any_change)
+}
+
+/// Find the byte offset where the patch's diff body starts. The header
+/// runs from the start of the file up to (but not including) the first
+/// `---`, `diff `, or `Index:` line.
+fn dep3_header_end(content: &str) -> usize {
+    let mut offset = 0;
+    for line in content.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\r', '\n']);
+        if trimmed.starts_with("---")
+            || trimmed.starts_with("diff ")
+            || trimmed.starts_with("Index:")
+        {
+            return offset;
+        }
+        offset += line.len();
+    }
+    content.len()
+}
+
+fn apply_dep3_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "DEP-3 action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let header_end = dep3_header_end(&content);
+    let header_str = &content[..header_end];
+    let body = &content[header_end..];
+
+    let mut header: dep3::lossless::PatchHeader = header_str
+        .parse()
+        .map_err(|e| FixerError::Other(format!("Failed to parse DEP-3 header: {:?}", e)))?;
+    let original = header.to_string();
+
+    for action in group {
+        let Action::Dep3(d) = action else {
+            unreachable!("apply_dep3_group called with non-DEP-3 action");
+        };
+        let para = header.as_deb822_mut();
+        match d {
+            Dep3Action::SetField { field, value, .. } => {
+                para.set(field, value);
+            }
+            Dep3Action::RemoveField { field, .. } => {
+                para.remove(field);
+            }
+            Dep3Action::RenameField {
+                from_field,
+                to_field,
+                ..
+            } => {
+                let Some(value) = para.get(from_field) else {
+                    continue;
+                };
+                para.remove(from_field);
+                para.set(to_field, &value);
+            }
+        }
+    }
+
+    if header.to_string() == original {
+        return Ok(false);
+    }
+    let new_content = format!("{}{}", header, body);
+    std::fs::write(&abs, new_content)?;
+    Ok(true)
 }
 
 fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
