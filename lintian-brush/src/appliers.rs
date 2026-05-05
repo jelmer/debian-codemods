@@ -7,8 +7,8 @@
 //! on the source produces a single rewrite of `debian/control`.
 
 use crate::diagnostic::{
-    Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, MakefileAction,
-    ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    Action, ChangelogAction, Deb822Action, Dep3Action, DesktopIniAction, FilesystemAction,
+    MakefileAction, ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -97,7 +97,8 @@ fn action_file(action: &Action) -> &Path {
         Action::Watch(a) => match a {
             WatchAction::SetEntryMatchingPattern { file, .. }
             | WatchAction::RemoveEntryOption { file, .. }
-            | WatchAction::SetEntryOption { file, .. } => file,
+            | WatchAction::SetEntryOption { file, .. }
+            | WatchAction::SetEntryUrl { file, .. } => file,
         },
         Action::Makefile(a) => match a {
             MakefileAction::ReplaceRecipe { file, .. }
@@ -108,6 +109,11 @@ fn action_file(action: &Action) -> &Path {
             | MakefileAction::RenameRuleTarget { file, .. }
             | MakefileAction::AddRule { file, .. }
             | MakefileAction::AddPhonyTarget { file, .. } => file,
+        },
+        Action::Dep3(a) => match a {
+            Dep3Action::SetField { file, .. }
+            | Dep3Action::RemoveField { file, .. }
+            | Dep3Action::RenameField { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -144,6 +150,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Changelog(_) => apply_changelog_group(base, rel, group),
         Action::Watch(_) => apply_watch_group(base, rel, group),
         Action::Makefile(_) => apply_makefile_group(base, rel, group),
+        Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -1803,6 +1810,19 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     break;
                 }
             }
+            WatchAction::SetEntryUrl { url, new_url, .. } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if &entry.url() == new_url {
+                        break;
+                    }
+                    entry.set_url(new_url);
+                    any_change = true;
+                    break;
+                }
+            }
         }
     }
 
@@ -1954,6 +1974,76 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
         std::fs::write(&abs, makefile.code())?;
     }
     Ok(any_change)
+}
+
+/// Find the byte offset where the patch's diff body starts. The header
+/// runs from the start of the file up to (but not including) the first
+/// `---`, `diff `, or `Index:` line.
+fn dep3_header_end(content: &str) -> usize {
+    let mut offset = 0;
+    for line in content.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\r', '\n']);
+        if trimmed.starts_with("---")
+            || trimmed.starts_with("diff ")
+            || trimmed.starts_with("Index:")
+        {
+            return offset;
+        }
+        offset += line.len();
+    }
+    content.len()
+}
+
+fn apply_dep3_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "DEP-3 action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let header_end = dep3_header_end(&content);
+    let header_str = &content[..header_end];
+    let body = &content[header_end..];
+
+    let mut header: dep3::lossless::PatchHeader = header_str
+        .parse()
+        .map_err(|e| FixerError::Other(format!("Failed to parse DEP-3 header: {:?}", e)))?;
+    let original = header.to_string();
+
+    for action in group {
+        let Action::Dep3(d) = action else {
+            unreachable!("apply_dep3_group called with non-DEP-3 action");
+        };
+        let para = header.as_deb822_mut();
+        match d {
+            Dep3Action::SetField { field, value, .. } => {
+                para.set(field, value);
+            }
+            Dep3Action::RemoveField { field, .. } => {
+                para.remove(field);
+            }
+            Dep3Action::RenameField {
+                from_field,
+                to_field,
+                ..
+            } => {
+                let Some(value) = para.get(from_field) else {
+                    continue;
+                };
+                para.remove(from_field);
+                para.set(to_field, &value);
+            }
+        }
+    }
+
+    if header.to_string() == original {
+        return Ok(false);
+    }
+    let new_content = format!("{}{}", header, body);
+    std::fs::write(&abs, new_content)?;
+    Ok(true)
 }
 
 fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
