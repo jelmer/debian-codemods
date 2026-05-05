@@ -148,6 +148,9 @@ pub enum Action {
     /// An edit to a lintian-overrides file (`debian/source/lintian-overrides`
     /// or `debian/<pkg>.lintian-overrides`).
     LintianOverrides(LintianOverridesAction),
+    /// An edit to a maintscript file (`debian/maintscript` or
+    /// `debian/<pkg>.maintscript`).
+    Maintscript(MaintscriptAction),
     /// An edit to a `debian/debcargo.toml` file. Used for Rust crate
     /// packages where the control file is generated.
     Debcargo(DebcargoAction),
@@ -1007,6 +1010,28 @@ pub enum LintianOverridesAction {
         selector: OverrideLineSelector,
         /// New info text. Empty string removes the info entirely.
         new_info: String,
+    },
+}
+
+/// Edits to a maintscript file.
+///
+/// Each line in a maintscript file is an independent dpkg-maintscript-helper
+/// invocation. We address entries by their exact text, mirroring how
+/// [`MakefileAction::ReplaceRecipe`] addresses recipe lines.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum MaintscriptAction {
+    /// Drop the first entry whose trimmed line text equals `entry`.
+    /// Comments immediately preceding the dropped line are also removed.
+    /// If the file ends up empty (no entries remain), it is removed
+    /// entirely. Each `DropEntry` consumes one matching line — to remove
+    /// N copies of the same entry, emit N actions.
+    DropEntry {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Entry text to drop, matched after trimming surrounding
+        /// whitespace.
+        entry: String,
     },
 }
 
