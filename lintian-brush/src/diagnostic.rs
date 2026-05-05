@@ -234,6 +234,23 @@ pub enum Deb822Action {
         /// Literal relation entry to ensure.
         entry: String,
     },
+    /// Move a relation entry between two fields of the same paragraph,
+    /// preserving its version constraint and any alternatives. The entry
+    /// is identified by `package`. If `from_field` becomes empty after
+    /// the move it is removed entirely. A no-op if the package isn't
+    /// present in `from_field`.
+    MoveRelation {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Source relations field name.
+        from_field: String,
+        /// Destination relations field name.
+        to_field: String,
+        /// Package name identifying the entry to move.
+        package: String,
+    },
 }
 
 /// Edits to a systemd unit file.

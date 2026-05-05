@@ -65,7 +65,8 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::DropRelation { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
             | Deb822Action::DropSubstvar { file, .. }
-            | Deb822Action::EnsureRelation { file, .. } => file,
+            | Deb822Action::EnsureRelation { file, .. }
+            | Deb822Action::MoveRelation { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -166,7 +167,8 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::DropRelation { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
-            | Deb822Action::EnsureRelation { paragraph, .. } => Some(paragraph),
+            | Deb822Action::EnsureRelation { paragraph, .. }
+            | Deb822Action::MoveRelation { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } => None,
         };
     }
@@ -276,6 +278,17 @@ fn apply_control_deb822_group(
                 ..
             } => {
                 if ensure_deb822_relation(&editor, paragraph, field, entry)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::MoveRelation {
+                paragraph,
+                from_field,
+                to_field,
+                package,
+                ..
+            } => {
+                if move_deb822_relation(&editor, paragraph, from_field, to_field, package)? {
                     any_change = true;
                 }
             }
@@ -432,6 +445,20 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if ensure_relation_in_paragraph(&mut p, field, entry)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::MoveRelation {
+                paragraph,
+                from_field,
+                to_field,
+                package,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if move_relation_in_paragraph(&mut p, from_field, to_field, package) {
                     any_change = true;
                 }
             }
@@ -616,21 +643,35 @@ fn drop_relation_in_paragraph(
     true
 }
 
+/// Compute the post-edit relations for a substvar ensure: parse the
+/// current field value, return the new relations if the substvar wasn't
+/// already present (else `None`).
+fn ensure_substvar_compute(
+    current: Option<&str>,
+    substvar: &str,
+) -> Result<Option<debian_control::lossless::relations::Relations>, FixerError> {
+    use debian_control::lossless::relations::Relations;
+    let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
+    let already_present = relations.substvars().any(|s| s == substvar);
+    if already_present {
+        return Ok(None);
+    }
+    relations
+        .ensure_substvar(substvar)
+        .map_err(FixerError::Other)?;
+    Ok(Some(relations))
+}
+
 fn ensure_substvar_in_paragraph(
     p: &mut deb822_lossless::Paragraph,
     field: &str,
     substvar: &str,
 ) -> Result<bool, FixerError> {
-    use debian_control::lossless::relations::Relations;
-    let value = p.get(field).unwrap_or_default();
-    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
-    if relations.substvars().any(|s| s == substvar) {
+    let current = p.get(field);
+    let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)? else {
         return Ok(false);
-    }
-    relations
-        .ensure_substvar(substvar)
-        .map_err(FixerError::Other)?;
-    p.set(field, &relations.to_string());
+    };
+    p.set(field, &new_relations.to_string());
     Ok(true)
 }
 
@@ -702,15 +743,46 @@ fn ensure_deb822_substvar(
             let Some(mut source) = editor.source() else {
                 return Ok(false);
             };
-            ensure_substvar_in_paragraph(source.as_mut_deb822(), field, substvar)
+            let current = source.as_deb822().get(field);
+            let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)? else {
+                return Ok(false);
+            };
+            match field {
+                "Build-Depends" => source.set_build_depends(&new_relations),
+                "Build-Depends-Indep" => source.set_build_depends_indep(&new_relations),
+                "Build-Depends-Arch" => source.set_build_depends_arch(&new_relations),
+                _ => {
+                    source.set(field, &new_relations.to_string());
+                }
+            }
+            Ok(true)
         }
         ParagraphSelector::Binary { package: pkg } => {
             for mut binary in editor.binaries() {
-                let p = binary.as_mut_deb822();
-                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
                     continue;
                 }
-                return ensure_substvar_in_paragraph(p, field, substvar);
+                let current = binary.as_deb822().get(field);
+                let Some(new_relations) = ensure_substvar_compute(current.as_deref(), substvar)?
+                else {
+                    return Ok(false);
+                };
+                match field {
+                    "Depends" => binary.set_depends(Some(&new_relations)),
+                    "Recommends" => binary.set_recommends(Some(&new_relations)),
+                    "Suggests" => binary.set_suggests(Some(&new_relations)),
+                    "Pre-Depends" => binary.set_pre_depends(Some(&new_relations)),
+                    "Conflicts" => binary.set_conflicts(Some(&new_relations)),
+                    "Replaces" => binary.set_replaces(Some(&new_relations)),
+                    "Provides" => binary.set_provides(Some(&new_relations)),
+                    "Breaks" => binary.set_breaks(Some(&new_relations)),
+                    "Built-Using" => binary.set_built_using(Some(&new_relations)),
+                    "Static-Built-Using" => binary.set_static_built_using(Some(&new_relations)),
+                    _ => {
+                        binary.set(field, &new_relations.to_string());
+                    }
+                }
+                return Ok(true);
             }
             Ok(false)
         }
@@ -782,6 +854,83 @@ fn ensure_relation_compute(
     };
 
     Ok(if changed { Some(relations) } else { None })
+}
+
+/// Move the entry for `package` from `from_field` to `to_field` in
+/// `paragraph`. Returns true if either field was modified.
+fn move_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    from_field: &str,
+    to_field: &str,
+    package: &str,
+) -> bool {
+    use debian_control::lossless::relations::Relations;
+
+    let Some(from_value) = p.get(from_field) else {
+        return false;
+    };
+    let (mut from_relations, _errors) = Relations::parse_relaxed(&from_value, true);
+    let Ok((_pos, moved_entry)) = from_relations.get_relation(package) else {
+        return false;
+    };
+    if !from_relations.drop_dependency(package) {
+        return false;
+    }
+
+    // Update or remove the source field.
+    if from_relations.is_empty() || from_relations.to_string().trim().is_empty() {
+        p.remove(from_field);
+    } else {
+        p.set(from_field, &from_relations.to_string());
+    }
+
+    // Append (sorted) to the destination field.
+    let to_value = p.get(to_field).unwrap_or_default();
+    let (mut to_relations, _errors) = Relations::parse_relaxed(&to_value, true);
+    to_relations.add_dependency(moved_entry, None);
+    p.set(to_field, &to_relations.to_string());
+
+    true
+}
+
+fn move_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    from_field: &str,
+    to_field: &str,
+    package: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(move_relation_in_paragraph(
+                source.as_mut_deb822(),
+                from_field,
+                to_field,
+                package,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                if binary.as_deb822().get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(move_relation_in_paragraph(
+                    binary.as_mut_deb822(),
+                    from_field,
+                    to_field,
+                    package,
+                ));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 MoveRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
 }
 
 fn ensure_deb822_relation(
@@ -1861,6 +2010,52 @@ mod tests {
             fs::read_to_string(debian.join("control")).unwrap(),
             "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
         );
+    }
+
+    #[test]
+    fn deb822_move_relation_between_fields() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends-Indep: debhelper-compat (= 12)\nBuild-Depends: python3\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::MoveRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            from_field: "Build-Depends-Indep".into(),
+            to_field: "Build-Depends".into(),
+            package: "debhelper-compat".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 12), python3\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_move_relation_idempotent_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nBuild-Depends: python3\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::MoveRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            from_field: "Build-Depends-Indep".into(),
+            to_field: "Build-Depends".into(),
+            package: "debhelper-compat".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
     }
 
     #[test]
