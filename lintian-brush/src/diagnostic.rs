@@ -251,6 +251,23 @@ pub enum Deb822Action {
         /// Package name identifying the entry to move.
         package: String,
     },
+    /// Reorder a subset of paragraphs in a deb822 file. Paragraphs that
+    /// have `key_field` are pulled out and re-inserted in the order
+    /// given by `order` (which lists their `key_field` values). Other
+    /// paragraphs stay in place: the i-th slot occupied by a
+    /// participating paragraph in the original document is filled by
+    /// the i-th key from `order`. Keys in `order` that aren't present
+    /// in the document are skipped.
+    ReorderParagraphs {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Field whose presence marks a paragraph as participating in
+        /// the reorder, and whose value identifies it.
+        key_field: String,
+        /// Desired order of `key_field` values among the participating
+        /// paragraphs.
+        order: Vec<String>,
+    },
 }
 
 /// Edits to a systemd unit file.

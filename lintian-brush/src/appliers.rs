@@ -66,7 +66,8 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::EnsureSubstvar { file, .. }
             | Deb822Action::DropSubstvar { file, .. }
             | Deb822Action::EnsureRelation { file, .. }
-            | Deb822Action::MoveRelation { file, .. } => file,
+            | Deb822Action::MoveRelation { file, .. }
+            | Deb822Action::ReorderParagraphs { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -170,7 +171,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
             | Deb822Action::MoveRelation { paragraph, .. } => Some(paragraph),
-            Deb822Action::AppendParagraph { .. } => None,
+            Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => None,
         };
     }
     None
@@ -292,6 +293,11 @@ fn apply_control_deb822_group(
                 if move_deb822_relation(&editor, paragraph, from_field, to_field, package)? {
                     any_change = true;
                 }
+            }
+            Deb822Action::ReorderParagraphs { .. } => {
+                return Err(FixerError::Other(
+                    "deb822 ReorderParagraphs is not supported via the typed control editor; use a generic-path action group".into(),
+                ));
             }
         }
     }
@@ -463,6 +469,13 @@ fn apply_generic_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::ReorderParagraphs {
+                key_field, order, ..
+            } => {
+                if reorder_paragraphs(&mut deb822, key_field, order) {
+                    any_change = true;
+                }
+            }
         }
     }
 
@@ -470,6 +483,74 @@ fn apply_generic_deb822_group(
         std::fs::write(&abs, deb822.to_string())?;
     }
     Ok(any_change)
+}
+
+/// Reorder a subset of paragraphs in `deb822`. Paragraphs whose
+/// `key_field` value appears in `order` are moved into the order
+/// specified, occupying the same positions originally held by
+/// participating paragraphs. Returns true if any paragraph moved.
+fn reorder_paragraphs(
+    deb822: &mut deb822_lossless::Deb822,
+    key_field: &str,
+    order: &[String],
+) -> bool {
+    // Snapshot the current positions of paragraphs that have key_field,
+    // along with their current key value.
+    let participants: Vec<(usize, String)> = deb822
+        .paragraphs()
+        .enumerate()
+        .filter_map(|(idx, p)| p.get(key_field).map(|v| (idx, v.to_string())))
+        .collect();
+
+    // Build the desired sequence of keys, restricted to those that
+    // actually exist in the document, preserving the order given.
+    let present: std::collections::HashSet<&str> =
+        participants.iter().map(|(_, v)| v.as_str()).collect();
+    let desired_keys: Vec<&str> = order
+        .iter()
+        .map(|s| s.as_str())
+        .filter(|k| present.contains(k))
+        .collect();
+
+    if desired_keys.len() != participants.len() {
+        // Some participating paragraphs aren't covered by `order`. We
+        // could leave them in place, but the most straightforward
+        // semantic is "only act when `order` covers all participants",
+        // which the detector already arranges for. Treat this as a
+        // no-op.
+        return false;
+    }
+
+    // Walk participants in document order and move the one whose key
+    // matches the desired key into the slot. We use `move_paragraph`
+    // and re-snapshot positions after each move because moves shift
+    // indices around.
+    let mut changed = false;
+    for (slot, want_key) in desired_keys.iter().enumerate() {
+        // Re-snapshot.
+        let participants: Vec<(usize, String)> = deb822
+            .paragraphs()
+            .enumerate()
+            .filter_map(|(idx, p)| p.get(key_field).map(|v| (idx, v.to_string())))
+            .collect();
+        let dest_idx = participants[slot].0;
+        // Find the current index of the paragraph that should be in
+        // this slot.
+        let Some(src_idx) = participants
+            .iter()
+            .find(|(_, v)| v == *want_key)
+            .map(|(idx, _)| *idx)
+        else {
+            continue;
+        };
+        if src_idx == dest_idx {
+            continue;
+        }
+        deb822.move_paragraph(src_idx, dest_idx);
+        changed = true;
+    }
+
+    changed
 }
 
 /// Like [`pick_generic_paragraph`] but returns the paragraph's index. Used
