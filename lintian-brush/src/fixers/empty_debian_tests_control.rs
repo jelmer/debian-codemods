@@ -1,18 +1,17 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let tests_control_path = base_path.join("debian/tests/control");
-
-    if !tests_control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/tests/control");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Read the file and check if it's empty or contains only whitespace
-    let content = fs::read_to_string(&tests_control_path)?;
+    let content = std::fs::read_to_string(&abs)?;
     if !content.trim().is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
     let issue = LintianIssue::source_with_info(
@@ -20,146 +19,102 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         vec!["[debian/tests/control]".to_string()],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Remove the empty control file
-    fs::remove_file(&tests_control_path)?;
-
-    // Check if the tests directory is now empty and remove it if so
-    let tests_dir = base_path.join("debian/tests");
-    if tests_dir.exists() {
-        match fs::read_dir(&tests_dir) {
-            Ok(mut entries) => {
-                if entries.next().is_none() {
-                    // Directory is empty, remove it
-                    fs::remove_dir(&tests_dir)?;
-                }
-            }
-            Err(_) => {
-                // If we can't read the directory, just leave it
-            }
-        }
-    }
-
-    Ok(FixerResult::builder("Remove empty debian/tests/control.")
-        .fixed_issues(vec![issue])
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove empty debian/tests/control.",
+        vec![
+            Action::Filesystem(FilesystemAction::Delete { file: rel }),
+            Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+                file: PathBuf::from("debian/tests"),
+            }),
+        ],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "empty-debian-tests-control",
     tags: ["empty-debian-tests-control"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_empty_tests_control() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
+        fs::write(tests_dir.join("control"), "").unwrap();
 
-        let tests_control_path = tests_dir.join("control");
-        fs::write(&tests_control_path, "").unwrap(); // Empty file
-
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Remove empty debian/tests/control.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Both the file and directory should be removed
-        assert!(!tests_control_path.exists());
+        assert!(!tests_dir.join("control").exists());
         assert!(!tests_dir.exists());
     }
 
     #[test]
     fn test_remove_whitespace_only_tests_control() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
+        fs::write(tests_dir.join("control"), "   \n\t  \n  ").unwrap();
 
-        let tests_control_path = tests_dir.join("control");
-        fs::write(&tests_control_path, "   \n\t  \n  ").unwrap(); // Only whitespace
-
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Both the file and directory should be removed
-        assert!(!tests_control_path.exists());
+        run_apply(tmp.path()).unwrap();
+        assert!(!tests_dir.join("control").exists());
         assert!(!tests_dir.exists());
     }
 
     #[test]
     fn test_keep_non_empty_tests_control() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
+        fs::write(tests_dir.join("control"), "Tests: autopkgtest\nDepends: @").unwrap();
 
-        let tests_control_path = tests_dir.join("control");
-        fs::write(&tests_control_path, "Tests: autopkgtest\nDepends: @").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // File should still exist
-        assert!(tests_control_path.exists());
-        assert!(tests_dir.exists());
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert!(tests_dir.join("control").exists());
     }
 
     #[test]
     fn test_keep_tests_dir_with_other_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let tests_dir = debian_dir.join("tests");
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
         fs::create_dir_all(&tests_dir).unwrap();
+        fs::write(tests_dir.join("control"), "").unwrap();
+        fs::write(tests_dir.join("other-test"), "some content").unwrap();
 
-        let tests_control_path = tests_dir.join("control");
-        let other_file_path = tests_dir.join("other-test");
-        fs::write(&tests_control_path, "").unwrap(); // Empty file
-        fs::write(&other_file_path, "some content").unwrap(); // Other file
-
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Control file should be removed but directory should remain
-        assert!(!tests_control_path.exists());
+        run_apply(tmp.path()).unwrap();
+        assert!(!tests_dir.join("control").exists());
         assert!(tests_dir.exists());
-        assert!(other_file_path.exists());
+        assert!(tests_dir.join("other-test").exists());
     }
 
     #[test]
     fn test_no_tests_control_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join("debian")).unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
