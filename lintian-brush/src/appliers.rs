@@ -1495,7 +1495,6 @@ mod tests {
         assert!(after.contains("Files: *\nCopyright: 2024 Foo\nLicense: GPL-2+"));
     }
 
-
     #[test]
     fn yaml_set_field_top_level() {
         let tmp = TempDir::new().unwrap();
