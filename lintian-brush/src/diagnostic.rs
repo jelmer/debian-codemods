@@ -755,6 +755,17 @@ pub enum MakefileAction {
         /// New right-hand side, verbatim (no quoting applied).
         value: String,
     },
+    /// Change the assignment operator on the first variable definition
+    /// for `name` (e.g. `:=` to `?=`). A no-op if no such variable
+    /// exists or it already uses `operator`.
+    SetVariableOperator {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name (matched exactly).
+        name: String,
+        /// New assignment operator (`=`, `:=`, `?=`, `+=`).
+        operator: String,
+    },
     /// Remove the first variable definition for `name`. A no-op if no such
     /// variable exists.
     RemoveVariable {
@@ -817,6 +828,31 @@ pub enum MakefileAction {
         file: PathBuf,
         /// Path to include (e.g. `/usr/share/dpkg/pkg-info.mk`).
         path: String,
+    },
+    /// Replace the first variable definition for `name` with an
+    /// `include <path>` directive. A no-op if the variable doesn't
+    /// exist or `path` is already included. Used to migrate
+    /// `DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)` and
+    /// friends to a single `include /usr/share/dpkg/architecture.mk`,
+    /// keeping the include in the variable's old position.
+    ReplaceVariableWithInclude {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name to replace (matched exactly).
+        name: String,
+        /// Path to include in place of the variable.
+        path: String,
+    },
+    /// Insert `include <path>` immediately before the first variable
+    /// definition whose name is `before_variable`. A no-op if the
+    /// variable doesn't exist or `path` is already included.
+    InsertIncludeBeforeVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path to include.
+        path: String,
+        /// Variable name to anchor the insertion against.
+        before_variable: String,
     },
 }
 
