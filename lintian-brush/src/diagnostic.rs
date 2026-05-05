@@ -532,6 +532,16 @@ pub enum ChangelogAction {
         /// Replacement body lines.
         new_lines: Vec<String>,
     },
+    /// Replace the version of the entry currently identified by `version`
+    /// with `new_version`. A no-op if no entry has that version.
+    SetEntryVersion {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current version string of the target entry.
+        version: String,
+        /// New version string to write into the entry header.
+        new_version: String,
+    },
 }
 /// Edits to a `debian/watch` file.
 ///

@@ -90,7 +90,8 @@ fn action_file(action: &Action) -> &Path {
             ChangelogAction::ReplaceEntryChanges { file, .. }
             | ChangelogAction::SetEntryDate { file, .. }
             | ChangelogAction::RemoveBullet { file, .. }
-            | ChangelogAction::ReplaceBullet { file, .. } => file,
+            | ChangelogAction::ReplaceBullet { file, .. }
+            | ChangelogAction::SetEntryVersion { file, .. } => file,
         },
         Action::Watch(a) => match a {
             WatchAction::SetEntryMatchingPattern { file, .. } => file,
@@ -848,8 +849,12 @@ fn ensure_relation_compute(
         }
         debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
     } else {
+        // Pass the original entry string through verbatim so build-profile
+        // suffixes like `pkg <!nocheck>` round-trip correctly via
+        // Relation::simple's literal-name behaviour. The parsed `name` would
+        // have stripped the suffix.
         let before = relations.to_string();
-        debian_analyzer::relations::ensure_some_version(&mut relations, &name);
+        debian_analyzer::relations::ensure_some_version(&mut relations, entry);
         relations.to_string() != before
     };
 
@@ -1577,6 +1582,37 @@ fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<b
                     }
                 }
                 if replaced {
+                    any_change = true;
+                }
+            }
+            ChangelogAction::SetEntryVersion {
+                version,
+                new_version,
+                ..
+            } => {
+                use std::str::FromStr;
+                let parsed_new = debversion::Version::from_str(new_version).map_err(|e| {
+                    FixerError::Other(format!(
+                        "Invalid new version {:?} in SetEntryVersion: {}",
+                        new_version, e
+                    ))
+                })?;
+                let mut updated = false;
+                for mut entry in changelog.iter() {
+                    let Some(entry_version) = entry.version() else {
+                        continue;
+                    };
+                    if entry_version.to_string() != *version {
+                        continue;
+                    }
+                    if entry_version == parsed_new {
+                        break;
+                    }
+                    entry.set_version(&parsed_new);
+                    updated = true;
+                    break;
+                }
+                if updated {
                     any_change = true;
                 }
             }
