@@ -1,70 +1,43 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let rules_path = base_path.join("debian/rules");
-
-    if !rules_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_rel = PathBuf::from("debian/rules");
+    let abs = base_path.join(&rules_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = fs::read(&rules_path)?;
-
-    // Replace $(dir $(_)) with $(dir $(firstword $(MAKEFILE_LIST)))
-    let pattern = b"$(dir $(_))";
-    let replacement = b"$(dir $(firstword $(MAKEFILE_LIST)))";
-    let content_str = content.as_slice();
-
-    // Check if pattern exists before making changes
-    if !content_str.windows(pattern.len()).any(|w| w == pattern) {
-        return Err(FixerError::NoChanges);
+    let content = std::fs::read(&abs)?;
+    if !content
+        .windows(b"$(dir $(_))".len())
+        .any(|w| w == b"$(dir $(_))")
+    {
+        return Ok(Vec::new());
     }
 
-    // Create issue and check if we should fix it
     let issue = LintianIssue::source_with_info(
         "debian-rules-uses-special-shell-variable",
         vec!["[debian/rules]".to_string()],
     );
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
 
-    let mut new_content = Vec::new();
-    let mut last_end = 0;
-    let mut made_changes = false;
-
-    for i in 0..content_str.len() {
-        if i + pattern.len() <= content_str.len() && &content_str[i..i + pattern.len()] == pattern {
-            // Found a match
-            new_content.extend_from_slice(&content_str[last_end..i]);
-            new_content.extend_from_slice(replacement);
-            last_end = i + pattern.len();
-            made_changes = true;
-        }
-    }
-
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Add the remaining content
-    new_content.extend_from_slice(&content_str[last_end..]);
-
-    fs::write(&rules_path, &new_content)?;
-
-    Ok(
-        FixerResult::builder("Avoid using $(_) to discover source package directory.")
-            .fixed_issues(vec![issue])
-            .build(),
-    )
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Avoid using $(_) to discover source package directory.".to_string(),
+        vec![Action::Filesystem(FilesystemAction::Substitute {
+            file: rules_rel,
+            from: "$(dir $(_))".into(),
+            to: "$(dir $(firstword $(MAKEFILE_LIST)))".into(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "debian-rules-uses-special-shell-variable",
     tags: ["debian-rules-uses-special-shell-variable"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -72,68 +45,50 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_replace_special_shell_variable() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("rules");
+        fs::write(
+            &path,
+            "#!/usr/bin/make -f\n\n%:\n\tdh $*\n\nget-orig-source:\n\tuscan --watchfile=$(dir $(_))/watch\n",
+        )
+        .unwrap();
 
-        let rules_content = b"#!/usr/bin/make -f\n\n%:\n\tdh $*\n\nget-orig-source:\n\tuscan --watchfile=$(dir $(_))/watch\n";
-        let rules_path = debian_dir.join("rules");
-        fs::write(&rules_path, rules_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Avoid using $(_) to discover source package directory."
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read(&rules_path).unwrap();
-        let updated_str = String::from_utf8_lossy(&updated_content);
-        assert!(!updated_str.contains("$(dir $(_))"));
-        assert!(updated_str.contains("$(dir $(firstword $(MAKEFILE_LIST)))"));
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "#!/usr/bin/make -f\n\n%:\n\tdh $*\n\nget-orig-source:\n\tuscan --watchfile=$(dir $(firstword $(MAKEFILE_LIST)))/watch\n",
+        );
     }
 
     #[test]
     fn test_no_change_when_not_present() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
-        let rules_content = b"#!/usr/bin/make -f\n\n%:\n\tdh $*\n";
-        let rules_path = debian_dir.join("rules");
-        fs::write(&rules_path, rules_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(debian.join("rules"), "#!/usr/bin/make -f\n\n%:\n\tdh $*\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_no_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
