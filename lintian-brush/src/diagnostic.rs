@@ -151,6 +151,10 @@ pub enum Action {
     /// An edit to a `debian/debcargo.toml` file. Used for Rust crate
     /// packages where the control file is generated.
     Debcargo(DebcargoAction),
+    /// Invoke an external tool that mutates files in the working tree (e.g.
+    /// `debconf-updatepo`). Use this only when the operation can't be
+    /// expressed as one of the typed file actions above.
+    RunCommand(RunCommandAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -1026,6 +1030,31 @@ pub enum DebcargoAction {
         field: String,
         /// New string value.
         value: String,
+    },
+}
+
+/// Run an external command that mutates the working tree.
+///
+/// Use sparingly: prefer typed actions whenever possible. The intended
+/// use is tools like `debconf-updatepo` that produce changes we can't
+/// describe declaratively.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum RunCommandAction {
+    /// Run `argv` in the package root. The applier snapshots `scope`
+    /// before and after the run, considering the action a change iff any
+    /// file under `scope` was added, removed, or had its bytes change.
+    /// A non-zero exit code is a fixer error. ENOENT on `argv[0]` is
+    /// reported as [`FixerError::MissingDependency`].
+    Run {
+        /// Argument vector. `argv[0]` is resolved via PATH.
+        argv: Vec<String>,
+        /// Subtree to monitor for changes, relative to the package root.
+        /// Use `.` to monitor the entire tree.
+        scope: PathBuf,
+        /// Environment overrides applied on top of the inherited env.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        env: Vec<(String, String)>,
     },
 }
 

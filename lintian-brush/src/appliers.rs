@@ -9,7 +9,7 @@
 use crate::diagnostic::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
     FilesystemAction, LintianOverridesAction, MakefileAction, OverrideLineSelector,
-    ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    ParagraphSelector, RunCommandAction, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -133,6 +133,9 @@ fn action_file(action: &Action) -> &Path {
         Action::Debcargo(a) => match a {
             DebcargoAction::SetSourceField { file, .. } => file,
         },
+        Action::RunCommand(a) => match a {
+            RunCommandAction::Run { scope, .. } => scope,
+        },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
             | FilesystemAction::Delete { file }
@@ -171,6 +174,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
         Action::Debcargo(_) => apply_debcargo_group(base, rel, group),
+        Action::RunCommand(_) => apply_run_command_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -2715,6 +2719,77 @@ fn apply_lintian_overrides_group(
         std::fs::write(&abs, new_content)?;
     }
     Ok(true)
+}
+
+fn snapshot_scope(
+    scope_abs: &Path,
+) -> std::io::Result<std::collections::BTreeMap<PathBuf, Vec<u8>>> {
+    let mut out = std::collections::BTreeMap::new();
+    if !scope_abs.exists() {
+        return Ok(out);
+    }
+    if scope_abs.is_file() {
+        out.insert(scope_abs.to_path_buf(), std::fs::read(scope_abs)?);
+        return Ok(out);
+    }
+    let mut stack = vec![scope_abs.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let ft = entry.file_type()?;
+            if ft.is_dir() {
+                stack.push(path);
+            } else if ft.is_file() {
+                let bytes = std::fs::read(&path)?;
+                out.insert(path, bytes);
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn apply_run_command_group(
+    base: &Path,
+    _rel: &Path,
+    group: &[&Action],
+) -> Result<bool, FixerError> {
+    let mut any_change = false;
+    for action in group {
+        let Action::RunCommand(rc) = action else {
+            unreachable!("apply_run_command_group called with non-run-command action");
+        };
+        let RunCommandAction::Run { argv, scope, env } = rc;
+        let scope_abs = base.join(scope);
+        let before = snapshot_scope(&scope_abs)?;
+
+        let mut cmd = std::process::Command::new(&argv[0]);
+        cmd.args(&argv[1..]);
+        cmd.current_dir(base);
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
+        let output = match cmd.output() {
+            Ok(o) => o,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Err(FixerError::MissingDependency(argv[0].clone()));
+            }
+            Err(e) => return Err(FixerError::from(e)),
+        };
+        if !output.status.success() {
+            return Err(FixerError::Other(format!(
+                "{} failed: {}",
+                argv[0],
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        let after = snapshot_scope(&scope_abs)?;
+        if before != after {
+            any_change = true;
+        }
+    }
+    Ok(any_change)
 }
 
 fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
