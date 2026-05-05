@@ -18,15 +18,13 @@ inventory::collect!(BuiltinFixerRegistration);
 
 /// Trait for implementing a builtin fixer.
 ///
-/// Implementations choose one of two strategies:
-///
-/// * Override [`apply`](Self::apply) directly. This is the legacy path used
-///   by every fixer that pre-dates the detector/applier split.
-/// * Override [`diagnostics`](Self::diagnostics) (and optionally
-///   [`describe`](Self::describe)) and let the default
-///   [`apply`](Self::apply) impl consume them. The default impl filters out
-///   diagnostics that fail certainty/override checks and applies the first
-///   plan of each surviving diagnostic via [`crate::appliers`].
+/// Each fixer implements [`diagnostics`](Self::diagnostics) (the
+/// detector). The framework drops any diagnostic that is overridden by
+/// a lintian override or whose certainty is below
+/// `preferences.minimum_certainty`, then applies the first plan of each
+/// surviving diagnostic via [`crate::appliers`]. The
+/// [`describe`](Self::describe) method controls the resulting commit
+/// message.
 pub trait BuiltinFixer: Send + Sync {
     /// Name of the fixer
     fn name(&self) -> &'static str;
@@ -35,30 +33,20 @@ pub trait BuiltinFixer: Send + Sync {
     fn lintian_tags(&self) -> &'static [&'static str];
 
     /// Detect issues without modifying the tree.
-    ///
-    /// The default returns [`FixerError::NoChanges`] so legacy fixers that
-    /// only implement [`apply`](Self::apply) keep working unchanged. New
-    /// fixers should override this and rely on the default
-    /// [`apply`](Self::apply) impl.
     fn diagnostics(
         &self,
-        _basedir: &std::path::Path,
-        _package: &str,
-        _current_version: &Version,
-        _preferences: &FixerPreferences,
-    ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-        Err(FixerError::NoChanges)
-    }
+        basedir: &std::path::Path,
+        package: &str,
+        current_version: &Version,
+        preferences: &FixerPreferences,
+    ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError>;
 
-    /// Build the description (used as the FixerResult / commit message)
-    /// from the diagnostics that actually fired and the actions that were
-    /// applied.
-    ///
-    /// The default deduplicates and joins the per-diagnostic messages,
-    /// which is the right answer for fixers whose diagnostics already carry
-    /// the final message text. Override this when the description is a
-    /// function of the *set* of issues / fields touched (e.g. "Set priority
-    /// for library packages X, Y to optional.").
+    /// Build the commit message from the diagnostics that actually
+    /// fired and the actions that were applied. The default
+    /// deduplicates and joins the per-diagnostic messages; override
+    /// when the description is a function of the *set* of issues or
+    /// fields touched (e.g. "Set priority for library packages X, Y to
+    /// optional.").
     fn describe(
         &self,
         fixed: &[crate::diagnostic::Diagnostic],
@@ -67,16 +55,9 @@ pub trait BuiltinFixer: Send + Sync {
         default_describe(fixed, actions)
     }
 
-    /// Apply the fixer.
-    ///
-    /// The default implementation calls [`diagnostics`](Self::diagnostics),
-    /// drops any diagnostic that is overridden by a lintian override or
-    /// whose certainty is below `preferences.minimum_certainty`, applies
-    /// the first plan of each remaining diagnostic, and uses
-    /// [`describe`](Self::describe) to build the result message. It returns
-    /// [`FixerError::NoChanges`] if no diagnostics were emitted, and
-    /// [`FixerError::NoChangesAfterOverrides`] if every emitted diagnostic
-    /// was filtered out by overrides.
+    /// Apply the fixer. Returns [`FixerError::NoChanges`] if no
+    /// diagnostics were emitted, and [`FixerError::NoChangesAfterOverrides`]
+    /// if every emitted diagnostic was filtered out by overrides.
     fn apply(
         &self,
         basedir: &std::path::Path,
@@ -601,20 +582,14 @@ mod tests {
             self.tags
         }
 
-        fn apply(
+        fn diagnostics(
             &self,
             _basedir: &Path,
             _package: &str,
             _current_version: &Version,
             _preferences: &FixerPreferences,
-        ) -> Result<FixerResult, FixerError> {
-            Ok(FixerResult::builder("Mock fix applied")
-                .fixed_issues(
-                    self.tags
-                        .iter()
-                        .map(|s| LintianIssue::just_tag(s.to_string())),
-                )
-                .build())
+        ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
+            Ok(Vec::new())
         }
     }
 
@@ -758,6 +733,9 @@ mod tests {
 
     #[test]
     fn test_builtin_fixer_wrapper_run() {
+        // The mock fixer emits no diagnostics, so apply returns
+        // NoChanges. We just check the wrapper plumbs through to the
+        // underlying BuiltinFixer.
         let mock_fixer = MockBuiltinFixer {
             name: "test-fixer",
             tags: &["test-tag"],
@@ -776,10 +754,7 @@ mod tests {
             None,
         );
 
-        assert!(result.is_ok());
-        let fixer_result = result.unwrap();
-        assert_eq!(fixer_result.description, "Mock fix applied");
-        assert_eq!(fixer_result.fixed_lintian_tags(), vec!["test-tag"]);
+        assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -828,13 +803,13 @@ mod tests {
             self.tags
         }
 
-        fn apply(
+        fn diagnostics(
             &self,
             _basedir: &Path,
             _package: &str,
             _current_version: &Version,
             _preferences: &FixerPreferences,
-        ) -> Result<FixerResult, FixerError> {
+        ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
             panic!("Test panic from fixer");
         }
     }
