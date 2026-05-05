@@ -201,7 +201,11 @@ fn apply_deb822_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool
     }
     if matches!(
         first,
-        Some(ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. })
+        Some(
+            ParagraphSelector::CopyrightHeader
+                | ParagraphSelector::CopyrightFiles { .. }
+                | ParagraphSelector::CopyrightLicense { .. }
+        )
     ) {
         return apply_copyright_deb822_group(base, rel, group);
     }
@@ -444,7 +448,9 @@ fn apply_copyright_deb822_group(
         };
         !matches!(
             p,
-            ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. }
+            ParagraphSelector::CopyrightHeader
+                | ParagraphSelector::CopyrightFiles { .. }
+                | ParagraphSelector::CopyrightLicense { .. }
         )
     }) {
         return apply_generic_deb822_group(base, rel, group);
@@ -457,6 +463,12 @@ fn apply_copyright_deb822_group(
         };
         match deb {
             Deb822Action::SetField {
+                paragraph,
+                field,
+                value,
+                ..
+            }
+            | Deb822Action::SetFieldWithIndent {
                 paragraph,
                 field,
                 value,
@@ -492,6 +504,23 @@ fn apply_copyright_deb822_group(
                     files_para.set_field(field, value);
                     any_change = true;
                 }
+                ParagraphSelector::CopyrightLicense { name } => {
+                    let Some(mut license_para) = copyright
+                        .iter_licenses()
+                        .find(|p| p.name().as_deref() == Some(name.as_str()))
+                    else {
+                        return Err(FixerError::Other(format!(
+                            "deb822 SetField on {}: no License paragraph named {:?}",
+                            rel.display(),
+                            name
+                        )));
+                    };
+                    if license_para.as_deb822().get(field).as_deref() == Some(value.as_str()) {
+                        continue;
+                    }
+                    license_para.set_field(field, value);
+                    any_change = true;
+                }
                 other => {
                     return Err(FixerError::Other(format!(
                         "Copyright SetField does not support paragraph selector {:?}",
@@ -518,6 +547,17 @@ fn apply_copyright_deb822_group(
                     {
                         if files_para.as_deb822().get(field).is_some() {
                             files_para.remove_field(field);
+                            any_change = true;
+                        }
+                    }
+                }
+                ParagraphSelector::CopyrightLicense { name } => {
+                    if let Some(mut license_para) = copyright
+                        .iter_licenses()
+                        .find(|p| p.name().as_deref() == Some(name.as_str()))
+                    {
+                        if license_para.as_deb822().get(field).is_some() {
+                            license_para.remove_field(field);
                             any_change = true;
                         }
                     }
@@ -838,6 +878,13 @@ fn find_generic_paragraph_index(
         ParagraphSelector::CopyrightFiles { glob } => Ok(deb822
             .paragraphs()
             .position(|p| p.get("Files").as_deref() == Some(glob.as_str()))),
+        ParagraphSelector::CopyrightLicense { name } => Ok(deb822.paragraphs().position(|p| {
+            p.get("Files").is_none()
+                && p.get("License")
+                    .and_then(|l| l.split_once('\n').map(|(s, _)| s.to_string()).or(Some(l)))
+                    .as_deref()
+                    == Some(name.as_str())
+        })),
         ParagraphSelector::Index { index } => Ok(if deb822.paragraphs().nth(*index).is_some() {
             Some(*index)
         } else {
@@ -868,6 +915,13 @@ fn pick_generic_paragraph(
         ParagraphSelector::CopyrightFiles { glob } => Ok(deb822
             .paragraphs()
             .find(|p| p.get("Files").as_deref() == Some(glob.as_str()))),
+        ParagraphSelector::CopyrightLicense { name } => Ok(deb822.paragraphs().find(|p| {
+            p.get("Files").is_none()
+                && p.get("License")
+                    .and_then(|l| l.split_once('\n').map(|(s, _)| s.to_string()).or(Some(l)))
+                    .as_deref()
+                    == Some(name.as_str())
+        })),
         ParagraphSelector::Index { index } => Ok(deb822.paragraphs().nth(*index)),
         ParagraphSelector::ByKey { field, value } => Ok(deb822
             .paragraphs()
