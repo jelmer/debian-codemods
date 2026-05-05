@@ -195,6 +195,24 @@ pub enum Deb822Action {
         /// Package name to drop.
         package: String,
     },
+    /// Replace the first relation that names `from_package` with the
+    /// `to_entry` text, keeping the entry's position in the field. A
+    /// no-op if `from_package` isn't named. If `to_entry` parses as a
+    /// relation whose package is already named elsewhere in the field,
+    /// the original `from_package` entry is dropped without inserting a
+    /// duplicate.
+    ReplaceRelation {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Build-Depends`).
+        field: String,
+        /// Package name (matched exactly) of the relation to replace.
+        from_package: String,
+        /// New entry text (e.g. `perl`, `debhelper (>= 12)`).
+        to_entry: String,
+    },
     /// Ensure a substvar (`${...}`) is present in a relations field. If
     /// the field doesn't exist it's created with just the substvar; if
     /// it exists and already mentions the substvar it's a no-op.
