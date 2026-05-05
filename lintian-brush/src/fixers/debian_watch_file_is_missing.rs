@@ -1,7 +1,8 @@
-use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use breezyshim::branch::Branch;
 use debversion::Version;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 use url::Url;
@@ -492,34 +493,22 @@ fn candidates_from_upstream_metadata(
     Ok(candidates)
 }
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
-    _package: &str,
     version: &Version,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    // Check if watch file already exists
-    let watch_path = base_path.join("debian/watch");
-    if watch_path.exists() {
-        return Err(FixerError::NoChanges);
+) -> Result<Vec<Diagnostic>, FixerError> {
+    if version.is_native() {
+        return Ok(Vec::new());
     }
 
-    // Check if this issue should be fixed
-    let issue = LintianIssue {
-        package: None,
-        package_type: Some(crate::PackageType::Source),
-        tag: Some("debian-watch-file-is-missing".to_string()),
-        info: None,
-    };
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
+    let watch_rel = PathBuf::from("debian/watch");
+    let watch_abs = base_path.join(&watch_rel);
+    if watch_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Get upstream version
     let upstream_version = version.upstream_version.to_string();
-
-    // Find candidates
     let candidates = find_candidates(
         base_path,
         &[upstream_version],
@@ -528,54 +517,53 @@ pub fn run(
     .map_err(|e| FixerError::Other(format!("Failed to find candidates: {}", e)))?;
 
     if candidates.is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Take the best candidate (first after sorting)
     let winner = candidates.into_iter().next().unwrap();
 
-    // Create a new v5 watch file with the entry
     let mut watch_file = debian_watch::parse::ParsedWatchFile::new(5)
         .map_err(|e| FixerError::Other(format!("Failed to create watch file: {}", e)))?;
     let mut entry = watch_file.add_entry(&winner.source, &winner.matching_pattern);
-
-    // Apply any options to the entry
     for option in winner.options {
         entry.set_option(option);
     }
 
-    // Write the watch file
-    std::fs::write(&watch_path, watch_file.to_string())?;
-
-    let mut result = FixerResult::builder(format!("Add debian/watch file, using {}.", winner.site));
-
+    let issue = LintianIssue::source_with_info("debian-watch-file-is-missing", vec![]);
+    let mut diag = Diagnostic::with_actions(
+        issue,
+        format!("Add debian/watch file, using {}.", winner.site),
+        vec![Action::Filesystem(FilesystemAction::Write {
+            file: watch_rel,
+            content: watch_file.to_string().into_bytes(),
+        })],
+    );
     if let Some(certainty) = winner.certainty {
-        result = result.certainty(certainty);
+        diag = diag.with_certainty(certainty);
     }
-
-    result = result.fixed_issues(vec![issue]);
-
-    Ok(result.build())
+    Ok(vec![diag])
 }
 
 declare_fixer! {
     name: "debian-watch-file-is-missing",
     tags: ["debian-watch-file-is-missing"],
-    apply: |basedir, package, version, preferences| {
-        // Native packages don't need watch files
-        if version.is_native() {
-            return Err(FixerError::NoChanges);
-        }
-        run(basedir, package, version, preferences)
+    diagnose: |basedir, _package, version, preferences| {
+        detect(basedir, version, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
     use debversion::Version;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = version_str.parse().unwrap();
+        FixerImpl.apply(base, "testpkg", &v, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_skips_if_watch_exists() {
@@ -584,11 +572,10 @@ mod tests {
         fs::create_dir_all(&debian_dir).unwrap();
         fs::write(debian_dir.join("watch"), "version=4\n").unwrap();
 
-        let version: Version = "1.0-1".parse().unwrap();
-        let preferences = FixerPreferences::default();
-
-        let result = run(dir.path(), "testpkg", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(dir.path(), "1.0-1"),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -635,10 +622,9 @@ setup(name="xandikos", version="42.0")
         let debian_dir = dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let version: Version = "1.0-1".parse().unwrap();
-        let preferences = FixerPreferences::default();
-
-        let result = run(dir.path(), "testpkg", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(dir.path(), "1.0-1"),
+            Err(FixerError::NoChanges)
+        ));
     }
 }
