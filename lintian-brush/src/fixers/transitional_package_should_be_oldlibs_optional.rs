@@ -1,63 +1,47 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut packages = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
 
-    let default_priority = editor
-        .source()
-        .and_then(|s| s.as_deb822().get("Priority").map(|s| s.to_string()));
+    let source_paragraph = control.source().map(|s| s.as_deb822().clone());
+    let default_priority = source_paragraph.as_ref().and_then(|p| p.get("Priority"));
+    let default_section = source_paragraph.as_ref().and_then(|p| p.get("Section"));
 
-    let binaries: Vec<_> = editor.binaries().collect();
+    let mut diagnostics = Vec::new();
 
-    for mut binary in binaries {
-        let paragraph = binary.as_mut_deb822();
+    for binary in control.binaries() {
+        let paragraph = binary.as_deb822();
 
         // Skip udebs
-        if let Some(package_type) = paragraph.get("Package-Type") {
-            if package_type.trim() == "udeb" {
-                continue;
-            }
+        if paragraph.get("Package-Type").as_deref().map(str::trim) == Some("udeb") {
+            continue;
         }
 
-        // Check if description contains "transitional package"
         let description = paragraph.get("Description").unwrap_or_default();
         if !description.to_lowercase().contains("transitional package") {
             continue;
         }
 
-        let package_name = paragraph.get("Package").unwrap_or_default().to_string();
-
-        // Get old section - from binary or source
-        let old_section = if let Some(section) = paragraph.get("Section") {
-            Some(section.to_string())
-        } else {
-            editor
-                .source()
-                .and_then(|s| s.as_deb822().get("Section").map(|s| s.to_string()))
+        let Some(package_name) = binary.name() else {
+            continue;
         };
 
-        // Get old priority - from binary or source
-        let old_priority = if let Some(priority) = paragraph.get("Priority") {
-            priority.to_string()
-        } else {
-            default_priority
-                .as_deref()
-                .unwrap_or("optional")
-                .to_string()
-        };
+        let old_section = paragraph.get("Section").or_else(|| default_section.clone());
+        let old_priority = paragraph
+            .get("Priority")
+            .or_else(|| default_priority.clone())
+            .unwrap_or_else(|| "optional".to_string());
 
-        // Create info string showing old section/priority
         let info = format!(
             "{}/{}",
             old_section.as_deref().unwrap_or("misc"),
@@ -70,46 +54,73 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             vec![info],
         );
 
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-            continue;
-        }
-
-        // Determine new section
-        let new_section = if let Some(old_section) = old_section.as_ref() {
-            if let Some((area, _section)) = old_section.split_once('/') {
-                format!("{}/oldlibs", area)
-            } else {
-                "oldlibs".to_string()
-            }
-        } else {
-            "oldlibs".to_string()
+        let new_section = match old_section.as_deref() {
+            Some(s) => match s.split_once('/') {
+                Some((area, _)) => format!("{}/oldlibs", area),
+                None => "oldlibs".to_string(),
+            },
+            None => "oldlibs".to_string(),
         };
 
-        paragraph.set("Section", &new_section);
+        let mut actions = vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Binary {
+                package: package_name.clone(),
+            },
+            field: "Section".into(),
+            value: new_section,
+        })];
 
-        // Handle priority
-        if default_priority.as_deref() != Some("optional") {
-            paragraph.set("Priority", "optional");
+        if default_priority.as_deref() == Some("optional") {
+            // Source already declares Priority: optional; drop the binary's
+            // override so it inherits.
+            actions.push(Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package_name.clone(),
+                },
+                field: "Priority".into(),
+            }));
         } else {
-            // If source priority is already optional, remove from binary
-            paragraph.remove("Priority");
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: package_name.clone(),
+                },
+                field: "Priority".into(),
+                value: "optional".into(),
+            }));
         }
 
-        packages.push(package_name);
-        fixed_issues.push(issue);
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!(
+                "Move transitional package {} to oldlibs/optional per policy 4.0.1.",
+                package_name
+            ),
+            actions,
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    editor.commit()?;
+fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+    let mut packages: Vec<&str> = actions
+        .iter()
+        .filter_map(|a| match a {
+            Action::Deb822(Deb822Action::SetField {
+                paragraph: ParagraphSelector::Binary { package },
+                field,
+                ..
+            }) if field == "Section" => Some(package.as_str()),
+            _ => None,
+        })
+        .collect();
+    packages.sort();
+    packages.dedup();
 
-    let message = if packages.len() == 1 {
+    if packages.len() == 1 {
         format!(
             "Move transitional package {} to oldlibs/optional per policy 4.0.1.",
             packages[0]
@@ -119,19 +130,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             "Move transitional packages {} to oldlibs/optional per policy 4.0.1.",
             packages.join(", ")
         )
-    };
-
-    Ok(FixerResult::builder(&message)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    }
 }
 
 declare_fixer! {
     name: "transitional-package-should-be-oldlibs-optional",
     tags: ["transitional-package-not-oldlibs-optional"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -139,8 +148,14 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_transitional_package_simple() {
@@ -148,23 +163,24 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nPriority: standard\nSection: libs\nDescription: transitional package for blah\n Test test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nPriority: standard\nSection: libs\nDescription: transitional package for blah\n Test test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Move transitional package lintian-brush to oldlibs/optional per policy 4.0.1.",
         );
-        assert!(result.is_ok());
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Section: oldlibs"));
-        assert!(!updated_content.contains("Priority: standard"));
+        // Section becomes oldlibs; Priority dropped (source already optional).
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nSection: oldlibs\nDescription: transitional package for blah\n Test test\n",
+        );
     }
 
     #[test]
@@ -173,23 +189,23 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nPriority: standard\nSection: contrib/libs\nDescription: transitional package for blah\n Test test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nPriority: standard\nSection: contrib/libs\nDescription: transitional package for blah\n Test test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Move transitional package lintian-brush to oldlibs/optional per policy 4.0.1.",
         );
-        assert!(result.is_ok());
 
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Section: contrib/oldlibs"));
-        assert!(!updated_content.contains("Priority: standard"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nSection: contrib/oldlibs\nDescription: transitional package for blah\n Test test\n",
+        );
     }
 
     #[test]
@@ -198,14 +214,17 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content = "Source: gdk-pixbuf\nSection: libs\nPriority: optional\n\nPackage: libgdk-pixbuf2.0-0-udeb\nPackage-Type: udeb\nSection: debian-installer\nDescription: GDK Pixbuf library - minimal runtime\n This transitional package depends on libgdk-pixbuf-2.0-0-udeb.\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: gdk-pixbuf\nSection: libs\nPriority: optional\n\nPackage: libgdk-pixbuf2.0-0-udeb\nPackage-Type: udeb\nSection: debian-installer\nDescription: GDK Pixbuf library - minimal runtime\n This transitional package depends on libgdk-pixbuf-2.0-0-udeb.\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(temp_dir.path(), "gdk-pixbuf", &version, &Default::default());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -214,34 +233,25 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        let control_content =
-            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nSection: libs\nDescription: A real package\n Test test\n";
         let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        fs::write(
+            &control_path,
+            "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nSection: libs\nDescription: A real package\n Test test\n",
+        )
+        .unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "lintian-brush",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_change_when_no_file() {
         let temp_dir = TempDir::new().unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

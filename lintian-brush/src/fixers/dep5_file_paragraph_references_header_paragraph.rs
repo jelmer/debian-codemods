@@ -1,222 +1,185 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic};
+use crate::{FixerError, LintianIssue};
 use debian_copyright::lossless::Copyright;
-use debian_copyright::License;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
+    let content = std::fs::read_to_string(&abs)?;
+    let copyright: Copyright = match content.parse() {
+        Ok(c) => c,
+        Err(_) => return Ok(Vec::new()),
+    };
 
-    let content = fs::read_to_string(&copyright_path)?;
-
-    let mut copyright: Copyright = content.parse().map_err(|_| FixerError::NoChanges)?;
-
-    // Get the header license
-    let header = match copyright.header() {
-        Some(h) => h,
-        None => return Err(FixerError::NoChanges),
+    let Some(header) = copyright.header() else {
+        return Ok(Vec::new());
     };
     let header_deb822 = header.as_deb822();
+    let Some(license_str) = header_deb822.get("License") else {
+        return Ok(Vec::new());
+    };
+    let lines: Vec<&str> = license_str.lines().collect();
+    if lines.is_empty() {
+        return Ok(Vec::new());
+    }
+    let synopsis = lines[0].trim().to_string();
+    let has_text = lines.len() > 1 && lines[1..].iter().any(|l| !l.trim().is_empty());
+    if !has_text {
+        return Ok(Vec::new());
+    }
 
-    // Get line number for License field in header
     let line_no = header_deb822
         .entries()
         .find(|e| e.key().as_deref() == Some("License"))
         .map(|e| e.line() + 1)
         .unwrap_or_else(|| header_deb822.line() + 1);
 
-    let header_license_str = match header_deb822.get("License") {
-        Some(s) => s,
-        None => return Err(FixerError::NoChanges),
-    };
-
-    let header_license_lines: Vec<&str> = header_license_str.lines().collect();
-
-    if header_license_lines.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
-
-    let header_synopsis = header_license_lines[0].trim();
-
-    // Check if header has license text (more than just synopsis)
-    let header_has_text = header_license_lines.len() > 1
-        && header_license_lines[1..]
-            .iter()
-            .any(|line| !line.trim().is_empty());
-
-    if !header_has_text {
-        return Err(FixerError::NoChanges);
-    }
-
-    // Track which licenses are used and which have their own paragraphs
-    let mut used_licenses = HashSet::new();
-    let mut seen_licenses = HashSet::new();
-
-    // Check Files paragraphs
+    // Track which licenses are referenced and which already have their
+    // own License paragraph (or inline License: <name>\n <text>).
+    let mut used = HashSet::new();
+    let mut defined = HashSet::new();
     for files_para in copyright.iter_files() {
         if let Some(license) = files_para.license() {
             if let Some(name) = license.name() {
-                used_licenses.insert(name.to_string());
-
-                // If the Files paragraph has license text, it's already defined
+                used.insert(name.to_string());
                 if license.text().is_some() {
-                    seen_licenses.insert(name.to_string());
+                    defined.insert(name.to_string());
                 }
             }
         }
     }
-
-    // Check License paragraphs
     for license_para in copyright.iter_licenses() {
         if let Some(name) = license_para.name() {
-            seen_licenses.insert(name);
+            defined.insert(name);
         }
     }
 
-    // Check if the header license is used but doesn't have its own paragraph
-    if !used_licenses.contains(header_synopsis) {
-        return Err(FixerError::NoChanges);
+    if !used.contains(&synopsis) || defined.contains(&synopsis) {
+        return Ok(Vec::new());
     }
 
-    if seen_licenses.contains(header_synopsis) {
-        return Err(FixerError::NoChanges);
-    }
+    // Build the License paragraph value: synopsis + body lines from the
+    // header license. Lines coming out of `lines()` retain the deb822
+    // continuation-indent prefix (one leading space); strip it so
+    // deb822-lossless re-applies its own indent on render.
+    let body: Vec<&str> = lines[1..]
+        .iter()
+        .map(|line| line.strip_prefix(' ').unwrap_or(line))
+        .collect();
+    let new_license_value = format!("{}\n{}", synopsis, body.join("\n"));
 
     let issue = LintianIssue::source_with_info(
         "dep5-file-paragraph-references-header-paragraph",
-        vec![format!(
-            "{} [debian/copyright:{}]",
-            header_synopsis, line_no
-        )],
+        vec![format!("{} [debian/copyright:{}]", synopsis, line_no)],
     );
 
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Need to add a License paragraph for the header license
-    // Parse the header license into a License object
-    let header_license = if header_license_lines.len() > 1 {
-        let text = header_license_lines[1..].join("\n");
-        License::Named(header_synopsis.to_string(), text)
-    } else {
-        License::Name(header_synopsis.to_string())
-    };
-
-    copyright.add_license(&header_license);
-
-    fs::write(&copyright_path, copyright.to_string())?;
-
-    Ok(FixerResult::builder(format!(
-        "Add missing license paragraph for {}",
-        header_synopsis
-    ))
-    .fixed_issues(vec![issue])
-    .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        format!("Add missing license paragraph for {}", synopsis),
+        vec![Action::Deb822(Deb822Action::AppendParagraph {
+            file: copyright_rel,
+            fields: vec![("License".into(), new_license_value)],
+            // DEP-5 mandates single-space indent for License field bodies.
+            indent: Some(1),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "dep5-file-paragraph-references-header-paragraph",
     tags: ["dep5-file-paragraph-references-header-paragraph"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_simple() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
         fs::write(
-            debian_dir.join("copyright"),
+            &path,
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n Some terms\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: Alicense\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Add missing license paragraph for Alicense"
         );
 
-        let content = fs::read_to_string(debian_dir.join("copyright")).unwrap();
         assert_eq!(
-            content,
+            fs::read_to_string(&path).unwrap(),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n Some terms\n\nFiles: *\nCopyright:\n 2008-2017 Somebody\nLicense: Alicense\n\nLicense: Alicense\n Some terms\n"
         );
     }
 
     #[test]
     fn test_no_dep5() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("copyright"),
+            debian.join("copyright"),
             "This is not a machine-readable copyright file.\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_copyright_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_header_has_no_text() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("copyright"),
+            debian.join("copyright"),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n\nFiles: *\nCopyright: 2008-2017 Somebody\nLicense: Alicense\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_license_paragraph_already_exists() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
         fs::write(
-            debian_dir.join("copyright"),
+            debian.join("copyright"),
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: lintrian\nLicense: Alicense\n Some terms\n\nFiles: *\nCopyright: 2008-2017 Somebody\nLicense: Alicense\n\nLicense: Alicense\n Some terms\n",
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

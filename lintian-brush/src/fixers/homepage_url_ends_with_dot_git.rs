@@ -1,43 +1,32 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
 use debian_control::lossless::Control;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+const MESSAGE: &str = "Remove .git suffix from Homepage URL.";
 
 /// Check if a URL path ends with .git
 fn should_fix_url(url_str: &str) -> bool {
-    let url = match url::Url::parse(url_str) {
-        Ok(u) => u,
-        Err(_) => return false,
-    };
-
-    url.path().ends_with(".git")
+    url::Url::parse(url_str)
+        .map(|u| u.path().ends_with(".git"))
+        .unwrap_or(false)
 }
 
 /// Remove .git suffix from URL path, preserving query and fragment
-fn fix_url(url_str: &str) -> String {
-    let mut url = match url::Url::parse(url_str) {
-        Ok(u) => u,
-        Err(_) => return url_str.to_string(),
-    };
-
+fn fix_url(url_str: &str) -> Option<String> {
+    let mut url = url::Url::parse(url_str).ok()?;
     let path = url.path().to_string();
-    if path.ends_with(".git") {
-        let new_path = &path[..path.len() - 4];
-        url.set_path(new_path);
+    if !path.ends_with(".git") {
+        return None;
     }
-
-    url.to_string()
+    url.set_path(&path[..path.len() - 4]);
+    Some(url.to_string())
 }
 
-/// Determine which tag applies based on the URL
+/// Determine which tag applies based on the URL host.
 fn get_tag_for_url(url_str: &str) -> Option<&'static str> {
-    let url = match url::Url::parse(url_str) {
-        Ok(u) => u,
-        Err(_) => return None,
-    };
-
+    let url = url::Url::parse(url_str).ok()?;
     let host = url.host_str()?;
-
     match host {
         "github.com" | "www.github.com" => Some("homepage-github-url-ends-with-dot-git"),
         "gitlab.com" | "www.gitlab.com" => Some("homepage-gitlab-url-ends-with-dot-git"),
@@ -46,55 +35,43 @@ fn get_tag_for_url(url_str: &str) -> Option<&'static str> {
     }
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&control_path)?;
+    let content = std::fs::read_to_string(&control_path)?;
     let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
-
-    let mut source = match control.source() {
-        Some(s) => s,
-        None => return Err(FixerError::NoChanges),
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
     };
-
-    let homepage = match source.as_deb822().get("Homepage") {
-        Some(h) => h,
-        None => return Err(FixerError::NoChanges),
+    let Some(homepage) = source.as_deb822().get("Homepage") else {
+        return Ok(Vec::new());
     };
-
     if !should_fix_url(&homepage) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    let tag = match get_tag_for_url(&homepage) {
-        Some(t) => t,
-        None => return Err(FixerError::NoChanges),
+    let Some(tag) = get_tag_for_url(&homepage) else {
+        return Ok(Vec::new());
+    };
+    let Some(new_homepage) = fix_url(&homepage) else {
+        return Ok(Vec::new());
     };
 
     let issue = LintianIssue::source_with_info(tag, vec![format!("[{}]", homepage)]);
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    let new_homepage = fix_url(&homepage);
-
-    let new_homepage_url = url::Url::parse(&new_homepage)
-        .map_err(|e| FixerError::Other(format!("Failed to parse fixed URL: {}", e)))?;
-    source.set_homepage(&new_homepage_url);
-
-    fs::write(&control_path, control.to_string())?;
-
-    Ok(
-        FixerResult::builder("Remove .git suffix from Homepage URL.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issue(issue)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        MESSAGE,
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Homepage".into(),
+            value: new_homepage,
+        })],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
@@ -104,16 +81,23 @@ declare_fixer! {
         "homepage-gitlab-url-ends-with-dot-git",
         "homepage-salsa-url-ends-with-dot-git"
     ],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_should_fix_url() {
@@ -131,27 +115,21 @@ mod tests {
     #[test]
     fn test_fix_url() {
         assert_eq!(
-            fix_url("https://github.com/user/repo.git"),
-            "https://github.com/user/repo"
+            fix_url("https://github.com/user/repo.git").as_deref(),
+            Some("https://github.com/user/repo")
+        );
+        assert_eq!(fix_url("https://github.com/user/repo"), None);
+        assert_eq!(
+            fix_url("https://github.com/user/repo.git#readme").as_deref(),
+            Some("https://github.com/user/repo#readme")
         );
         assert_eq!(
-            fix_url("https://github.com/user/repo"),
-            "https://github.com/user/repo"
+            fix_url("https://github.com/user/repo.git?tab=readme").as_deref(),
+            Some("https://github.com/user/repo?tab=readme")
         );
-        // Test with fragment
         assert_eq!(
-            fix_url("https://github.com/user/repo.git#readme"),
-            "https://github.com/user/repo#readme"
-        );
-        // Test with query
-        assert_eq!(
-            fix_url("https://github.com/user/repo.git?tab=readme"),
-            "https://github.com/user/repo?tab=readme"
-        );
-        // Test with both query and fragment
-        assert_eq!(
-            fix_url("https://github.com/user/repo.git?foo=bar#baz"),
-            "https://github.com/user/repo?foo=bar#baz"
+            fix_url("https://github.com/user/repo.git?foo=bar#baz").as_deref(),
+            Some("https://github.com/user/repo?foo=bar#baz")
         );
     }
 
@@ -194,12 +172,13 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove .git suffix from Homepage URL.");
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.description, MESSAGE);
 
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Homepage: https://github.com/user/repo"));
-        assert!(!content.contains("Homepage: https://github.com/user/repo.git"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: test-package\nHomepage: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test\n Testing\n",
+        );
     }
 
     #[test]
@@ -215,11 +194,13 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove .git suffix from Homepage URL.");
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.description, MESSAGE);
 
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Homepage: https://gitlab.com/user/project\n"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: test-package\nHomepage: https://gitlab.com/user/project\n\nPackage: test-package\nDescription: Test\n Testing\n",
+        );
     }
 
     #[test]
@@ -235,11 +216,13 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove .git suffix from Homepage URL.");
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.description, MESSAGE);
 
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Homepage: https://salsa.debian.org/team/package\n"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: test-package\nHomepage: https://salsa.debian.org/team/package\n\nPackage: test-package\nDescription: Test\n Testing\n",
+        );
     }
 
     #[test]
@@ -249,14 +232,14 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\nHomepage: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test\n Testing\n",
-        )
-        .unwrap();
+        let original = "Source: test-package\nHomepage: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test\n Testing\n";
+        fs::write(debian_dir.join("control"), original).unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            original
+        );
     }
 
     #[test]
@@ -266,15 +249,14 @@ mod tests {
         let debian_dir = base_path.join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        fs::write(
-            debian_dir.join("control"),
-            "Source: test-package\nHomepage: https://example.com/repo.git\n\nPackage: test-package\nDescription: Test\n Testing\n",
-        )
-        .unwrap();
+        let original = "Source: test-package\nHomepage: https://example.com/repo.git\n\nPackage: test-package\nDescription: Test\n Testing\n";
+        fs::write(debian_dir.join("control"), original).unwrap();
 
-        // Unknown domain should not be fixed
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            original
+        );
     }
 
     #[test]
@@ -290,8 +272,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
@@ -307,10 +288,12 @@ mod tests {
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.description, "Remove .git suffix from Homepage URL.");
+        let result = run_apply(base_path).unwrap();
+        assert_eq!(result.description, MESSAGE);
 
-        let content = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(content.contains("Homepage: https://www.github.com/user/repo\n"));
+        assert_eq!(
+            fs::read_to_string(debian_dir.join("control")).unwrap(),
+            "Source: test-package\nHomepage: https://www.github.com/user/repo\n\nPackage: test-package\nDescription: Test\n Testing\n",
+        );
     }
 }

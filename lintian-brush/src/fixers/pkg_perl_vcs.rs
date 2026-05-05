@@ -1,174 +1,128 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::abstract_control::AbstractSource;
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
 const URL_BASE: &str = "https://salsa.debian.org/perl-team/modules/packages";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-    let editor = TemplatedControlEditor::open(&control_path)?;
-
-    // Parse the maintainer field and extract the email address
-    let maintainer = if let Some(source) = editor.source() {
-        source
-            .as_deb822()
-            .get("Maintainer")
-            .ok_or(FixerError::NoChanges)?
-    } else {
-        return Err(FixerError::NoChanges);
-    };
-
-    // Extract email from "Name <email>" format
-    let email = if let Some(start) = maintainer.rfind('<') {
-        if let Some(end) = maintainer.rfind('>') {
-            &maintainer[start + 1..end]
-        } else {
-            &maintainer
+fn extract_email(addr: &str) -> &str {
+    if let (Some(start), Some(end)) = (addr.rfind('<'), addr.rfind('>')) {
+        if end > start {
+            return &addr[start + 1..end];
         }
-    } else {
-        &maintainer
-    };
-
-    if email != PKG_PERL_EMAIL {
-        // Nothing to do here, it's not a pkg-perl-maintained package
-        return Err(FixerError::NoChanges);
     }
+    addr
+}
 
-    // Get source package name
-    let source_name = if let Some(source) = editor.source() {
-        source.name().ok_or(FixerError::NoChanges)?
-    } else {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let abs = base_path.join(&control_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let paragraph = source.as_deb822();
+
+    let Some(maintainer) = paragraph.get("Maintainer") else {
+        return Ok(Vec::new());
+    };
+    if extract_email(&maintainer) != PKG_PERL_EMAIL {
+        return Ok(Vec::new());
+    }
+    let Some(source_name) = paragraph.get("Source") else {
+        return Ok(Vec::new());
     };
 
-    let Some(mut source) = editor.source() else {
-        return Err(FixerError::NoChanges);
-    };
+    let old_vcs_git = paragraph.get("Vcs-Git");
+    let old_vcs_browser = paragraph.get("Vcs-Browser");
+    let target_git = format!("{}/{}.git", URL_BASE, source_name);
+    let target_browser = format!("{}/{}", URL_BASE, source_name);
 
-    // Get old values before any manipulation
-    let old_vcs_git = source.get_vcs_url("Git");
-    let old_vcs_browser = source.get_vcs_url("Browser");
+    let mut diagnostics = Vec::new();
 
-    // Set standard Vcs fields
-    let vcs_git_url = format!("{}/{}.git", URL_BASE, source_name);
-    let vcs_browser_url = format!("{}/{}", URL_BASE, source_name);
-
-    let mut made_changes = false;
-    let mut removed_non_git_vcs = false;
-    let mut fixed_urls = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    // Determine what changes need to be made
-    let need_to_fix_urls = old_vcs_git
+    // Diagnostic 1: Vcs-Git/Vcs-Browser don't use the canonical team URL.
+    let needs_team_url = old_vcs_git
         .as_ref()
         .is_none_or(|v| !v.starts_with(URL_BASE))
         || old_vcs_browser
             .as_ref()
             .is_none_or(|v| !v.starts_with(URL_BASE));
-
-    let fields_to_remove: Vec<(String, String)> = {
-        let paragraph = source.as_deb822();
-        paragraph
-            .keys()
-            .filter(|field| {
-                let lower = field.to_lowercase();
-                lower.starts_with("vcs-") && lower != "vcs-git" && lower != "vcs-browser"
-            })
-            .map(|field| {
-                let value = paragraph.get(&field).unwrap_or_default();
-                (field.to_string(), value)
-            })
-            .collect()
-    };
-
-    let need_to_remove_non_git_vcs = !fields_to_remove.is_empty();
-
-    // Check for overrides
-    if need_to_fix_urls {
-        let issue = LintianIssue::source("team/pkg-perl/vcs/no-team-url");
-        if !issue.should_fix(base_path) {
-            overridden_issues.push(issue);
-        } else {
-            fixed_urls = true;
-            fixed_issues.push(issue);
-        }
-    }
-
-    if need_to_remove_non_git_vcs {
-        for (field, value) in &fields_to_remove {
-            let issue = LintianIssue::source_with_info(
-                "team/pkg-perl/vcs/no-git",
-                vec![format!("{} {}", field, value)],
-            );
-            if !issue.should_fix(base_path) {
-                overridden_issues.push(issue);
-            } else {
-                removed_non_git_vcs = true;
-                fixed_issues.push(issue);
-            }
-        }
-    }
-
-    // If all issues are overridden, return NoChangesAfterOverrides
-    if !fixed_urls && !removed_non_git_vcs {
-        if overridden_issues.is_empty() {
-            return Err(FixerError::NoChanges);
-        } else {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-    }
-
-    // Remove all VCS fields except Git and Browser (if not overridden)
-    if removed_non_git_vcs {
-        let paragraph = source.as_mut_deb822();
-        for (field, _) in &fields_to_remove {
-            paragraph.remove(field);
-        }
-        made_changes = true;
-    }
-
-    // Only update if the value doesn't already start with URL_BASE (and not overridden)
-    if fixed_urls {
-        if old_vcs_git
-            .as_ref()
-            .is_none_or(|v| !v.starts_with(URL_BASE))
-        {
-            source.set_vcs_url("Git", &vcs_git_url);
-            made_changes = true;
-        }
-
+    if needs_team_url {
+        // Emit in SOURCE_FIELD_ORDER (Vcs-Browser before Vcs-Git) so the
+        // canonical-ordering insert in the applier lands them in the
+        // right relative position.
+        let mut actions = Vec::new();
         if old_vcs_browser
             .as_ref()
             .is_none_or(|v| !v.starts_with(URL_BASE))
         {
-            source.set_vcs_url("Browser", &vcs_browser_url);
-            made_changes = true;
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Vcs-Browser".into(),
+                value: target_browser,
+            }));
         }
+        if old_vcs_git
+            .as_ref()
+            .is_none_or(|v| !v.starts_with(URL_BASE))
+        {
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Vcs-Git".into(),
+                value: target_git,
+            }));
+        }
+        diagnostics.push(
+            Diagnostic::with_actions(
+                LintianIssue::source("team/pkg-perl/vcs/no-team-url"),
+                "Use standard Vcs fields for perl package.",
+                actions,
+            )
+            .with_certainty(Certainty::Certain),
+        );
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
+    // Diagnostic 2 (one per field): non-Git/non-Browser Vcs-* fields. The
+    // pkg-perl team workflow only uses Vcs-Git and Vcs-Browser, so
+    // anything else is stale.
+    for key in paragraph.keys() {
+        let lower = key.to_lowercase();
+        if !lower.starts_with("vcs-") || lower == "vcs-git" || lower == "vcs-browser" {
+            continue;
+        }
+        let value = paragraph.get(&key).unwrap_or_default();
+        diagnostics.push(
+            Diagnostic::with_actions(
+                LintianIssue::source_with_info(
+                    "team/pkg-perl/vcs/no-git",
+                    vec![format!("{} {}", key, value)],
+                ),
+                "Use standard Vcs fields for perl package.",
+                vec![Action::Deb822(Deb822Action::RemoveField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Source,
+                    field: key,
+                })],
+            )
+            .with_certainty(Certainty::Certain),
+        );
     }
 
-    editor.commit()?;
-
-    Ok(
-        FixerResult::builder("Use standard Vcs fields for perl package.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
-crate::declare_fixer! {
+declare_fixer! {
     name: "pkg-perl-vcs",
     tags: ["team/pkg-perl/vcs/no-team-url", "team/pkg-perl/vcs/no-git"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
@@ -176,104 +130,80 @@ crate::declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_sets_vcs_fields_for_pkg_perl() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
+        fs::write(
+            &path,
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\n\nPackage: libfoo-perl\nDescription: test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        run_apply(tmp.path()).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\n\nPackage: libfoo-perl\nDescription: test\n",
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains(
-            "Vcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git"
-        ));
-        assert!(updated_content.contains(
-            "Vcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl"
-        ));
     }
 
     #[test]
     fn test_no_change_when_already_correct() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
+        let original = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\n\nPackage: libfoo-perl\nDescription: test\n";
+        fs::write(&path, original).unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\n\nPackage: libfoo-perl\nDescription: test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
     }
 
     #[test]
     fn test_no_change_when_not_pkg_perl() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
+        fs::write(
+            &path,
+            "Source: libfoo-perl\nMaintainer: Someone Else <someone@example.com>\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Someone Else <someone@example.com>\n\nPackage: libfoo-perl\nDescription: test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_removes_non_git_vcs_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("control");
+        fs::write(
+            &path,
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Svn: https://old-url.example.com\n\nPackage: libfoo-perl\nDescription: test\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Svn: https://old-url.example.com\n\nPackage: libfoo-perl\nDescription: test\n";
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        run_apply(tmp.path()).unwrap();
 
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "libfoo-perl",
-            &version,
-            &Default::default(),
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Source: libfoo-perl\nMaintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>\nVcs-Browser: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl\nVcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git\n\nPackage: libfoo-perl\nDescription: test\n",
         );
-        assert!(result.is_ok());
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("Vcs-Svn"));
-        assert!(updated_content.contains(
-            "Vcs-Git: https://salsa.debian.org/perl-team/modules/packages/libfoo-perl.git"
-        ));
     }
 }

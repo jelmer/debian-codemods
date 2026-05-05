@@ -1,23 +1,20 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_copyright::lossless::Copyright;
-use debian_copyright::License;
 use lazy_static::lazy_static;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // Include the generated SPDX license data
 include!(concat!(env!("OUT_DIR"), "/spdx_licenses.rs"));
 
 lazy_static! {
     static ref RENAMES_MAP: indexmap::IndexMap<String, String> = {
-        // Start with SPDX license name to ID mapping
         let mut map = get_spdx_license_renames()
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect::<indexmap::IndexMap<_, _>>();
 
-        // Add the hardcoded renames from the Python version (RENAMES dict)
         map.insert(
             "creative commons attribution share-alike (cc-by-sa) v3.0".to_string(),
             "CC-BY-SA-3.0".to_string(),
@@ -29,35 +26,27 @@ lazy_static! {
 
         map
     };
-
     static ref REPLACE_SPACES_SET: HashSet<String> = {
         let mut set = HashSet::new();
-
-        // Add the hardcoded values from the Python version (REPLACE_SPACES set)
         set.insert("public-domain".to_string());
         set.insert("mit-style".to_string());
         set.insert("bsd-style".to_string());
-
-        // Add all SPDX license IDs (lowercased)
         for license_id in SPDX_LICENSE_IDS {
             set.insert(license_id.to_lowercase());
-            // Also add versions without trailing .0
             if let Some(without_suffix) = license_id.strip_suffix(".0") {
                 set.insert(without_suffix.to_lowercase());
             }
         }
-
         set
     };
 }
 
-/// Fix spaces in a license synopsis
+/// Fix spaces in a license synopsis. Returns the rewritten synopsis if a
+/// change is needed, `None` if the synopsis is already in canonical form.
 fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
     if !synopsis.contains(' ') {
         return None;
     }
-
-    // Split by " or " or " | "
     let ors = synopsis
         .replace(" | ", " or ")
         .split(" or ")
@@ -65,7 +54,6 @@ fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
         .collect::<Vec<_>>();
     let mut names = Vec::new();
     let mut changed = false;
-
     for name in ors {
         let new_name = if let Some(renamed) = RENAMES_MAP.get(&name.to_lowercase()) {
             changed = true;
@@ -81,7 +69,6 @@ fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
         };
         names.push(new_name);
     }
-
     if changed {
         Some(names.join(" or "))
     } else {
@@ -89,21 +76,35 @@ fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
     }
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+/// Build the new License field value from a possibly-multiline existing
+/// value and a rewritten synopsis. The synopsis is the first line; any
+/// continuation lines are preserved verbatim.
+fn rewrite_license_value(existing: &str, new_synopsis: &str) -> String {
+    let mut lines = existing.split('\n');
+    let _old_first = lines.next().unwrap_or("");
+    let rest: Vec<&str> = lines.collect();
+    if rest.is_empty() {
+        new_synopsis.to_string()
+    } else {
+        format!("{}\n{}", new_synopsis, rest.join("\n"))
     }
+}
 
-    let content = fs::read_to_string(&copyright_path)?;
-    let copyright: Copyright = content.parse().map_err(|_| FixerError::NoChanges)?;
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let abs = base_path.join(&copyright_rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let copyright: Copyright = match content.parse() {
+        Ok(c) => c,
+        Err(_) => return Ok(Vec::new()),
+    };
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics = Vec::new();
 
-    // Fix Files paragraphs
-    for mut files_para in copyright.iter_files() {
+    for files_para in copyright.iter_files() {
         let Some(license) = files_para.license() else {
             continue;
         };
@@ -113,8 +114,12 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         let Some(new_synopsis) = fix_spaces_in_synopsis(name) else {
             continue;
         };
-
         let line_number = files_para.as_deb822().line() + 1;
+        // Address the paragraph by its Files: field value.
+        let files_value = files_para.as_deb822().get("Files").unwrap_or_default();
+        let raw_license = files_para.as_deb822().get("License").unwrap_or_default();
+        let new_value = rewrite_license_value(&raw_license, &new_synopsis);
+
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
             vec![format!(
@@ -123,30 +128,29 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                 line_number
             )],
         );
-
-        if issue.should_fix(base_path) {
-            let new_license = if let Some(text) = license.text() {
-                License::Named(new_synopsis.clone(), text.to_string())
-            } else {
-                License::Name(new_synopsis.clone())
-            };
-            files_para.set_license(&new_license);
-            fixed_issues.push(issue);
-        } else {
-            overridden_issues.push(issue);
-        }
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Replace spaces in short license names with dashes.",
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::CopyrightFiles { glob: files_value },
+                field: "License".into(),
+                value: new_value,
+            })],
+        ));
     }
 
-    // Fix License paragraphs
-    for mut license_para in copyright.iter_licenses() {
+    for license_para in copyright.iter_licenses() {
         let Some(name) = license_para.name() else {
             continue;
         };
         let Some(new_synopsis) = fix_spaces_in_synopsis(&name) else {
             continue;
         };
-
         let line_number = license_para.as_deb822().line() + 1;
+        let raw_license = license_para.as_deb822().get("License").unwrap_or_default();
+        let new_value = rewrite_license_value(&raw_license, &new_synopsis);
+
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
             vec![format!(
@@ -156,47 +160,48 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
             )],
         );
 
-        if issue.should_fix(base_path) {
-            let new_license = if let Some(text) = license_para.text() {
-                License::Named(new_synopsis.clone(), text)
-            } else {
-                License::Name(new_synopsis.clone())
-            };
-            license_para.set_license(&new_license);
-            fixed_issues.push(issue);
-        } else {
-            overridden_issues.push(issue);
-        }
+        // License paragraphs (no Files: field) are addressed by their
+        // License field's full value — that's the synopsis plus any
+        // continuation lines, which uniquely identifies the paragraph
+        // before the rewrite.
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Replace spaces in short license names with dashes.",
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: copyright_rel.clone(),
+                paragraph: ParagraphSelector::ByKey {
+                    field: "License".into(),
+                    value: raw_license,
+                },
+                field: "License".into(),
+                value: new_value,
+            })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    fs::write(&copyright_path, copyright.to_string())?;
-
-    Ok(
-        FixerResult::builder("Replace spaces in short license names with dashes.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "space-in-std-shortname-in-dep5-copyright",
     tags: ["space-in-std-shortname-in-dep5-copyright"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_fix_spaces_in_synopsis_no_spaces() {
@@ -226,5 +231,44 @@ mod tests {
             fix_spaces_in_synopsis("Apache 2.0 | GPL 3"),
             Some("Apache-2.0 or GPL-3".to_string())
         );
+    }
+
+    #[test]
+    fn test_files_paragraph_license_synopsis_rewrite() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(
+            &path,
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: Apache 2.0\n",
+        )
+        .unwrap();
+
+        run_apply(tmp.path()).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: Apache-2.0\n",
+        );
+    }
+
+    #[test]
+    fn test_no_change_when_already_canonical() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: Apache-2.0\n";
+        fs::write(&path, original).unwrap();
+
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
+
+    #[test]
+    fn test_no_copyright_file() {
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }

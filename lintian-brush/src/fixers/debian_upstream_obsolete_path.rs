@@ -1,223 +1,203 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_dir = base_path.join("debian");
-
     if !debian_dir.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut made_changes = false;
-    let mut fixed_issues = Vec::new();
+    // Source path → relative-path string used in the lintian issue info
+    // and the human-readable message.
+    let candidates: &[(PathBuf, &str)] = &[
+        (PathBuf::from("debian/upstream"), "debian/upstream"),
+        (
+            PathBuf::from("debian/upstream-metadata"),
+            "debian/upstream-metadata",
+        ),
+        (
+            PathBuf::from("debian/upstream-metadata.yaml"),
+            "debian/upstream-metadata.yaml",
+        ),
+    ];
+    let target_rel = PathBuf::from("debian/upstream/metadata");
 
-    // Step 1: If debian/upstream exists (as a file), move it to debian/upstream-metadata.yaml
-    let upstream_file = debian_dir.join("upstream");
+    let mut diagnostics = Vec::new();
+    for (rel, label) in candidates {
+        let abs = base_path.join(rel);
+        if !abs.exists() {
+            continue;
+        }
+        // Skip debian/upstream if it's already a directory — only the
+        // legacy "upstream is a single file" case should fire.
+        if !abs.is_file() {
+            continue;
+        }
 
-    if upstream_file.exists() && upstream_file.is_file() {
         let issue = LintianIssue::source_with_info(
             "debian-upstream-obsolete-path",
-            vec!["[debian/upstream]".to_string()],
+            vec![format!("[{}]", label)],
         );
-        if !issue.should_fix(base_path) {
-            return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-        }
 
-        let upstream_metadata_yaml_path = debian_dir.join("upstream-metadata.yaml");
-        fs::rename(&upstream_file, &upstream_metadata_yaml_path)?;
-        made_changes = true;
-        fixed_issues.push(issue);
+        // Special case: the legacy `debian/upstream` (a single file)
+        // can't be `rename`d to `debian/upstream/metadata`, since the
+        // destination's parent directory is the source itself. Read the
+        // content, delete the file, then write to the new path.
+        let actions = if rel == &PathBuf::from("debian/upstream") {
+            let content = std::fs::read(&abs)?;
+            vec![
+                Action::Filesystem(FilesystemAction::Delete { file: rel.clone() }),
+                Action::Filesystem(FilesystemAction::Write {
+                    file: target_rel.clone(),
+                    content,
+                }),
+            ]
+        } else {
+            vec![Action::Filesystem(FilesystemAction::Rename {
+                file: rel.clone(),
+                to: target_rel.clone(),
+            })]
+        };
+
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                "Move upstream metadata to debian/upstream/metadata.",
+                actions,
+            )
+            .with_certainty(Certainty::Certain),
+        );
+
+        // Only handle one file per run — the lintian-overrides semantics
+        // work best with one diagnostic per fix.
+        break;
     }
 
-    // Step 2: Move metadata files to debian/upstream/ directory
-    let upstream_metadata = debian_dir.join("upstream-metadata");
-    let upstream_metadata_yaml = debian_dir.join("upstream-metadata.yaml");
-
-    if upstream_metadata.exists() || upstream_metadata_yaml.exists() {
-        let upstream_dir = debian_dir.join("upstream");
-        let target_metadata = upstream_dir.join("metadata");
-
-        // Create debian/upstream directory if it doesn't exist
-        if !upstream_dir.exists() {
-            fs::create_dir_all(&upstream_dir)?;
-        }
-
-        // Move upstream-metadata if it exists
-        if upstream_metadata.exists() {
-            let issue = LintianIssue::source_with_info(
-                "debian-upstream-obsolete-path",
-                vec!["[debian/upstream-metadata]".to_string()],
-            );
-            if !issue.should_fix(base_path) {
-                return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-            }
-
-            fs::rename(&upstream_metadata, &target_metadata)?;
-            made_changes = true;
-            fixed_issues.push(issue);
-        }
-        // Move upstream-metadata.yaml if it exists (this will overwrite if both exist)
-        else if upstream_metadata_yaml.exists() {
-            let issue = LintianIssue::source_with_info(
-                "debian-upstream-obsolete-path",
-                vec!["[debian/upstream-metadata.yaml]".to_string()],
-            );
-            if !issue.should_fix(base_path) {
-                return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-            }
-
-            fs::rename(&upstream_metadata_yaml, &target_metadata)?;
-            made_changes = true;
-            fixed_issues.push(issue);
-        }
-    }
-
-    if !made_changes {
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(
-        FixerResult::builder("Move upstream metadata to debian/upstream/metadata.")
-            .fixed_issues(fixed_issues)
-            .certainty(crate::Certainty::Certain)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "debian-upstream-obsolete-path",
     tags: ["debian-upstream-obsolete-path"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_move_upstream_file_to_metadata() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let base = tmp.path();
+        let debian = base.join("debian");
+        fs::create_dir(&debian).unwrap();
 
-        // Create debian/upstream file
-        let upstream_file = debian_dir.join("upstream");
+        let upstream_file = debian.join("upstream");
         fs::write(
             &upstream_file,
             "Name: test\nRepository: git://example.com/test\n",
         )
         .unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base).unwrap();
         assert_eq!(
             result.description,
             "Move upstream metadata to debian/upstream/metadata."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // The upstream file should have been moved through two steps:
-        // 1. debian/upstream -> debian/upstream-metadata.yaml
-        // 2. debian/upstream-metadata.yaml -> debian/upstream/metadata
-        // So the original file should now be a directory containing metadata
-        assert!(upstream_file.exists());
+        // debian/upstream is now a directory (created by the Write action's
+        // create_dir_all of the parent), and debian/upstream/metadata
+        // contains the original content.
         assert!(upstream_file.is_dir());
-        assert!(!debian_dir.join("upstream-metadata.yaml").exists());
-        let target_metadata = debian_dir.join("upstream/metadata");
-        assert!(target_metadata.exists());
-        let content = fs::read_to_string(&target_metadata).unwrap();
-        assert_eq!(content, "Name: test\nRepository: git://example.com/test\n");
+        assert_eq!(
+            fs::read_to_string(debian.join("upstream/metadata")).unwrap(),
+            "Name: test\nRepository: git://example.com/test\n",
+        );
     }
 
     #[test]
     fn test_move_upstream_metadata_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let base = tmp.path();
+        let debian = base.join("debian");
+        fs::create_dir(&debian).unwrap();
 
-        // Create debian/upstream-metadata file
-        let upstream_metadata = debian_dir.join("upstream-metadata");
+        let upstream_metadata = debian.join("upstream-metadata");
         fs::write(&upstream_metadata, "Name: test2\n").unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        let result = run_apply(base).unwrap();
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Check that upstream-metadata was moved to upstream/metadata
         assert!(!upstream_metadata.exists());
-        let target_metadata = debian_dir.join("upstream/metadata");
-        assert!(target_metadata.exists());
-        let content = fs::read_to_string(&target_metadata).unwrap();
-        assert_eq!(content, "Name: test2\n");
+        assert_eq!(
+            fs::read_to_string(debian.join("upstream/metadata")).unwrap(),
+            "Name: test2\n",
+        );
     }
 
     #[test]
     fn test_move_upstream_metadata_yaml_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let base = tmp.path();
+        let debian = base.join("debian");
+        fs::create_dir(&debian).unwrap();
 
-        // Create debian/upstream-metadata.yaml file
-        let upstream_metadata_yaml = debian_dir.join("upstream-metadata.yaml");
+        let upstream_metadata_yaml = debian.join("upstream-metadata.yaml");
         fs::write(&upstream_metadata_yaml, "Name: test3\n").unwrap();
 
-        let result = run(base_path).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
+        let result = run_apply(base).unwrap();
+        assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // Check that upstream-metadata.yaml was moved to upstream/metadata
         assert!(!upstream_metadata_yaml.exists());
-        let target_metadata = debian_dir.join("upstream/metadata");
-        assert!(target_metadata.exists());
-        let content = fs::read_to_string(&target_metadata).unwrap();
-        assert_eq!(content, "Name: test3\n");
+        assert_eq!(
+            fs::read_to_string(debian.join("upstream/metadata")).unwrap(),
+            "Name: test3\n",
+        );
     }
 
     #[test]
     fn test_no_upstream_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let base = tmp.path();
+        let debian = base.join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(debian.join("control"), "Source: test\n").unwrap();
 
-        // Only create a control file
-        fs::write(debian_dir.join("control"), "Source: test\n").unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_upstream_is_directory() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        // Create debian/upstream as a directory (should not be moved)
-        let upstream_dir = debian_dir.join("upstream");
+        // debian/upstream as a directory must not be touched.
+        let tmp = TempDir::new().unwrap();
+        let base = tmp.path();
+        let debian = base.join("debian");
+        fs::create_dir(&debian).unwrap();
+        let upstream_dir = debian.join("upstream");
         fs::create_dir(&upstream_dir).unwrap();
         fs::write(upstream_dir.join("metadata"), "Name: existing\n").unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Directory should still exist and be unchanged
-        assert!(upstream_dir.exists());
+        assert!(matches!(run_apply(base), Err(FixerError::NoChanges)));
         assert!(upstream_dir.is_dir());
     }
 }

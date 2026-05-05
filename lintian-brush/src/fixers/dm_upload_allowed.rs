@@ -1,70 +1,56 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_path = base_path.join(&control_rel);
     if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut made_changes = false;
+    let content = std::fs::read_to_string(&control_path)?;
+    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let Some(value) = source.as_deb822().get("DM-Upload-Allowed") else {
+        return Ok(Vec::new());
+    };
 
-    // Only process the source paragraph (DM-Upload-Allowed only appears there)
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        // Check if DM-Upload-Allowed field exists and remove it
-        if let Some(value) = paragraph.get("DM-Upload-Allowed") {
-            let issue = LintianIssue::source_with_info(
-                "malformed-dm-upload-allowed",
-                vec![value.to_string()],
-            );
-
-            if issue.should_fix(base_path) {
-                paragraph.remove("DM-Upload-Allowed");
-                made_changes = true;
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
-        }
-    }
-
-    if !made_changes {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    Ok(FixerResult::builder(
+    let issue = LintianIssue::source_with_info("malformed-dm-upload-allowed", vec![value]);
+    Ok(vec![Diagnostic::with_actions(
+        issue,
         "Remove malformed and unnecessary DM-Upload-Allowed field in debian/control.",
-    )
-    .fixed_issues(fixed_issues)
-    .overridden_issues(overridden_issues)
-    .build())
+        vec![Action::Deb822(Deb822Action::RemoveField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "DM-Upload-Allowed".into(),
+        })],
+    )])
 }
 
 declare_fixer! {
     name: "dm-upload-allowed",
     tags: ["malformed-dm-upload-allowed", "dm-upload-allowed-is-obsolete"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_dm_upload_allowed_removed() {
@@ -76,16 +62,16 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: lintian-brush\nDM-Upload-Allowed: yes\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Remove malformed and unnecessary DM-Upload-Allowed field in debian/control."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(!content.contains("DM-Upload-Allowed"));
-        assert!(content.contains("Source: lintian-brush"));
-        assert!(content.contains("Package: lintian-brush"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+        );
     }
 
     #[test]
@@ -98,17 +84,16 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: test\nMaintainer: Test <test@example.com>\n\nPackage: test\nDescription: Test\n Test package\n").unwrap();
 
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
         let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
@@ -121,15 +106,15 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, "Source: test\nMaintainer: Test <test@example.com>\nDM-Upload-Allowed: yes\nHomepage: https://example.com\n\nPackage: test\nDescription: Test\n Test package\n").unwrap();
 
-        let result = run(base_path).unwrap();
+        let result = run_apply(base_path).unwrap();
         assert_eq!(
             result.description,
             "Remove malformed and unnecessary DM-Upload-Allowed field in debian/control."
         );
 
-        let content = fs::read_to_string(&control_path).unwrap();
-        assert!(!content.contains("DM-Upload-Allowed"));
-        assert!(content.contains("Maintainer: Test <test@example.com>"));
-        assert!(content.contains("Homepage: https://example.com"));
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test\nMaintainer: Test <test@example.com>\nHomepage: https://example.com\n\nPackage: test\nDescription: Test\n Test package\n",
+        );
     }
 }

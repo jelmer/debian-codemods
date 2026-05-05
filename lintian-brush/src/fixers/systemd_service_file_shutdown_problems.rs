@@ -1,115 +1,94 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, SystemdAction};
+use crate::{FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-/// Check if a space-separated list contains a specific item
+/// Check if a space-separated list contains a specific item.
 fn list_contains(value: &str, item: &str) -> bool {
     value.split_whitespace().any(|v| v == item)
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Find all systemd service files
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let debian_path = base_path.join("debian");
     if !debian_path.exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
+    let mut diagnostics = Vec::new();
     for entry in std::fs::read_dir(&debian_path)? {
         let entry = entry?;
         let path = entry.path();
-
-        // Skip if not a .service file
         if path.extension().is_none_or(|ext| ext != "service") {
             continue;
         }
-
-        // Skip symbolic links
         if path.is_symlink() {
             continue;
         }
 
-        // Read the service file
         let content = std::fs::read_to_string(&path)?;
-
-        // Parse using systemd-unit-edit
         let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
             FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e))
         })?;
-
-        // Find the Unit section
-        let mut unit_section = match unit.get_section("Unit") {
-            Some(section) => section,
-            None => continue, // No Unit section, skip this file
+        let Some(unit_section) = unit.get_section("Unit") else {
+            continue;
         };
 
-        // Check conditions
-        let default_deps = unit_section.get("DefaultDependencies");
-        let conflicts = unit_section.get("Conflicts");
-        let before_values = unit_section.get_all("Before");
-
-        let should_add = default_deps.as_deref() == Some("no")
-            && conflicts
-                .as_ref()
-                .is_some_and(|c| list_contains(c, "shutdown.target"))
-            && !before_values
-                .iter()
-                .any(|b| list_contains(b, "shutdown.target"));
-
-        if should_add {
-            // Get the relative path from base_path for the lintian issue
-            let rel_path = path
-                .strip_prefix(base_path)
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| path.to_string_lossy().to_string());
-
-            let issue = LintianIssue::source_with_info(
-                "systemd-service-file-shutdown-problems",
-                vec![rel_path],
-            );
-
-            if issue.should_fix(base_path) {
-                // Add a new "Before=shutdown.target" entry
-                unit_section.add("Before", "shutdown.target");
-
-                // Write the modified content back
-                std::fs::write(&path, unit.text())?;
-
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+        // Trigger only when the unit shuts down on its own (DefaultDependencies=no)
+        // and conflicts with shutdown.target but doesn't already declare
+        // Before=shutdown.target — see systemd.unit(5) for the rationale.
+        let default_deps_no = unit_section.get("DefaultDependencies").as_deref() == Some("no");
+        let conflicts_shutdown = unit_section
+            .get("Conflicts")
+            .as_ref()
+            .is_some_and(|c| list_contains(c, "shutdown.target"));
+        let already_before = unit_section
+            .get_all("Before")
+            .iter()
+            .any(|b| list_contains(b, "shutdown.target"));
+        if !(default_deps_no && conflicts_shutdown && !already_before) {
+            continue;
         }
+
+        let rel: PathBuf = path.strip_prefix(base_path).unwrap_or(&path).to_path_buf();
+        let rel_str = rel.to_string_lossy().to_string();
+        let issue =
+            LintianIssue::source_with_info("systemd-service-file-shutdown-problems", vec![rel_str]);
+
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Add Before=shutdown.target to Unit section.",
+            vec![Action::Systemd(SystemdAction::Add {
+                file: rel,
+                section: "Unit".into(),
+                field: "Before".into(),
+                value: "shutdown.target".into(),
+            })],
+        ));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    Ok(
-        FixerResult::builder("Add Before=shutdown.target to Unit section.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "systemd-service-file-shutdown-problems",
     tags: ["systemd-service-file-shutdown-problems"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
 
     #[test]
     fn test_list_contains() {
@@ -120,5 +99,58 @@ mod tests {
         assert!(list_contains("shutdown.target", "shutdown.target"));
         assert!(!list_contains("ssh.service", "shutdown.target"));
         assert!(!list_contains("", "shutdown.target"));
+    }
+
+    #[test]
+    fn test_adds_before_shutdown() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        fs::write(
+            &path,
+            "[Unit]\nDescription=Test\nDefaultDependencies=no\nConflicts=shutdown.target\n\n[Service]\nType=oneshot\n",
+        )
+        .unwrap();
+
+        run_apply(tmp.path()).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "[Unit]\nDescription=Test\nDefaultDependencies=no\nConflicts=shutdown.target\nBefore=shutdown.target\n\n[Service]\nType=oneshot\n",
+        );
+    }
+
+    #[test]
+    fn test_no_change_without_default_deps_no() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        let original =
+            "[Unit]\nDescription=Test\nConflicts=shutdown.target\n\n[Service]\nType=oneshot\n";
+        fs::write(&path, original).unwrap();
+
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
+
+    #[test]
+    fn test_no_change_when_already_before() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("foo.service");
+        let original = "[Unit]\nDescription=Test\nDefaultDependencies=no\nConflicts=shutdown.target\nBefore=shutdown.target\n\n[Service]\nType=oneshot\n";
+        fs::write(&path, original).unwrap();
+
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
+
+    #[test]
+    fn test_no_debian_dir() {
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
