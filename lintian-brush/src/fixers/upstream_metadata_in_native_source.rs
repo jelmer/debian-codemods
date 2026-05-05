@@ -1,213 +1,156 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debversion::Version;
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Version};
+use std::path::{Path, PathBuf};
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
-    _package_name: &str,
     current_version: &Version,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    // Check if package is native - debversion::Version should have this method
+) -> Result<Vec<Diagnostic>, FixerError> {
     if !current_version.is_native() {
-        // Not a native package, nothing to do
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    // Check if we're in opinionated mode
     if !preferences.opinionated.unwrap_or(false) {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let metadata_path = base_path.join("debian/upstream/metadata");
-
-    // Check if the metadata file exists
-    if !metadata_path.exists() {
-        return Err(FixerError::NoChanges);
+    let metadata_rel = PathBuf::from("debian/upstream/metadata");
+    if !base_path.join(&metadata_rel).exists() {
+        return Ok(Vec::new());
     }
 
     let issue = LintianIssue::source_with_info(
         "upstream-metadata-in-native-source",
         vec!["[debian/upstream/metadata]".to_string()],
     );
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    // Remove the metadata file
-    fs::remove_file(&metadata_path)?;
-
-    // Check if debian/upstream directory is now empty and remove it if so
-    let upstream_dir = base_path.join("debian/upstream");
-    if upstream_dir.exists() && fs::read_dir(&upstream_dir)?.next().is_none() {
-        // Directory is empty, remove it
-        fs::remove_dir(&upstream_dir)?;
-    }
-
-    Ok(
-        FixerResult::builder("Remove debian/upstream/metadata in native source package.")
-            .certainty(crate::Certainty::Certain)
-            .fixed_issue(issue)
-            .build(),
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Remove debian/upstream/metadata in native source package.",
+        vec![
+            Action::Filesystem(FilesystemAction::Delete { file: metadata_rel }),
+            Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+                file: PathBuf::from("debian/upstream"),
+            }),
+        ],
     )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "upstream-metadata-in-native-source",
     tags: ["upstream-metadata-in-native-source"],
-    apply: |basedir, package, version, preferences| {
-        run(basedir, package, version, preferences)
+    diagnose: |basedir, _package, version, preferences| {
+        detect(basedir, version, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use std::fs;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_is_native_version() {
-        use std::str::FromStr;
-
-        let native_v1 = Version::from_str("1.0").unwrap();
-        assert!(native_v1.is_native());
-
-        let native_v2 = Version::from_str("2.5.3").unwrap();
-        assert!(native_v2.is_native());
-
-        let non_native_v1 = Version::from_str("1.0-1").unwrap();
-        assert!(!non_native_v1.is_native());
-
-        let non_native_v2 = Version::from_str("2.5.3-2ubuntu1").unwrap();
-        assert!(!non_native_v2.is_native());
+    fn run_apply(
+        base: &Path,
+        version: &str,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let v = Version::from_str(version).unwrap();
+        FixerImpl.apply(base, "test", &v, preferences)
     }
 
     #[test]
     fn test_native_package_with_metadata() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let metadata = upstream.join("metadata");
+        fs::write(&metadata, "Name: test\n").unwrap();
 
-        let metadata_path = upstream_dir.join("metadata");
-        fs::write(&metadata_path, "Name: test\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path(), "1.0", &prefs).unwrap();
         assert_eq!(
             result.description,
             "Remove debian/upstream/metadata in native source package."
         );
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
-        assert!(!metadata_path.exists());
-        // Check that the empty directory was removed
-        assert!(!upstream_dir.exists());
+        assert_eq!(result.certainty, Some(Certainty::Certain));
+        assert!(!metadata.exists());
+        assert!(!upstream.exists());
     }
 
     #[test]
     fn test_native_package_not_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let metadata = upstream.join("metadata");
+        fs::write(&metadata, "Name: test\n").unwrap();
 
-        let metadata_path = upstream_dir.join("metadata");
-        fs::write(&metadata_path, "Name: test\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(false),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that the file was not removed
-        assert!(metadata_path.exists());
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0", &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert!(metadata.exists());
     }
 
     #[test]
     fn test_non_native_package() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let metadata = upstream.join("metadata");
+        fs::write(&metadata, "Name: test\n").unwrap();
 
-        let metadata_path = upstream_dir.join("metadata");
-        fs::write(&metadata_path, "Name: test\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0-1").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // Check that the file was not removed
-        assert!(metadata_path.exists());
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0-1", &prefs),
+            Err(FixerError::NoChanges)
+        ));
+        assert!(metadata.exists());
     }
 
     #[test]
     fn test_no_metadata_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences {
+        let tmp = TempDir::new().unwrap();
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), "1.0", &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_upstream_dir_with_other_files() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        let upstream_dir = debian_dir.join("upstream");
-        fs::create_dir_all(&upstream_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let upstream = tmp.path().join("debian/upstream");
+        fs::create_dir_all(&upstream).unwrap();
+        let metadata = upstream.join("metadata");
+        fs::write(&metadata, "Name: test\n").unwrap();
+        let other = upstream.join("repository");
+        fs::write(&other, "https://example.com/repo\n").unwrap();
 
-        let metadata_path = upstream_dir.join("metadata");
-        fs::write(&metadata_path, "Name: test\n").unwrap();
-
-        // Add another file to the upstream directory
-        let other_file = upstream_dir.join("repository");
-        fs::write(&other_file, "https://example.com/repo\n").unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             opinionated: Some(true),
             ..Default::default()
         };
-
-        let version = std::str::FromStr::from_str("1.0").unwrap();
-        let result = run(base_path, "test", &version, &preferences);
-        assert!(result.is_ok());
-
-        // Check that the metadata file was removed
-        assert!(!metadata_path.exists());
-        // Check that the directory was not removed (has other files)
-        assert!(upstream_dir.exists());
-        assert!(other_file.exists());
+        run_apply(tmp.path(), "1.0", &prefs).unwrap();
+        assert!(!metadata.exists());
+        assert!(upstream.exists());
+        assert!(other.exists());
     }
 }
