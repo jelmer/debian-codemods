@@ -86,6 +86,7 @@ fn action_file(action: &Action) -> &Path {
         },
         Action::Yaml(a) => match a {
             YamlAction::SetField { file, .. }
+            | YamlAction::SetFieldOrdered { file, .. }
             | YamlAction::RemoveField { file, .. }
             | YamlAction::RenameField { file, .. } => file,
         },
@@ -1636,21 +1637,26 @@ fn apply_desktop_ini_group(base: &Path, rel: &Path, group: &[&Action]) -> Result
 
 fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
     let abs = base.join(rel);
-    if !abs.exists() {
-        return Err(FixerError::Other(format!(
-            "yaml action targets missing file {}",
-            rel.display()
-        )));
-    }
+    let file_existed = abs.exists();
     // YamlFile preserves file-level directives like `%YAML 1.1`; Document
-    // alone discards them on round-trip.
-    let yaml_file = yaml_edit::YamlFile::from_path(&abs)
-        .map_err(|e| FixerError::Other(format!("Failed to open YAML {}: {}", rel.display(), e)))?;
-    let Some(doc) = yaml_file.document() else {
-        return Err(FixerError::Other(format!(
-            "yaml action targets {}: no document",
-            rel.display()
-        )));
+    // alone discards them on round-trip. When the file doesn't exist
+    // yet, start from an empty mapping document so YamlAction::SetField
+    // / SetFieldOrdered actions can create the file.
+    let (yaml_file, doc): (Option<yaml_edit::YamlFile>, yaml_edit::Document) = if file_existed {
+        let yaml_file = yaml_edit::YamlFile::from_path(&abs).map_err(|e| {
+            FixerError::Other(format!("Failed to open YAML {}: {}", rel.display(), e))
+        })?;
+        let Some(doc) = yaml_file.document() else {
+            return Err(FixerError::Other(format!(
+                "yaml action targets {}: no document",
+                rel.display()
+            )));
+        };
+        (Some(yaml_file), doc)
+    } else {
+        let new_mapping = yaml_edit::Mapping::new();
+        let doc = yaml_edit::Document::from_mapping(new_mapping);
+        (None, doc)
     };
 
     let mut any_change = false;
@@ -1680,6 +1686,34 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
                     }
                 }
                 mapping.set(key.as_str(), value.as_str());
+                any_change = true;
+            }
+            YamlAction::SetFieldOrdered {
+                parent_path,
+                key,
+                value,
+                field_order,
+                ..
+            } => {
+                let Some(mapping) = navigate_yaml_mapping(&doc, parent_path)? else {
+                    return Err(FixerError::Other(format!(
+                        "yaml SetFieldOrdered on {}: path {:?} did not resolve to a mapping",
+                        rel.display(),
+                        parent_path
+                    )));
+                };
+                if let Some(existing) = mapping.get(key.as_str()) {
+                    if let yaml_edit::YamlNode::Scalar(scalar) = existing {
+                        if scalar.as_string() == *value {
+                            continue;
+                        }
+                    }
+                }
+                mapping.set_with_field_order(
+                    key.as_str(),
+                    value.as_str(),
+                    field_order.iter().map(String::as_str),
+                );
                 any_change = true;
             }
             YamlAction::RemoveField {
@@ -1714,9 +1748,18 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
     }
 
     if any_change {
-        let mut content = yaml_file.to_string();
+        // Render from the YamlFile when it pre-existed (preserves
+        // directives etc.); from the bare Document when we created the
+        // file from scratch.
+        let mut content = match &yaml_file {
+            Some(yf) => yf.to_string(),
+            None => doc.to_string(),
+        };
         if !content.ends_with('\n') {
             content.push('\n');
+        }
+        if let Some(parent) = abs.parent() {
+            std::fs::create_dir_all(parent)?;
         }
         std::fs::write(&abs, content)?;
     }
