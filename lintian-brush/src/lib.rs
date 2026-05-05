@@ -44,6 +44,10 @@ pub mod upstream_metadata;
 pub mod vcs;
 /// Debian watch file handling
 pub mod watch;
+/// `FixerWorkspace`: abstraction over a package's source layout, used by
+/// detectors to read files (and by tree-mode fixers to write them) without
+/// baking in a particular host.
+pub mod workspace;
 
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
