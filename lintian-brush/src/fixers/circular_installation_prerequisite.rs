@@ -1,202 +1,138 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor; // for reading control file and saving
-use debian_control::lossless::Binary;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian").join("control");
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+const DEPENDENCY_FIELDS: &[&str] = &[
+    "Depends",
+    "Pre-Depends",
+    "Recommends",
+    "Suggests",
+    "Enhances",
+    "Breaks",
+    "Conflicts",
+];
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
 
-    let dependency_fields = [
-        "Depends",
-        "Pre-Depends",
-        "Recommends",
-        "Suggests",
-        "Enhances",
-        "Breaks",
-        "Conflicts",
-    ];
-
-    for mut binary in editor.binaries() {
-        for dep_field in dependency_fields.iter() {
-            if binary.as_deb822().contains_key(dep_field) {
-                remove_circular_installation_prerequisite(
-                    base_path,
-                    &mut binary,
-                    dep_field,
-                    &mut fixed_issues,
-                    &mut overridden_issues,
-                );
+    let mut diagnostics = Vec::new();
+    for binary in control.binaries() {
+        let Some(binary_name) = binary.as_deb822().get("Package") else {
+            continue;
+        };
+        for field in DEPENDENCY_FIELDS {
+            let Some(value) = binary.as_deb822().get(field) else {
+                continue;
+            };
+            let (relations, _errors) =
+                debian_control::lossless::relations::Relations::parse_relaxed(&value, true);
+            if !relations.has_relation(&binary_name) {
+                continue;
             }
+            let issue = LintianIssue::source_with_info(
+                "circular-installation-prerequisite",
+                vec![field.to_string()],
+            );
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    "Remove circular dependency on self in package.",
+                    vec![Action::Deb822(Deb822Action::DropRelation {
+                        file: control_rel.clone(),
+                        paragraph: ParagraphSelector::Binary {
+                            package: binary_name.clone(),
+                        },
+                        field: (*field).to_string(),
+                        package: binary_name.clone(),
+                    })],
+                )
+                .with_certainty(Certainty::Certain),
+            );
         }
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-    Ok(
-        FixerResult::builder("Remove circular dependency on self in package.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .certainty(Certainty::Certain)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "circular-installation-prerequisite",
     tags: ["circular-installation-prerequisite"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
-}
-
-fn remove_circular_installation_prerequisite(
-    base_path: &Path,
-    binary: &mut Binary,
-    field: &str,
-    fixed_issues: &mut Vec<LintianIssue>,
-    overridden_issues: &mut Vec<LintianIssue>,
-) {
-    // Create issue and check if we should fix it
-    let issue = LintianIssue::source_with_info(
-        "circular-installation-prerequisite",
-        vec![field.to_string()],
-    );
-
-    if !issue.should_fix(base_path) {
-        overridden_issues.push(issue);
-        return;
-    }
-
-    let Some(binary_name) = binary.name() else {
-        return;
-    };
-
-    match field {
-        "Depends" => {
-            let mut depends = binary.depends().unwrap();
-            if depends.has_relation(&binary_name) {
-                if depends.len() == 1 {
-                    binary.set_depends(None);
-                } else {
-                    depends.drop_dependency(&binary_name);
-                    binary.set_depends(Some(&depends));
-                }
-            }
-        }
-        "Pre-Depends" => {
-            let mut pre_depends = binary.pre_depends().unwrap();
-            if pre_depends.has_relation(&binary_name) {
-                if pre_depends.len() == 1 {
-                    binary.set_pre_depends(None);
-                } else {
-                    pre_depends.drop_dependency(&binary_name);
-                    binary.set_pre_depends(Some(&pre_depends));
-                }
-            }
-        }
-        "Recommends" => {
-            let mut recommends = binary.recommends().unwrap();
-            if recommends.has_relation(&binary_name) {
-                if recommends.len() == 1 {
-                    binary.set_recommends(None);
-                } else {
-                    recommends.drop_dependency(&binary_name);
-                    binary.set_recommends(Some(&recommends));
-                }
-            }
-        }
-        "Suggests" => {
-            let mut suggests = binary.suggests().unwrap();
-            if suggests.has_relation(&binary_name) {
-                if suggests.len() == 1 {
-                    binary.set_suggests(None);
-                } else {
-                    suggests.drop_dependency(&binary_name);
-                    binary.set_suggests(Some(&suggests));
-                }
-            }
-        }
-        "Enhances" => {
-            let mut enhances = binary.enhances().unwrap();
-            if enhances.has_relation(&binary_name) {
-                if enhances.len() == 1 {
-                    binary.set_enhances(None);
-                } else {
-                    enhances.drop_dependency(&binary_name);
-                    binary.set_enhances(Some(&enhances));
-                }
-            }
-        }
-        "Breaks" => {
-            let mut breaks = binary.breaks().unwrap();
-            if breaks.has_relation(&binary_name) {
-                if breaks.len() == 1 {
-                    binary.set_breaks(None);
-                } else {
-                    breaks.drop_dependency(&binary_name);
-                    binary.set_breaks(Some(&breaks));
-                }
-            }
-        }
-        "Conflicts" => {
-            let mut conflicts = binary.conflicts().unwrap();
-            if conflicts.has_relation(&binary_name) {
-                if conflicts.len() == 1 {
-                    binary.set_conflicts(None);
-                } else {
-                    conflicts.drop_dependency(&binary_name);
-                    binary.set_conflicts(Some(&conflicts));
-                }
-            }
-        }
-        _ => {
-            unreachable!()
-        }
-    }
-
-    fixed_issues.push(issue);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_does_not_have_dependency() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: test-package\nBuild-Depends: build-essential, debhelper-compat (= 13)\n\nPackage: test-package\nArchitecture: any\n";
+        fs::write(debian.join("control"), initial).unwrap();
 
-        let control_content = r#"Source: test-package
-Build-Depends: build-essential, debhelper-compat (= 13)
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
 
-Package: test-package
-Architecture: any
-"#;
+    #[test]
+    fn test_self_dep_single() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\n\nPackage: blah-doc\nArchitecture: all\nDepends: blah-doc\nDescription: x\n",
+        )
+        .unwrap();
 
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\n\nPackage: blah-doc\nArchitecture: all\nDescription: x\n",
+        );
+    }
 
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+    #[test]
+    fn test_self_dep_one_of_many() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\n\nPackage: blah-doc\nArchitecture: all\nDepends: blah-doc, python3\nDescription: x\n",
+        )
+        .unwrap();
 
-        // Verify the change was made
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(control_content, updated_content);
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\n\nPackage: blah-doc\nArchitecture: all\nDepends: python3\nDescription: x\n",
+        );
     }
 }
