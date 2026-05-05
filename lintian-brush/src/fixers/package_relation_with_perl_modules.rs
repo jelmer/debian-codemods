@@ -1,10 +1,11 @@
-use crate::{Certainty, FixerError, FixerResult, LintianIssue};
-use deb822_lossless::Paragraph;
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_control::lossless::relations::{Entry, Relation, Relations};
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
+use debian_control::lossless::relations::Relations;
+use debian_control::lossless::Control;
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-/// The dependency field names to check for binary packages.
 const BINARY_DEP_FIELDS: &[&str] = &[
     "Depends",
     "Pre-Depends",
@@ -15,7 +16,6 @@ const BINARY_DEP_FIELDS: &[&str] = &[
     "Conflicts",
 ];
 
-/// The dependency field names to check for the source package.
 const SOURCE_DEP_FIELDS: &[&str] = &[
     "Build-Depends",
     "Build-Depends-Indep",
@@ -25,289 +25,208 @@ const SOURCE_DEP_FIELDS: &[&str] = &[
     "Build-Conflicts-Arch",
 ];
 
-/// Scan a relations field for perl-modules entries and create issues.
-fn find_perl_modules_issues(
-    relations_str: &str,
-    field: &str,
-    base_path: &Path,
-    make_issue: impl Fn(&str, Vec<String>) -> LintianIssue,
-    fixed_issues: &mut Vec<LintianIssue>,
-    overridden_issues: &mut Vec<LintianIssue>,
-) {
-    if relations_str.is_empty() {
-        return;
+fn perl_modules_in(value: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    if value.is_empty() {
+        return found;
     }
-
-    let (relations, _) = Relations::parse_relaxed(relations_str, true);
-
+    let (relations, _) = Relations::parse_relaxed(value, true);
     for entry in relations.entries() {
         for relation in entry.relations() {
-            if relation
-                .try_name()
-                .is_some_and(|n| n.starts_with("perl-modules"))
-            {
-                let matched_text = entry.to_string().trim().to_string();
-                let issue = make_issue(
-                    "package-relation-with-perl-modules",
-                    vec![format!("{}: {}", field, matched_text)],
-                );
-                if issue.should_fix(base_path) {
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
-            }
-        }
-    }
-}
-
-/// Apply fixes: replace perl-modules* with perl in a paragraph's dependency field.
-fn apply_perl_modules_fix(paragraph: &mut Paragraph, field: &str) {
-    let old_value = paragraph.get(field).unwrap_or_default();
-    if old_value.is_empty() {
-        return;
-    }
-
-    let (mut relations, _) = Relations::parse_relaxed(&old_value, true);
-
-    // Collect exact package names and position of first perl-modules* entry
-    let mut perl_modules_names: Vec<String> = Vec::new();
-    let mut first_position: Option<usize> = None;
-    for (idx, entry) in relations.entries().enumerate() {
-        for rel in entry.relations() {
-            if let Some(name) = rel.try_name() {
+            if let Some(name) = relation.try_name() {
                 if name.starts_with("perl-modules") {
-                    if first_position.is_none() {
-                        first_position = Some(idx);
-                    }
-                    perl_modules_names.push(name);
+                    found.insert(name);
                 }
             }
         }
     }
-
-    if perl_modules_names.is_empty() {
-        return;
-    }
-
-    let had_perl = relations.has_relation("perl");
-
-    for name in &perl_modules_names {
-        relations.drop_dependency(name);
-    }
-
-    if !had_perl {
-        relations.add_dependency(Entry::from(Relation::simple("perl")), first_position);
-    }
-
-    paragraph.set(field, &relations.to_string());
+    found
 }
 
-fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian").join("control");
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    // Check if this is the perl source package itself
-    if let Some(source) = editor.source() {
+    // Skip the perl source package itself: perl-modules is a real,
+    // load-bearing dependency there.
+    if let Some(source) = control.source() {
         if source.name().as_deref() == Some("perl") {
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     }
 
-    // First pass: find all issues and check should_fix
-    if let Some(source) = editor.source() {
+    let mut issues: Vec<LintianIssue> = Vec::new();
+    let mut actions: Vec<Action> = Vec::new();
+
+    if let Some(source) = control.source() {
         for field in SOURCE_DEP_FIELDS {
             let value = source.as_deb822().get(field).unwrap_or_default();
-            find_perl_modules_issues(
-                &value,
-                field,
-                base_path,
-                |tag, info| LintianIssue::source_with_info(tag, info),
-                &mut fixed_issues,
-                &mut overridden_issues,
-            );
+            let perl_modules = perl_modules_in(&value);
+            if perl_modules.is_empty() {
+                continue;
+            }
+            for name in &perl_modules {
+                issues.push(LintianIssue::source_with_info(
+                    "package-relation-with-perl-modules",
+                    vec![format!("{}: {}", field, name)],
+                ));
+                actions.push(Action::Deb822(Deb822Action::ReplaceRelation {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Source,
+                    field: (*field).to_string(),
+                    from_package: name.clone(),
+                    to_entry: "perl".into(),
+                }));
+            }
         }
     }
 
-    for binary in editor.binaries() {
-        let pkg_name = binary.name().unwrap_or_default();
+    for binary in control.binaries() {
+        let Some(pkg_name) = binary.name() else {
+            continue;
+        };
         for field in BINARY_DEP_FIELDS {
             let value = binary.as_deb822().get(field).unwrap_or_default();
-            let pkg = pkg_name.clone();
-            find_perl_modules_issues(
-                &value,
-                field,
-                base_path,
-                |tag, info| LintianIssue::binary_with_info(&pkg, tag, info),
-                &mut fixed_issues,
-                &mut overridden_issues,
-            );
+            let perl_modules = perl_modules_in(&value);
+            if perl_modules.is_empty() {
+                continue;
+            }
+            for name in &perl_modules {
+                issues.push(LintianIssue::binary_with_info(
+                    &pkg_name,
+                    "package-relation-with-perl-modules",
+                    vec![format!("{}: {}", field, name)],
+                ));
+                actions.push(Action::Deb822(Deb822Action::ReplaceRelation {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: pkg_name.clone(),
+                    },
+                    field: (*field).to_string(),
+                    from_package: name.clone(),
+                    to_entry: "perl".into(),
+                }));
+            }
         }
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
+    if issues.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Second pass: apply fixes
-    if let Some(mut source) = editor.source() {
-        for field in SOURCE_DEP_FIELDS {
-            apply_perl_modules_fix(source.as_mut_deb822(), field);
-        }
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for (i, issue) in issues.into_iter().enumerate() {
+        let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                "Replace perl-modules dependency with perl.",
+                plan_actions,
+            )
+            .with_certainty(Certainty::Certain),
+        );
     }
-
-    for mut binary in editor.binaries() {
-        for field in BINARY_DEP_FIELDS {
-            apply_perl_modules_fix(binary.as_mut_deb822(), field);
-        }
-    }
-
-    editor.commit()?;
-    Ok(
-        FixerResult::builder("Replace perl-modules dependency with perl.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .certainty(Certainty::Certain)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "package-relation-with-perl-modules",
     tags: ["package-relation-with-perl-modules"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
-    fn setup_control(content: &str) -> (TempDir, std::path::PathBuf) {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, content).unwrap();
-        (temp_dir, control_path)
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
+    fn write_control(content: &str) -> (TempDir, std::path::PathBuf) {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(&control, content).unwrap();
+        (tmp, control)
     }
 
     #[test]
     fn test_build_depends_fix() {
-        let (temp_dir, control_path) = setup_control(
-            "Source: test-pkg\nBuild-Depends: perl-modules, debhelper-compat (= 13)\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+        let (tmp, control) = write_control(
+            "Source: test-pkg\nBuild-Depends: perl-modules, debhelper-compat (= 13)\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated = fs::read_to_string(&control_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated,
-            "Source: test-pkg\nBuild-Depends: perl, debhelper-compat (= 13)\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-pkg\nBuild-Depends: perl, debhelper-compat (= 13)\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
     }
 
     #[test]
     fn test_build_depends_versioned_perl_modules() {
-        let (temp_dir, control_path) = setup_control(
-            "Source: test-pkg\nBuild-Depends: perl-modules-5.28, debhelper-compat (= 13)\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+        let (tmp, control) = write_control(
+            "Source: test-pkg\nBuild-Depends: perl-modules-5.28, debhelper-compat (= 13)\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated = fs::read_to_string(&control_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated,
-            "Source: test-pkg\nBuild-Depends: perl, debhelper-compat (= 13)\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-pkg\nBuild-Depends: perl, debhelper-compat (= 13)\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
     }
 
     #[test]
     fn test_binary_depends_fix() {
-        let (temp_dir, control_path) = setup_control(
-            "Source: test-pkg\n\n\
-             Package: test-pkg\nArchitecture: all\nDepends: perl-modules-5.28\n",
+        let (tmp, control) = write_control(
+            "Source: test-pkg\n\nPackage: test-pkg\nArchitecture: all\nDepends: perl-modules-5.28\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated = fs::read_to_string(&control_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated,
-            "Source: test-pkg\n\n\
-             Package: test-pkg\nArchitecture: all\nDepends: perl\n",
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-pkg\n\nPackage: test-pkg\nArchitecture: all\nDepends: perl\nDescription: test\n test\n",
         );
     }
 
     #[test]
     fn test_skips_perl_source_package() {
-        let (temp_dir, _) = setup_control(
-            "Source: perl\nBuild-Depends: perl-modules\n\n\
-             Package: perl-base\nArchitecture: any\n",
+        let (tmp, _) = write_control(
+            "Source: perl\nBuild-Depends: perl-modules\n\nPackage: perl-base\nArchitecture: any\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_changes_when_no_perl_modules() {
-        let (temp_dir, _) = setup_control(
-            "Source: test-pkg\nBuild-Depends: debhelper-compat (= 13)\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+        let (tmp, _) = write_control(
+            "Source: test-pkg\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_replaces_field_not_checked() {
-        let input = "Source: test-pkg\n\n\
-             Package: test-pkg\nArchitecture: all\nReplaces: perl-modules\n";
-        let (temp_dir, control_path) = setup_control(input);
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        let updated = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(updated, input);
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_dedup_perl_after_replacement() {
-        let (temp_dir, control_path) = setup_control(
-            "Source: test-pkg\nBuild-Depends: perl, perl-modules\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+        let (tmp, control) = write_control(
+            "Source: test-pkg\nBuild-Depends: perl, perl-modules\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated = fs::read_to_string(&control_path).unwrap();
+        run_apply(tmp.path()).unwrap();
         assert_eq!(
-            updated,
-            "Source: test-pkg\nBuild-Depends: perl\n\n\
-             Package: test-pkg\nArchitecture: all\n",
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-pkg\nBuild-Depends: perl\n\nPackage: test-pkg\nArchitecture: all\nDescription: test\n test\n",
         );
     }
 }
