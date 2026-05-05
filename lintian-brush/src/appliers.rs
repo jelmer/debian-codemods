@@ -60,7 +60,11 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::RemoveField { file, .. }
             | Deb822Action::RenameField { file, .. }
             | Deb822Action::RemoveParagraph { file, .. }
-            | Deb822Action::AppendParagraph { file, .. } => file,
+            | Deb822Action::AppendParagraph { file, .. }
+            | Deb822Action::NormalizeFieldSpacing { file, .. }
+            | Deb822Action::DropRelation { file, .. }
+            | Deb822Action::EnsureSubstvar { file, .. }
+            | Deb822Action::DropSubstvar { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -152,7 +156,11 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             Deb822Action::SetField { paragraph, .. }
             | Deb822Action::RemoveField { paragraph, .. }
             | Deb822Action::RenameField { paragraph, .. }
-            | Deb822Action::RemoveParagraph { paragraph, .. } => Some(paragraph),
+            | Deb822Action::RemoveParagraph { paragraph, .. }
+            | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
+            | Deb822Action::DropRelation { paragraph, .. }
+            | Deb822Action::EnsureSubstvar { paragraph, .. }
+            | Deb822Action::DropSubstvar { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } => None,
         };
     }
@@ -217,6 +225,43 @@ fn apply_control_deb822_group(
                     "deb822 AppendParagraph not supported on debian/control via the typed editor"
                         .into(),
                 ));
+            }
+            Deb822Action::NormalizeFieldSpacing {
+                paragraph, field, ..
+            } => {
+                if normalize_deb822_field_spacing(&editor, paragraph, field)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropRelation {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                if drop_deb822_relation(&editor, paragraph, field, package)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::EnsureSubstvar {
+                paragraph,
+                field,
+                substvar,
+                ..
+            } => {
+                if ensure_deb822_substvar(&editor, paragraph, field, substvar)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropSubstvar {
+                paragraph,
+                field,
+                substvar,
+                ..
+            } => {
+                if drop_deb822_substvar(&editor, paragraph, field, substvar)? {
+                    any_change = true;
+                }
             }
         }
     }
@@ -309,6 +354,57 @@ fn apply_generic_deb822_group(
                     p.set_with_indent_pattern(k, v, pattern.as_ref(), None);
                 }
                 any_change = true;
+            }
+            Deb822Action::NormalizeFieldSpacing {
+                paragraph, field, ..
+            } => {
+                let Some(p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if let Some(mut entry) = p.get_entry(field) {
+                    if entry.normalize_field_spacing() {
+                        any_change = true;
+                    }
+                }
+            }
+            Deb822Action::DropRelation {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if drop_relation_in_paragraph(&mut p, field, package) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::EnsureSubstvar {
+                paragraph,
+                field,
+                substvar,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if ensure_substvar_in_paragraph(&mut p, field, substvar)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropSubstvar {
+                paragraph,
+                field,
+                substvar,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if drop_substvar_in_paragraph(&mut p, field, substvar) {
+                    any_change = true;
+                }
             }
         }
     }
@@ -464,6 +560,203 @@ fn remove_deb822_field(
         }
         other => Err(FixerError::Other(format!(
             "deb822 RemoveField does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn drop_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    package: &str,
+) -> bool {
+    use debian_control::lossless::relations::Relations;
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    if !relations.drop_dependency(package) {
+        return false;
+    }
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
+fn ensure_substvar_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    substvar: &str,
+) -> Result<bool, FixerError> {
+    use debian_control::lossless::relations::Relations;
+    let value = p.get(field).unwrap_or_default();
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    if relations.substvars().any(|s| s == substvar) {
+        return Ok(false);
+    }
+    relations
+        .ensure_substvar(substvar)
+        .map_err(FixerError::Other)?;
+    p.set(field, &relations.to_string());
+    Ok(true)
+}
+
+fn drop_substvar_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    substvar: &str,
+) -> bool {
+    use debian_control::lossless::relations::Relations;
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    if !relations.substvars().any(|s| s == substvar) {
+        return false;
+    }
+    relations.drop_substvar(substvar);
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
+fn drop_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    package: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(drop_relation_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                package,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(drop_relation_in_paragraph(p, field, package));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 DropRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn ensure_deb822_substvar(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    substvar: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            ensure_substvar_in_paragraph(source.as_mut_deb822(), field, substvar)
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return ensure_substvar_in_paragraph(p, field, substvar);
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 EnsureSubstvar does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn drop_deb822_substvar(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    substvar: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(drop_substvar_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                substvar,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(drop_substvar_in_paragraph(p, field, substvar));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 DropSubstvar does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn normalize_deb822_field_spacing(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            let p = source.as_mut_deb822();
+            let Some(mut entry) = p.get_entry(field) else {
+                return Ok(false);
+            };
+            Ok(entry.normalize_field_spacing())
+        }
+        ParagraphSelector::Binary { package } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(package.as_str()) {
+                    continue;
+                }
+                let Some(mut entry) = p.get_entry(field) else {
+                    return Ok(false);
+                };
+                return Ok(entry.normalize_field_spacing());
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 NormalizeFieldSpacing does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -1150,6 +1443,196 @@ mod tests {
             paragraph: ParagraphSelector::Source,
             field: "Priority".into(),
             value: "optional".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_normalize_field_spacing_on_binary() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: bar\nRecommends:  baz\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::NormalizeFieldSpacing {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Recommends".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: bar\nRecommends: baz\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_relation_removes_named_dep() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends: build-essential, debhelper-compat (= 13)\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            package: "build-essential".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_relation_idempotent_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nBuild-Depends: debhelper\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            package: "build-essential".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_drop_relation_removes_field_when_empty() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends: cdbs\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelation {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            package: "cdbs".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_ensure_substvar_appends() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: foo\nDepends: ${shlibs:Depends}\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureSubstvar {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            substvar: "${misc:Depends}".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: foo\nDepends: ${shlibs:Depends}, ${misc:Depends}\n",
+        );
+    }
+
+    #[test]
+    fn deb822_ensure_substvar_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: foo\nDepends: ${misc:Depends}\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::EnsureSubstvar {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            substvar: "${misc:Depends}".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_drop_substvar_removes_substvar() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: foo\nBuilt-Using: ${misc:Built-Using}\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropSubstvar {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Built-Using".into(),
+            substvar: "${misc:Built-Using}".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_normalize_field_spacing_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: bar\nRecommends: baz\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::NormalizeFieldSpacing {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Recommends".into(),
         });
         let changed = apply_action(tmp.path(), &action).unwrap();
         assert!(!changed);
