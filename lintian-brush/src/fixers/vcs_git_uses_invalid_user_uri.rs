@@ -1,8 +1,9 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue, PackageType};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Fix the VCS Git URL from git://(git|anonscm).debian.org/~user/repo.git
 /// to https://anonscm.debian.org/git/users/user/repo.git
@@ -16,19 +17,19 @@ pub fn fix_vcs_git_user_url(url: &str) -> Option<String> {
     ))
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
-    let control_path = base_path.join(&control_rel);
-    if !control_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_path)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
     };
-    let Some(vcs_git) = source.as_deb822().get("Vcs-Git") else {
+    let Some(vcs_git) = source.get("Vcs-Git") else {
         return Ok(Vec::new());
     };
     let Some(new_url) = fix_vcs_git_user_url(&vcs_git) else {
@@ -46,7 +47,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         issue,
         "Use valid URI for personal Debian Git repository.",
         vec![Action::Deb822(Deb822Action::SetField {
-            file: control_rel,
+            file: PathBuf::from("debian/control"),
             paragraph: ParagraphSelector::Source,
             field: "Vcs-Git".into(),
             value: new_url,
@@ -54,25 +55,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "vcs-git-uses-invalid-user-uri",
     tags: ["vcs-git-uses-invalid-user-uri"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]
