@@ -69,7 +69,9 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             NEW_TARGET
         )
     };
-    diagnostics[0].message = summary;
+    for d in &mut diagnostics {
+        d.message = summary.clone();
+    }
     Ok(diagnostics)
 }
 

@@ -96,7 +96,8 @@ fn action_file(action: &Action) -> &Path {
         },
         Action::Watch(a) => match a {
             WatchAction::SetEntryMatchingPattern { file, .. }
-            | WatchAction::RemoveEntryOption { file, .. } => file,
+            | WatchAction::RemoveEntryOption { file, .. }
+            | WatchAction::SetEntryOption { file, .. } => file,
         },
         Action::Makefile(a) => match a {
             MakefileAction::ReplaceRecipe { file, .. }
@@ -104,7 +105,9 @@ fn action_file(action: &Action) -> &Path {
             | MakefileAction::RemoveVariable { file, .. }
             | MakefileAction::RemoveRule { file, .. }
             | MakefileAction::RemovePhonyTarget { file, .. }
-            | MakefileAction::RenameRuleTarget { file, .. } => file,
+            | MakefileAction::RenameRuleTarget { file, .. }
+            | MakefileAction::AddRule { file, .. }
+            | MakefileAction::AddPhonyTarget { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -1780,6 +1783,26 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     break;
                 }
             }
+            WatchAction::SetEntryOption {
+                url, option, value, ..
+            } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if entry.get_option(option).as_deref() == Some(value.as_str()) {
+                        break;
+                    }
+                    match &mut entry {
+                        debian_watch::parse::ParsedEntry::LineBased(e) => e.set_opt(option, value),
+                        debian_watch::parse::ParsedEntry::Deb822(e) => {
+                            e.set_option_str(option, value)
+                        }
+                    }
+                    any_change = true;
+                    break;
+                }
+            }
         }
     }
 
@@ -1896,6 +1919,33 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                     }
                     break;
                 }
+            }
+            MakefileAction::AddRule {
+                target,
+                prerequisites,
+                ..
+            } => {
+                let mut rule = makefile.add_rule(target);
+                for prereq in prerequisites {
+                    rule.add_prerequisite(prereq).map_err(|e| {
+                        FixerError::Other(format!("Failed to add prerequisite: {}", e))
+                    })?;
+                }
+                rules = makefile.rules().collect();
+                any_change = true;
+            }
+            MakefileAction::AddPhonyTarget { target, .. } => {
+                let already = makefile
+                    .find_rule_by_target(".PHONY")
+                    .is_some_and(|r| r.prerequisites().any(|p| &p == target));
+                if already {
+                    continue;
+                }
+                makefile
+                    .add_phony_target(target)
+                    .map_err(|e| FixerError::Other(format!("Failed to add phony target: {}", e)))?;
+                rules = makefile.rules().collect();
+                any_change = true;
             }
         }
     }

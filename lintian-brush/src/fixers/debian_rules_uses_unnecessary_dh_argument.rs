@@ -152,7 +152,9 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }
 
     let summary = format!("Drop unnecessary dh arguments: {}", removed_args.join(", "));
-    diagnostics[0].message = summary;
+    for d in &mut diagnostics {
+        d.message = summary.clone();
+    }
     Ok(diagnostics)
 }
 

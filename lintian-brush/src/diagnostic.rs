@@ -592,6 +592,19 @@ pub enum WatchAction {
         /// Name of the option to remove (e.g. `filenamemangle`).
         option: String,
     },
+    /// Set (or insert) an `opts=...` option on the entry whose current URL
+    /// is `url`. A no-op if no entry matches or the option already has the
+    /// requested value.
+    SetEntryOption {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// Name of the option to set (e.g. `dversionmangle`).
+        option: String,
+        /// New value for the option.
+        value: String,
+    },
 }
 
 /// Edits to a Makefile (typically `debian/rules`).
@@ -661,6 +674,26 @@ pub enum MakefileAction {
         from_target: String,
         /// New target name.
         to_target: String,
+    },
+    /// Append a new rule with `target` and the given (possibly empty)
+    /// prerequisites. The applier does not check for an existing rule —
+    /// detectors must guard against duplicates themselves.
+    AddRule {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name for the new rule.
+        target: String,
+        /// Prerequisite targets (in order).
+        prerequisites: Vec<String>,
+    },
+    /// Add `target` to the prerequisites of the `.PHONY` rule. A no-op if
+    /// `.PHONY` already lists `target`. If no `.PHONY` rule exists, the
+    /// applier creates one.
+    AddPhonyTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name to add to `.PHONY`.
+        target: String,
     },
 }
 
