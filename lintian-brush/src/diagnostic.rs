@@ -103,6 +103,8 @@ pub enum Action {
     Changelog(ChangelogAction),
     /// An edit to a `debian/watch` file.
     Watch(WatchAction),
+    /// An edit to a Makefile (typically `debian/rules`).
+    Makefile(MakefileAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -579,6 +581,86 @@ pub enum WatchAction {
         url: String,
         /// New matching pattern.
         new_pattern: String,
+    },
+    /// Remove an `opts=...` option from the entry whose current URL is
+    /// `url`. A no-op if no entry matches or the option isn't set.
+    RemoveEntryOption {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current URL of the target entry.
+        url: String,
+        /// Name of the option to remove (e.g. `filenamemangle`).
+        option: String,
+    },
+}
+
+/// Edits to a Makefile (typically `debian/rules`).
+///
+/// Recipes are addressed by their exact current text (including leading
+/// indentation). This avoids index drift when multiple recipe edits target
+/// the same rule.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum MakefileAction {
+    /// Replace the first recipe whose text exactly matches `recipe` in the
+    /// rule whose primary target is `target`. A no-op if no rule or recipe
+    /// matches.
+    ReplaceRecipe {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule containing the recipe.
+        target: String,
+        /// Current recipe text, matched verbatim (including indentation).
+        recipe: String,
+        /// Replacement recipe text. The applier preserves the original
+        /// recipe's leading whitespace if `new_recipe` doesn't start with
+        /// whitespace itself.
+        new_recipe: String,
+    },
+    /// Replace the value of the first variable definition for `name`.
+    /// A no-op if no such variable exists.
+    SetVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name (matched exactly).
+        name: String,
+        /// New right-hand side, verbatim (no quoting applied).
+        value: String,
+    },
+    /// Remove the first variable definition for `name`. A no-op if no such
+    /// variable exists.
+    RemoveVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Variable name (matched exactly).
+        name: String,
+    },
+    /// Remove the first rule whose primary target is `target`. A no-op if
+    /// no such rule exists.
+    RemoveRule {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Primary target of the rule to remove.
+        target: String,
+    },
+    /// Remove `target` from the prerequisites of the `.PHONY` rule. If
+    /// `.PHONY` becomes empty, the rule itself is removed. A no-op if
+    /// the target is not listed.
+    RemovePhonyTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Target name to remove from `.PHONY`.
+        target: String,
+    },
+    /// Rename a target on the first rule that has it. A no-op if no rule
+    /// has the old target.
+    RenameRuleTarget {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Old target name (matched exactly after trimming).
+        from_target: String,
+        /// New target name.
+        to_target: String,
     },
 }
 

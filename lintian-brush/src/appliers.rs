@@ -7,8 +7,8 @@
 //! on the source produces a single rewrite of `debian/control`.
 
 use crate::diagnostic::{
-    Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, ParagraphSelector,
-    SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    Action, ChangelogAction, Deb822Action, DesktopIniAction, FilesystemAction, MakefileAction,
+    ParagraphSelector, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -95,7 +95,16 @@ fn action_file(action: &Action) -> &Path {
             | ChangelogAction::SetEntryVersion { file, .. } => file,
         },
         Action::Watch(a) => match a {
-            WatchAction::SetEntryMatchingPattern { file, .. } => file,
+            WatchAction::SetEntryMatchingPattern { file, .. }
+            | WatchAction::RemoveEntryOption { file, .. } => file,
+        },
+        Action::Makefile(a) => match a {
+            MakefileAction::ReplaceRecipe { file, .. }
+            | MakefileAction::SetVariable { file, .. }
+            | MakefileAction::RemoveVariable { file, .. }
+            | MakefileAction::RemoveRule { file, .. }
+            | MakefileAction::RemovePhonyTarget { file, .. }
+            | MakefileAction::RenameRuleTarget { file, .. } => file,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -131,6 +140,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Yaml(_) => apply_yaml_group(base, rel, group),
         Action::Changelog(_) => apply_changelog_group(base, rel, group),
         Action::Watch(_) => apply_watch_group(base, rel, group),
+        Action::Makefile(_) => apply_makefile_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -1754,11 +1764,144 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     continue;
                 }
             }
+            WatchAction::RemoveEntryOption { url, option, .. } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    if entry.get_option(option).is_none() {
+                        break;
+                    }
+                    match &mut entry {
+                        debian_watch::parse::ParsedEntry::LineBased(e) => e.del_opt_str(option),
+                        debian_watch::parse::ParsedEntry::Deb822(e) => e.delete_option_str(option),
+                    }
+                    any_change = true;
+                    break;
+                }
+            }
         }
     }
 
     if any_change {
         std::fs::write(&abs, watch_file.to_string())?;
+    }
+    Ok(any_change)
+}
+
+fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "makefile action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let mut makefile = makefile_lossless::Makefile::read_relaxed(content.as_bytes())
+        .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", rel.display(), e)))?;
+
+    let mut any_change = false;
+    let mut rules: Vec<_> = makefile.rules().collect();
+    for action in group {
+        let Action::Makefile(m) = action else {
+            unreachable!("apply_makefile_group called with non-makefile action");
+        };
+        match m {
+            MakefileAction::ReplaceRecipe {
+                target,
+                recipe,
+                new_recipe,
+                ..
+            } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| &t == target) {
+                        continue;
+                    }
+                    let recipe_index = rule
+                        .recipe_nodes()
+                        .position(|r| r.text() == recipe.as_str());
+                    let Some(idx) = recipe_index else {
+                        continue;
+                    };
+                    let replacement =
+                        if new_recipe.chars().next().is_some_and(|c| c.is_whitespace()) {
+                            new_recipe.clone()
+                        } else {
+                            let indent: String =
+                                recipe.chars().take_while(|c| c.is_whitespace()).collect();
+                            format!("{}{}", indent, new_recipe)
+                        };
+                    if rule.replace_command(idx, &replacement) {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
+            MakefileAction::SetVariable { name, value, .. } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(name.as_str()))
+                {
+                    if var.raw_value().as_deref().map(str::trim) != Some(value.as_str()) {
+                        var.set_value(value);
+                        any_change = true;
+                    }
+                }
+            }
+            MakefileAction::RemoveVariable { name, .. } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(name.as_str()))
+                {
+                    var.remove();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RemoveRule { target, .. } => {
+                let idx = makefile
+                    .rules()
+                    .position(|r| r.targets().any(|t| t.trim() == target.as_str()));
+                if let Some(idx) = idx {
+                    makefile
+                        .remove_rule(idx)
+                        .map_err(|e| FixerError::Other(format!("Failed to remove rule: {}", e)))?;
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RemovePhonyTarget { target, .. } => {
+                let removed = makefile.remove_phony_target(target).map_err(|e| {
+                    FixerError::Other(format!("Failed to remove phony target: {}", e))
+                })?;
+                if removed {
+                    rules = makefile.rules().collect();
+                    any_change = true;
+                }
+            }
+            MakefileAction::RenameRuleTarget {
+                from_target,
+                to_target,
+                ..
+            } => {
+                for rule in &mut rules {
+                    if !rule.targets().any(|t| t.trim() == from_target.as_str()) {
+                        continue;
+                    }
+                    let renamed = rule.rename_target(from_target, to_target).map_err(|e| {
+                        FixerError::Other(format!("Failed to rename target: {}", e))
+                    })?;
+                    if renamed {
+                        any_change = true;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, makefile.code())?;
     }
     Ok(any_change)
 }
