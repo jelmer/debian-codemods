@@ -174,6 +174,46 @@ pub enum Deb822Action {
         /// Field name.
         field: String,
     },
+    /// Drop every relation matching `package` from a relations field
+    /// (Depends, Build-Depends, etc.). Empty alternative groups are
+    /// removed; if the field becomes empty it is removed entirely. A
+    /// no-op if the package isn't named in the field.
+    DropRelation {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Build-Depends`).
+        field: String,
+        /// Package name to drop.
+        package: String,
+    },
+    /// Ensure a substvar (`${...}`) is present in a relations field. If
+    /// the field doesn't exist it's created with just the substvar; if
+    /// it exists and already mentions the substvar it's a no-op.
+    EnsureSubstvar {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Depends`).
+        field: String,
+        /// Substvar to ensure, including the surrounding `${...}`.
+        substvar: String,
+    },
+    /// Drop a substvar (`${...}`) from a relations field. If the field
+    /// becomes empty it's removed entirely. A no-op if the substvar is
+    /// already absent.
+    DropSubstvar {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name.
+        field: String,
+        /// Substvar to drop, including the surrounding `${...}`.
+        substvar: String,
+    },
 }
 
 /// Edits to a systemd unit file.
