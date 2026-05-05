@@ -1,164 +1,147 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use debversion::Version;
-use std::path::Path;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 const MINIMUM_DEBHELPER_VERSION: &str = "9.20160709";
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        // Check each Build-Depends field type
-        for field_name in ["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"] {
-            if let Some(field_value) = paragraph.get(field_name) {
-                use debian_control::lossless::relations::Relations;
-                let (mut relations, _errors) = Relations::parse_relaxed(&field_value, true);
-
-                // Check if dh-systemd is present
-                let has_dh_systemd = relations.entries().any(|entry| {
-                    entry
-                        .relations()
-                        .any(|rel| rel.try_name().as_deref() == Some("dh-systemd"))
-                });
-
-                if has_dh_systemd {
-                    let issue = LintianIssue::source_with_info(
-                        "build-depends-on-obsolete-package",
-                        vec![format!("{}: dh-systemd", field_name)],
-                    );
-
-                    if issue.should_fix(base_path) {
-                        relations.drop_dependency("dh-systemd");
-                        paragraph.set(field_name, &relations.to_string());
-                        fixed_issues.push(issue);
-                    } else {
-                        overridden_issues.push(issue);
-                    }
-                }
-            }
+    let mut drop_actions: Vec<Action> = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for field in FIELDS {
+        let Some(value) = source.as_deb822().get(field) else {
+            continue;
+        };
+        let (relations, _errors) =
+            debian_control::lossless::relations::Relations::parse_relaxed(&value, true);
+        let has_dh_systemd = relations.entries().any(|e| {
+            e.relations()
+                .any(|r| r.try_name().as_deref() == Some("dh-systemd"))
+        });
+        if !has_dh_systemd {
+            continue;
         }
 
-        if !fixed_issues.is_empty() {
-            // Ensure minimum debhelper version
-            let build_depends_str = paragraph.get("Build-Depends").unwrap_or_else(String::new);
-            use debian_control::lossless::relations::Relations;
-            let (mut build_depends, _errors) = Relations::parse_relaxed(&build_depends_str, true);
-
-            let minimum_version: Version = MINIMUM_DEBHELPER_VERSION.parse().unwrap();
-            build_depends.ensure_minimum_version("debhelper", &minimum_version);
-
-            paragraph.set("Build-Depends", &build_depends.to_string());
-        }
+        let issue = LintianIssue::source_with_info(
+            "build-depends-on-obsolete-package",
+            vec![format!("{}: dh-systemd", field)],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            "Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.",
+            Vec::new(),
+        ));
+        drop_actions.push(Action::Deb822(Deb822Action::DropRelation {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: (*field).to_string(),
+            package: "dh-systemd".into(),
+        }));
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
+    if diagnostics.is_empty() {
+        return Ok(Vec::new());
     }
 
-    editor.commit()?;
+    // Bundle all the actions onto the first diagnostic so the applier
+    // performs them in one pass.
+    let mut all_actions = drop_actions;
+    all_actions.push(Action::Deb822(Deb822Action::EnsureRelation {
+        file: control_rel,
+        paragraph: ParagraphSelector::Source,
+        field: "Build-Depends".into(),
+        entry: format!("debhelper (>= {})", MINIMUM_DEBHELPER_VERSION),
+    }));
+    diagnostics[0].plans[0].actions = all_actions;
 
-    Ok(
-        FixerResult::builder("Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.")
-            .fixed_issues(fixed_issues)
-            .overridden_issues(overridden_issues)
-            .build(),
-    )
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "build-depends-on-obsolete-package",
     tags: ["build-depends-on-obsolete-package"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_dh_systemd() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9), dh-systemd\n\nPackage: mypackage\nArchitecture: any\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9), dh-systemd
-
-Package: mypackage
-Architecture: any
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_control = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(!updated_control.contains("dh-systemd"));
-        assert!(updated_control.contains("debhelper (>= 9.20160709)"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9.20160709)\n\nPackage: mypackage\nArchitecture: any\n",
+        );
     }
 
     #[test]
     fn test_no_dh_systemd() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9)
-
-Package: mypackage
-Architecture: any
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9)\n\nPackage: mypackage\nArchitecture: any\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_remove_from_build_depends_indep() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9)\nBuild-Depends-Indep: dh-systemd\n\nPackage: mypackage\nArchitecture: any\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: mypackage
-Build-Depends: debhelper (>= 9)
-Build-Depends-Indep: dh-systemd
-
-Package: mypackage
-Architecture: any
-"#;
-
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_control = fs::read_to_string(debian_dir.join("control")).unwrap();
-        assert!(!updated_control.contains("dh-systemd"));
-        assert!(updated_control.contains("debhelper (>= 9.20160709)"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: mypackage\nBuild-Depends: debhelper (>= 9.20160709)\n\nPackage: mypackage\nArchitecture: any\n",
+        );
     }
 }

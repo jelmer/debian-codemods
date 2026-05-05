@@ -919,16 +919,22 @@ fn ensure_relation_compute(
     let (mut relations, _errors) = Relations::parse_relaxed(current.unwrap_or_default(), true);
 
     let changed = if let Some((constraint, ver)) = version {
-        if !matches!(
-            constraint,
-            debian_control::relations::VersionConstraint::Equal
-        ) {
-            return Err(FixerError::Other(format!(
-                "EnsureRelation only supports `=` version constraints, got {:?} in {:?}",
-                constraint, entry
-            )));
+        match constraint {
+            debian_control::relations::VersionConstraint::Equal => {
+                debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
+            }
+            debian_control::relations::VersionConstraint::GreaterThanEqual => {
+                let before = relations.to_string();
+                relations.ensure_minimum_version(&name, &ver);
+                relations.to_string() != before
+            }
+            other => {
+                return Err(FixerError::Other(format!(
+                    "EnsureRelation only supports `=` and `>=` version constraints, got {:?} in {:?}",
+                    other, entry
+                )));
+            }
         }
-        debian_analyzer::relations::ensure_exact_version(&mut relations, &name, &ver, None)
     } else {
         // Pass the original entry string through verbatim so build-profile
         // suffixes like `pkg <!nocheck>` round-trip correctly via
