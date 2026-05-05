@@ -1,36 +1,32 @@
-use crate::{FixerError, FixerResult, LintianIssue, PackageType};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue, PackageType};
 use debian_analyzer::control::TemplatedControlEditor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+/// Per-diagnostic message tag separator. The describer parses these back out
+/// to assemble the aggregate description.
+const SEP: char = '\t';
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut removed_fields = Vec::new();
-    let mut packages_affected = Vec::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let editor = TemplatedControlEditor::open(&control_abs)?;
+    let mut diagnostics = Vec::new();
 
-    // Check source paragraph for empty fields
-    if let Some(mut source) = editor.source() {
-        let paragraph = source.as_mut_deb822();
-
-        let mut keys_to_remove = Vec::new();
+    if let Some(source) = editor.source() {
+        let paragraph = source.as_deb822();
         for entry in paragraph.entries() {
-            let value = entry.value();
-            if value.trim().is_empty() {
-                if let Some(key) = entry.key() {
-                    let line_number = entry.line() + 1;
-                    keys_to_remove.push((key.to_string(), line_number));
-                }
+            if !entry.value().trim().is_empty() {
+                continue;
             }
-        }
-
-        for (key, line_number) in keys_to_remove {
+            let Some(key) = entry.key() else {
+                continue;
+            };
+            let line_number = entry.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "debian-control-has-empty-field",
                 vec![format!(
@@ -38,37 +34,31 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     key, line_number
                 )],
             );
-
-            if issue.should_fix(base_path) {
-                paragraph.remove(&key);
-                removed_fields.push(key);
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                format!("source{}{}", SEP, key),
+                vec![Action::Deb822(Deb822Action::RemoveField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Source,
+                    field: key.to_string(),
+                })],
+            ));
         }
     }
 
-    // Check binary paragraphs for empty fields
-    for mut binary in editor.binaries() {
-        let paragraph = binary.as_mut_deb822();
-        let package_name = paragraph
-            .get("Package")
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-
-        let mut keys_to_remove = Vec::new();
+    for binary in editor.binaries() {
+        let paragraph = binary.as_deb822();
+        let Some(package_name) = paragraph.get("Package") else {
+            continue;
+        };
         for entry in paragraph.entries() {
-            let value = entry.value();
-            if value.trim().is_empty() {
-                if let Some(key) = entry.key() {
-                    let line_number = entry.line() + 1;
-                    keys_to_remove.push((key.to_string(), line_number));
-                }
+            if !entry.value().trim().is_empty() {
+                continue;
             }
-        }
-
-        for (key, line_number) in keys_to_remove {
+            let Some(key) = entry.key() else {
+                continue;
+            };
+            let line_number = entry.line() + 1;
             let issue = LintianIssue {
                 package: Some(package_name.clone()),
                 package_type: Some(PackageType::Binary),
@@ -78,59 +68,62 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
                     package_name, key, line_number
                 )),
             };
-
-            if issue.should_fix(base_path) {
-                paragraph.remove(&key);
-                removed_fields.push(key);
-                packages_affected.push(package_name.clone());
-                fixed_issues.push(issue);
-            } else {
-                overridden_issues.push(issue);
-            }
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                format!("{}{}{}", package_name, SEP, key),
+                vec![Action::Deb822(Deb822Action::RemoveField {
+                    file: control_rel.clone(),
+                    paragraph: ParagraphSelector::Binary {
+                        package: package_name.clone(),
+                    },
+                    field: key.to_string(),
+                })],
+            ));
         }
     }
 
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut fields: Vec<String> = Vec::new();
+    let mut packages: Vec<String> = Vec::new();
+    for d in fixed {
+        let Some((scope, field)) = d.message.split_once(SEP) else {
+            continue;
+        };
+        fields.push(field.to_string());
+        if scope != "source" {
+            packages.push(scope.to_string());
         }
-        return Err(FixerError::NoChanges);
     }
+    fields.dedup();
+    packages.sort();
+    packages.dedup();
 
-    // Commit the changes
-    editor.commit()?;
-
-    // Create description message
-    let field_text = if removed_fields.len() == 1 {
-        "field"
-    } else {
-        "fields"
-    };
-
-    let package_text = if packages_affected.is_empty() {
+    let field_text = if fields.len() == 1 { "field" } else { "fields" };
+    let package_text = if packages.is_empty() {
         String::new()
     } else {
-        format!(" in package {}", packages_affected.join(", "))
+        format!(" in package {}", packages.join(", "))
     };
 
-    let description = format!(
+    format!(
         "debian/control: Remove empty control {} {}{}.",
         field_text,
-        removed_fields.join(", "),
+        fields.join(", "),
         package_text
-    );
-
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    )
 }
 
 declare_fixer! {
     name: "debian-control-has-empty-field",
     tags: ["debian-control-has-empty-field"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
@@ -138,125 +131,70 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_remove_empty_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: test-package\nDepends:\n\nPackage: test-package\nDescription: Test package\n Description text\nProvides:\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Depends:
-
-Package: test-package
-Description: Test package
- Description text
-Provides:
-"#;
-
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-package\n\nPackage: test-package\nDescription: Test package\n Description text\n",
         );
-        assert!(result.is_ok());
-
-        // Check that empty fields were removed
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("Depends:"));
-        assert!(!updated_content.contains("Provides:"));
-        assert!(updated_content.contains("Source: test-package"));
-        assert!(updated_content.contains("Package: test-package"));
-        assert!(updated_content.contains("Description: Test package"));
     }
 
     #[test]
     fn test_no_empty_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nMaintainer: Test <test@example.com>\n\nPackage: test-package\nDescription: Test package\n Description text\nDepends: libc6\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Maintainer: Test Maintainer <test@example.com>
-
-Package: test-package
-Description: Test package
- Description text
-Depends: libc6
-"#;
-
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_control_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
-        );
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_whitespace_only_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: test-package\nBuild-Depends:   \n\nPackage: test-package\nDescription: Test package\n Description text\nProvides:  \t\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-package
-Build-Depends:   
-
-Package: test-package
-Description: Test package
- Description text
-Provides:  	
-"#;
-
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        // Apply the fixer
-        let fixer = FixerImpl;
-        let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test-package\n\nPackage: test-package\nDescription: Test package\n Description text\n",
         );
-        assert!(result.is_ok());
-
-        // Check that whitespace-only fields were removed
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(!updated_content.contains("Build-Depends:"));
-        assert!(!updated_content.contains("Provides:"));
     }
 }

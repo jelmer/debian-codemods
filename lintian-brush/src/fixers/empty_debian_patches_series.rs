@@ -1,134 +1,126 @@
-use crate::{FixerError, FixerResult};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences};
+use std::path::{Path, PathBuf};
 
-pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerError> {
+pub fn detect(base_path: &Path, opinionated: bool) -> Result<Vec<Diagnostic>, FixerError> {
     if !opinionated {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let series_path = base_path.join("debian/patches/series");
-
-    // Check if the file exists
-    if !series_path.exists() {
-        return Err(FixerError::NoChanges);
+    let rel = PathBuf::from("debian/patches/series");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Read the file and check if it's empty or contains only whitespace
-    let content = fs::read_to_string(&series_path)?;
+    let content = std::fs::read_to_string(&abs)?;
     if !content.trim().is_empty() {
-        // File has content, don't remove it
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Remove the empty file
-    fs::remove_file(&series_path)?;
-
-    Ok(FixerResult::builder("Remove empty debian/patches/series.")
-        .certainty(crate::Certainty::Certain)
-        .build())
+    Ok(vec![Diagnostic::untagged(
+        "Remove empty debian/patches/series.",
+        vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
     name: "empty-debian-patches-series",
     tags: [],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences.opinionated.unwrap_or(false))
+    diagnose: |basedir, _package, _version, preferences: &FixerPreferences| {
+        detect(basedir, preferences.opinionated.unwrap_or(false))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path, opinionated: bool) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        let preferences = FixerPreferences {
+            opinionated: Some(opinionated),
+            ..Default::default()
+        };
+        FixerImpl.apply(base, "test", &version, &preferences)
+    }
+
     #[test]
     fn test_remove_empty_series_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let patches_dir = base_path.join("debian/patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
-
         let series_path = patches_dir.join("series");
-        fs::write(&series_path, "").unwrap(); // Empty file
+        fs::write(&series_path, "").unwrap();
 
-        let result = run(base_path, true).unwrap();
+        let result = run_apply(tmp.path(), true).unwrap();
         assert_eq!(result.description, "Remove empty debian/patches/series.");
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
         assert!(!series_path.exists());
     }
 
     #[test]
     fn test_remove_whitespace_only_series_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let patches_dir = base_path.join("debian/patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
-
         let series_path = patches_dir.join("series");
-        fs::write(&series_path, "   \n\t  \n  ").unwrap(); // Only whitespace
+        fs::write(&series_path, "   \n\t  \n  ").unwrap();
 
-        let result = run(base_path, true).unwrap();
-        assert_eq!(result.certainty, Some(crate::Certainty::Certain));
-
-        // Check that the file was removed
+        run_apply(tmp.path(), true).unwrap();
         assert!(!series_path.exists());
     }
 
     #[test]
     fn test_not_opinionated() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let patches_dir = base_path.join("debian/patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
-
         let series_path = patches_dir.join("series");
-        fs::write(&series_path, "").unwrap(); // Empty file
+        fs::write(&series_path, "").unwrap();
 
-        let result = run(base_path, false);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // File should still exist
+        assert!(matches!(
+            run_apply(tmp.path(), false),
+            Err(FixerError::NoChanges)
+        ));
         assert!(series_path.exists());
     }
 
     #[test]
     fn test_keep_non_empty_series() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let patches_dir = base_path.join("debian/patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
-
         let series_path = patches_dir.join("series");
         fs::write(&series_path, "some-patch.patch\n").unwrap();
 
-        let result = run(base_path, true);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-
-        // File should still exist
+        assert!(matches!(
+            run_apply(tmp.path(), true),
+            Err(FixerError::NoChanges)
+        ));
         assert!(series_path.exists());
     }
 
     #[test]
     fn test_no_series_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let patches_dir = base_path.join("debian/patches");
-        fs::create_dir_all(&patches_dir).unwrap();
-
-        let result = run(base_path, true);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("debian/patches")).unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), true),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_debian_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let result = run(base_path, true);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(
+            run_apply(tmp.path(), true),
+            Err(FixerError::NoChanges)
+        ));
     }
 }

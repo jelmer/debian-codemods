@@ -1,109 +1,98 @@
-use crate::{Certainty, FixerError, FixerResult};
-use std::fs;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::{Certainty, FixerError, LintianIssue};
+use std::path::{Path, PathBuf};
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rel = PathBuf::from("debian/patches/series");
+    let abs = base_path.join(&rel);
+    if !abs.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = std::fs::read(&abs)?;
+    if content.is_empty() {
+        return Ok(Vec::new());
+    }
+    if content[content.len() - 1] == b'\n' {
+        return Ok(Vec::new());
+    }
+
+    let issue = LintianIssue::source_with_info(
+        "quilt-series-without-trailing-newline",
+        vec!["debian/patches/series".to_string()],
+    );
+
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Add missing trailing newline in debian/patches/series.",
+        vec![Action::Filesystem(FilesystemAction::ReplaceText {
+            file: rel,
+            range: TextRange {
+                start: content.len(),
+                end: content.len(),
+            },
+            replacement: "\n".into(),
+        })],
+    )
+    .with_certainty(Certainty::Certain)])
+}
 
 declare_fixer! {
     name: "quilt-series-without-trailing-newline",
     tags: ["quilt-series-without-trailing-newline"],
-    apply: |basedir, _package, _version, _preferences| {
-        let series_path = basedir.join("debian").join("patches").join("series");
-
-        if !series_path.exists() {
-            return Err(FixerError::NoChanges);
-        }
-
-        let content = fs::read(&series_path)?;
-
-        // Check if file is empty
-        if content.is_empty() {
-            return Err(FixerError::NoChanges);
-        }
-
-        // Check if last character is a newline
-        if content[content.len() - 1] == b'\n' {
-            // File already has trailing newline
-            return Err(FixerError::NoChanges);
-        }
-
-        let issue = crate::LintianIssue::source_with_info(
-            "quilt-series-without-trailing-newline",
-            vec!["debian/patches/series".to_string()],
-        );
-
-        if !issue.should_fix(basedir) {
-            return Err(FixerError::NoChanges);
-        }
-
-        // Add trailing newline
-        let mut new_content = content;
-        new_content.push(b'\n');
-        fs::write(&series_path, new_content)?;
-
-        Ok(FixerResult::builder("Add missing trailing newline in debian/patches/series.")
-            .certainty(Certainty::Certain)
-            .fixed_issues(vec![issue])
-            .build())
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_adds_missing_newline() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian").join("patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
+        let series = patches_dir.join("series");
+        fs::write(&series, b"patch1.diff").unwrap();
 
-        // Create series file without trailing newline
-        let series_path = patches_dir.join("series");
-        fs::write(&series_path, b"patch1.diff").unwrap();
-
-        // Apply fixer logic directly for testing
-        let content = fs::read(&series_path).unwrap();
-        assert_eq!(content[content.len() - 1], b'f'); // No trailing newline
-
-        let mut new_content = content;
-        new_content.push(b'\n');
-        fs::write(&series_path, new_content).unwrap();
-
-        // Verify newline was added
-        let updated_content = fs::read(&series_path).unwrap();
-        assert_eq!(updated_content[updated_content.len() - 1], b'\n');
-        assert_eq!(updated_content, b"patch1.diff\n");
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(fs::read(&series).unwrap(), b"patch1.diff\n");
     }
 
     #[test]
     fn test_no_change_when_newline_exists() {
-        let temp_dir = TempDir::new().unwrap();
-        let patches_dir = temp_dir.path().join("debian").join("patches");
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
         fs::create_dir_all(&patches_dir).unwrap();
+        fs::write(patches_dir.join("series"), b"patch1.diff\n").unwrap();
 
-        // Create series file with trailing newline
-        let series_path = patches_dir.join("series");
-        fs::write(&series_path, b"patch1.diff\n").unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
 
-        let content = fs::read(&series_path).unwrap();
-        assert_eq!(content[content.len() - 1], b'\n'); // Already has trailing newline
+    #[test]
+    fn test_no_change_when_empty() {
+        let tmp = TempDir::new().unwrap();
+        let patches_dir = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches_dir).unwrap();
+        fs::write(patches_dir.join("series"), b"").unwrap();
 
-        // Should not modify file
-        let original_content = content.clone();
-        // Since file already has newline, fixer should return NoChanges
-        assert_eq!(content, original_content);
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_series_file() {
-        let temp_dir = TempDir::new().unwrap();
-        // Don't create debian/patches/series file
-
-        let series_path = temp_dir
-            .path()
-            .join("debian")
-            .join("patches")
-            .join("series");
-        assert!(!series_path.exists());
-        // Should return NoChanges when file doesn't exist
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
