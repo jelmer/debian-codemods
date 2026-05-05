@@ -63,6 +63,7 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::AppendParagraph { file, .. }
             | Deb822Action::NormalizeFieldSpacing { file, .. }
             | Deb822Action::DropRelation { file, .. }
+            | Deb822Action::ReplaceRelation { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
             | Deb822Action::DropSubstvar { file, .. }
             | Deb822Action::EnsureRelation { file, .. }
@@ -189,6 +190,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::RemoveParagraph { paragraph, .. }
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
+            | Deb822Action::ReplaceRelation { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
@@ -278,6 +280,17 @@ fn apply_control_deb822_group(
                 ..
             } => {
                 if drop_deb822_relation(&editor, paragraph, field, package)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::ReplaceRelation {
+                paragraph,
+                field,
+                from_package,
+                to_entry,
+                ..
+            } => {
+                if replace_deb822_relation(&editor, paragraph, field, from_package, to_entry)? {
                     any_change = true;
                 }
             }
@@ -441,6 +454,20 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if drop_relation_in_paragraph(&mut p, field, package) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::ReplaceRelation {
+                paragraph,
+                field,
+                from_package,
+                to_entry,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if replace_relation_in_paragraph(&mut p, field, from_package, to_entry) {
                     any_change = true;
                 }
             }
@@ -753,6 +780,56 @@ fn drop_relation_in_paragraph(
     true
 }
 
+/// Replace the first relation entry that names `from_package` with the
+/// parsed `to_entry`, preserving its position. If `to_entry` parses as a
+/// relation whose package is already named elsewhere in the field, the
+/// matching entry is dropped instead of replaced (keeps the field
+/// duplicate-free).
+fn replace_relation_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    from_package: &str,
+    to_entry: &str,
+) -> bool {
+    use debian_control::lossless::relations::{Entry, Relations};
+    use std::str::FromStr;
+
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    let Some((idx, _)) = relations.iter_relations_for(from_package).next() else {
+        return false;
+    };
+
+    let Ok(new_entry) = Entry::from_str(to_entry) else {
+        return false;
+    };
+    let new_name = new_entry
+        .relations()
+        .next()
+        .and_then(|r| r.try_name())
+        .unwrap_or_default();
+    let new_already_present = !new_name.is_empty()
+        && relations
+            .iter_relations_for(&new_name)
+            .any(|(other_idx, _)| other_idx != idx);
+
+    if new_already_present {
+        relations.drop_dependency(from_package);
+    } else {
+        relations.replace(idx, new_entry);
+    }
+
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
 /// Compute the post-edit relations for a substvar ensure: parse the
 /// current field value, return the new relations if the substvar wasn't
 /// already present (else `None`).
@@ -837,6 +914,47 @@ fn drop_deb822_relation(
         }
         other => Err(FixerError::Other(format!(
             "deb822 DropRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn replace_deb822_relation(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    from_package: &str,
+    to_entry: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(replace_relation_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                from_package,
+                to_entry,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(replace_relation_in_paragraph(
+                    p,
+                    field,
+                    from_package,
+                    to_entry,
+                ));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 ReplaceRelation does not support paragraph selector {:?}",
             other
         ))),
     }
