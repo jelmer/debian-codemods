@@ -8,8 +8,9 @@
 
 use crate::diagnostic::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
-    FilesystemAction, LintianOverridesAction, MakefileAction, OverrideLineSelector,
-    ParagraphSelector, RunCommandAction, SystemdAction, WatchAction, YamlAction, YamlPathComponent,
+    FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
+    OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
+    YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -130,6 +131,9 @@ fn action_file(action: &Action) -> &Path {
             | LintianOverridesAction::RenameTag { file, .. }
             | LintianOverridesAction::SetLineInfo { file, .. } => file,
         },
+        Action::Maintscript(a) => match a {
+            MaintscriptAction::DropEntry { file, .. } => file,
+        },
         Action::Debcargo(a) => match a {
             DebcargoAction::SetSourceField { file, .. } => file,
         },
@@ -173,6 +177,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Makefile(_) => apply_makefile_group(base, rel, group),
         Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
+        Action::Maintscript(_) => apply_maintscript_group(base, rel, group),
         Action::Debcargo(_) => apply_debcargo_group(base, rel, group),
         Action::RunCommand(_) => apply_run_command_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
@@ -2717,6 +2722,53 @@ fn apply_lintian_overrides_group(
         std::fs::remove_file(&abs)?;
     } else {
         std::fs::write(&abs, new_content)?;
+    }
+    Ok(true)
+}
+
+fn apply_maintscript_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    use debian_analyzer::maintscripts::Maintscript;
+    use std::str::FromStr;
+
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "maintscript action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let original = std::fs::read_to_string(&abs)?;
+    let mut script = Maintscript::from_str(&original)
+        .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;
+    let trailing_newline = original.ends_with('\n');
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Maintscript(MaintscriptAction::DropEntry { entry: target, .. }) = action else {
+            unreachable!("apply_maintscript_group called with non-maintscript action");
+        };
+        let idx = script
+            .entries()
+            .iter()
+            .position(|e| e.to_string() == *target);
+        if let Some(idx) = idx {
+            script.remove(idx);
+            any_change = true;
+        }
+    }
+
+    if !any_change {
+        return Ok(false);
+    }
+
+    if script.is_empty() {
+        std::fs::remove_file(&abs)?;
+    } else {
+        let mut out = script.to_string();
+        if trailing_newline && !out.ends_with('\n') {
+            out.push('\n');
+        }
+        std::fs::write(&abs, out)?;
     }
     Ok(true)
 }

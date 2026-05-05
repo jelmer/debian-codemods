@@ -1,11 +1,12 @@
-use crate::{FixerError, FixerPreferences, FixerResult};
+use crate::diagnostic::{Action, Diagnostic, MaintscriptAction};
+use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
-use debian_analyzer::maintscripts::Entry;
+use debian_analyzer::maintscripts::{Entry, Maintscript};
 use debian_changelog::ChangeLog;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // If there is no information from the upgrade release, default to 5 years.
@@ -105,13 +106,13 @@ fn is_well_past(
     true
 }
 
-/// Information about a removed maintscript entry.
+/// Information about a maintscript entry that should be removed.
 struct RemovedEntry {
-    /// The maintscript entry that was removed
     entry: Entry,
 }
 
-fn drop_obsolete_maintscript_entries<F>(
+/// Parse a maintscript file and return the entries that should be removed.
+fn obsolete_maintscript_entries<F>(
     maintscript_path: &Path,
     should_remove: F,
 ) -> Result<Vec<RemovedEntry>, FixerError>
@@ -119,64 +120,20 @@ where
     F: Fn(Option<&str>, &Version) -> bool,
 {
     let contents = fs::read_to_string(maintscript_path)?;
-    let lines: Vec<&str> = contents.lines().collect();
-
-    let mut new_lines = Vec::new();
-    let mut comments = Vec::new();
+    let script = Maintscript::from_str(&contents)
+        .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;
     let mut removed = Vec::new();
-
-    for line in lines {
-        let trimmed = line.trim();
-
-        // Accumulate comments
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            comments.push(line);
-            continue;
-        }
-
-        // Try to parse as entry
-        match Entry::from_str(trimmed) {
-            Ok(entry) => {
-                // Check if this entry should be removed
-                let remove = entry
-                    .prior_version()
-                    .map(|v| should_remove(entry.package().map(|s| s.as_str()), v))
-                    .unwrap_or(false);
-
-                if remove {
-                    comments.clear();
-                    removed.push(RemovedEntry { entry });
-                } else {
-                    new_lines.extend(comments.drain(..).map(|s| s.to_string()));
-                    new_lines.push(line.to_string());
-                }
-            }
-            Err(_) => {
-                // Not a parseable entry, keep it
-                new_lines.extend(comments.drain(..).map(|s| s.to_string()));
-                new_lines.push(line.to_string());
-            }
+    for entry in script.entries() {
+        let should = entry
+            .prior_version()
+            .map(|v| should_remove(entry.package().map(|s| s.as_str()), v))
+            .unwrap_or(false);
+        if should {
+            removed.push(RemovedEntry {
+                entry: entry.clone(),
+            });
         }
     }
-
-    // Add trailing comments
-    new_lines.extend(comments.into_iter().map(|s| s.to_string()));
-
-    if removed.is_empty() {
-        return Ok(removed);
-    }
-
-    // Delete file if empty, otherwise write
-    if new_lines.is_empty() {
-        fs::remove_file(maintscript_path)?;
-    } else {
-        let mut output = new_lines.join("\n");
-        if contents.ends_with('\n') {
-            output.push('\n');
-        }
-        fs::write(maintscript_path, output)?;
-    }
-
     Ok(removed)
 }
 
@@ -204,57 +161,59 @@ fn format_removed_entry_detail(
     format!("\"{}\" (version {}{})", entry.entry, version, date_info)
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let maintscripts = find_maintscript_files(base_path)?;
-
     if maintscripts.is_empty() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Get the date threshold
     let date_threshold = get_date_threshold(preferences.upgrade_release.as_deref())?;
-
-    // Parse changelog dates
     let cl_dates = parse_changelog_dates(base_path)?;
 
-    // Process each maintscript file
-    let mut all_removed: Vec<RemovedEntry> = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     for name in maintscripts {
-        let maintscript_path = base_path.join("debian").join(&name);
-
-        let removed = drop_obsolete_maintscript_entries(&maintscript_path, |_package, version| {
+        let rel = PathBuf::from("debian").join(&name);
+        let abs = base_path.join(&rel);
+        let removed = obsolete_maintscript_entries(&abs, |_package, version| {
             is_well_past(version, &cl_dates, &date_threshold)
         })?;
-
-        all_removed.extend(removed);
+        for r in removed {
+            let detail = format_removed_entry_detail(&r, &cl_dates);
+            diagnostics.push(Diagnostic::untagged(
+                detail,
+                vec![Action::Maintscript(MaintscriptAction::DropEntry {
+                    file: rel.clone(),
+                    entry: r.entry.to_string(),
+                })],
+            ));
+        }
     }
 
-    if all_removed.is_empty() {
-        return Err(FixerError::NoChanges);
-    }
+    Ok(diagnostics)
+}
 
-    let summary = if all_removed.len() == 1 {
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let summary = if fixed.len() == 1 {
         "Remove an obsolete maintscript entry.".to_string()
     } else {
-        format!("Remove {} obsolete maintscript entries.", all_removed.len())
+        format!("Remove {} obsolete maintscript entries.", fixed.len())
     };
-
-    let details: Vec<String> = all_removed
-        .iter()
-        .map(|r| format_removed_entry_detail(r, &cl_dates))
-        .collect();
-
-    let description = format!("{}\n\n{}", summary, details.join("\n"));
-
-    Ok(FixerResult::builder(description).build())
+    let details: Vec<&str> = fixed.iter().map(|d| d.message.as_str()).collect();
+    format!("{}\n\n{}", summary, details.join("\n"))
 }
 
 declare_fixer! {
     name: "ancient-maintscript-entry",
     tags: [],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
