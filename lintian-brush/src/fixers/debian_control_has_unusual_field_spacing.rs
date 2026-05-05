@@ -1,194 +1,208 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-fn normalize_control_file(
-    path: &Path,
-    base_path: &Path,
-) -> Result<(bool, Vec<LintianIssue>, Vec<LintianIssue>), FixerError> {
-    let content = fs::read_to_string(path)?;
-
-    let deb822 = match Deb822::from_str(&content) {
-        Ok(d) => d,
-        Err(_) => {
-            return Err(FixerError::NoChanges);
-        }
+/// Collect diagnostics for unusual field spacing in `parsed_path` and emit
+/// actions targeting `file_for_actions`. Issues are only emitted when
+/// `tagged` is true — the second pass over a generated control's rendered
+/// file shares the same lintian issue and re-emitting it would
+/// double-count.
+fn collect_diagnostics(
+    file_for_actions: &Path,
+    parsed_path: &Path,
+    use_typed_control_selectors: bool,
+    tagged: bool,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let content = std::fs::read_to_string(parsed_path)?;
+    let Ok(deb822) = Deb822::from_str(&content) else {
+        return Ok(Vec::new());
     };
 
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
-    let mut made_changes = false;
+    let mut diagnostics = Vec::new();
+    for (idx, paragraph) in deb822.paragraphs().enumerate() {
+        let selector = if use_typed_control_selectors {
+            typed_selector_for(&paragraph, idx)
+        } else {
+            generic_selector_for(&paragraph, idx)
+        };
+        let entry_keys: Vec<(String, usize)> = paragraph
+            .entries()
+            .filter_map(|e| e.key().map(|k| (k.to_string(), e.line() + 1)))
+            .collect();
+        for (key, line_number) in entry_keys {
+            let probe_paragraph = paragraph.clone();
+            let Some(mut probe) = probe_paragraph.get_entry(&key) else {
+                continue;
+            };
+            if !probe.normalize_field_spacing() {
+                continue;
+            }
 
-    for paragraph in deb822.paragraphs() {
-        // Check each entry before normalizing to create issues for fields with unusual spacing
-        for mut entry in paragraph.entries() {
-            if let Some(key) = entry.key() {
-                let line_number = entry.line() + 1;
-
-                // normalize_field_spacing returns true if it made changes
-                if entry.normalize_field_spacing() {
-                    let issue = LintianIssue::source_with_info(
-                        "debian-control-has-unusual-field-spacing",
-                        vec![format!("{} [debian/control:{}]", key, line_number)],
-                    );
-
-                    if issue.should_fix(base_path) {
-                        fixed_issues.push(issue);
-                        made_changes = true;
-                    } else {
-                        overridden_issues.push(issue);
-                    }
-                }
+            let actions = vec![Action::Deb822(Deb822Action::NormalizeFieldSpacing {
+                file: file_for_actions.to_path_buf(),
+                paragraph: selector.clone(),
+                field: key.clone(),
+            })];
+            let message = "Strip unusual field spacing from debian/control.";
+            if tagged {
+                let issue = LintianIssue::source_with_info(
+                    "debian-control-has-unusual-field-spacing",
+                    vec![format!("{} [debian/control:{}]", key, line_number)],
+                );
+                diagnostics.push(Diagnostic::with_actions(issue, message, actions));
+            } else {
+                diagnostics.push(Diagnostic::untagged(message, actions));
             }
         }
     }
-
-    if made_changes {
-        fs::write(path, deb822.to_string())?;
-    }
-
-    Ok((made_changes, fixed_issues, overridden_issues))
+    Ok(diagnostics)
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
+fn typed_selector_for(paragraph: &deb822_lossless::Paragraph, idx: usize) -> ParagraphSelector {
+    if let Some(pkg) = paragraph.get("Package") {
+        return ParagraphSelector::Binary { package: pkg };
+    }
+    if paragraph.get("Source").is_some() {
+        return ParagraphSelector::Source;
+    }
+    ParagraphSelector::Index { index: idx }
+}
 
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+fn generic_selector_for(paragraph: &deb822_lossless::Paragraph, idx: usize) -> ParagraphSelector {
+    if let Some(pkg) = paragraph.get("Package") {
+        return ParagraphSelector::ByKey {
+            field: "Package".into(),
+            value: pkg,
+        };
+    }
+    if let Some(src) = paragraph.get("Source") {
+        return ParagraphSelector::ByKey {
+            field: "Source".into(),
+            value: src,
+        };
+    }
+    ParagraphSelector::Index { index: idx }
+}
+
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let mut all_fixed_issues = Vec::new();
-    let mut all_overridden_issues = Vec::new();
-    let mut made_changes = false;
-
-    match check_generated_file(&control_path) {
+    match check_generated_file(&control_abs) {
         Err(generated_file) => {
-            // Control file is generated, process template file
-            if let Some(template_path) = &generated_file.template_path {
-                let (changed, fixed, overridden) =
-                    normalize_control_file(template_path, base_path)?;
-                if changed {
-                    made_changes = true;
-                    all_fixed_issues.extend(fixed);
-                    all_overridden_issues.extend(overridden);
-                    // Also process the generated control file
-                    normalize_control_file(&control_path, base_path)?;
-                }
-            } else {
-                // No template path available, give up
-                return Err(FixerError::NoChanges);
-            }
-        }
-        Ok(()) => {
-            // Control file is not generated, process it directly
-            let (changed, fixed, overridden) = normalize_control_file(&control_path, base_path)?;
-            if changed {
-                made_changes = true;
-                all_fixed_issues.extend(fixed);
-                all_overridden_issues.extend(overridden);
-            }
-        }
-    }
+            // Generated control file: emit normalisation actions for both
+            // the template and the rendered file. The typed control editor
+            // diffs by field VALUE on commit, so a whitespace-only fix
+            // wouldn't propagate from rendered → template; we have to write
+            // each file directly via the generic deb822 applier.
+            let Some(template_abs) = &generated_file.template_path else {
+                return Ok(Vec::new());
+            };
+            let template_rel = template_abs
+                .strip_prefix(base_path)
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|_| template_abs.clone());
 
-    if !made_changes {
-        if !all_overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(all_overridden_issues));
+            let mut diagnostics = collect_diagnostics(&template_rel, template_abs, false, true)?;
+            diagnostics.extend(collect_diagnostics(
+                &control_rel,
+                &control_abs,
+                false,
+                false,
+            )?);
+            Ok(diagnostics)
         }
-        return Err(FixerError::NoChanges);
+        Ok(()) => collect_diagnostics(&control_rel, &control_abs, true, true),
     }
-
-    Ok(
-        FixerResult::builder("Strip unusual field spacing from debian/control.")
-            .fixed_issues(all_fixed_issues)
-            .overridden_issues(all_overridden_issues)
-            .build(),
-    )
 }
 
 declare_fixer! {
     name: "debian-control-has-unusual-field-spacing",
     tags: ["debian-control-has-unusual-field-spacing"],
-    // Must normalize field spacing before whitespace cleanup to avoid conflicts
     before: ["file-contains-trailing-whitespace"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_normalize_double_space() {
-        let temp_dir = TempDir::new().unwrap();
-        let control_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&control_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(&control, "Source: blah\nRecommends:  ${cdbs:Recommends}\n").unwrap();
 
-        let control_content = "Source: blah\nRecommends:  ${cdbs:Recommends}\n";
-        let control_path = control_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Recommends: ${cdbs:Recommends}"));
-        assert!(!updated_content.contains("Recommends:  "));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nRecommends: ${cdbs:Recommends}\n",
+        );
     }
 
     #[test]
     fn test_no_changes() {
-        let temp_dir = TempDir::new().unwrap();
-        let control_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&control_dir).unwrap();
-
-        let control_content = "Source: blah\nRecommends: ${cdbs:Recommends}\n";
-        let control_path = control_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nRecommends: ${cdbs:Recommends}\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_normalize_tab_after_colon() {
-        let temp_dir = TempDir::new().unwrap();
-        let control_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&control_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(&control, "Source: blah\nBuild-Depends:\tpython3\n").unwrap();
 
-        let control_content = "Source: blah\nBuild-Depends:\tpython3\n";
-        let control_path = control_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Build-Depends: python3"));
-        assert!(!updated_content.contains("Build-Depends:\t"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nBuild-Depends: python3\n",
+        );
     }
 
     #[test]
     fn test_preserves_continuation_lines() {
-        let temp_dir = TempDir::new().unwrap();
-        let control_dir = temp_dir.path().join("debian");
-        fs::create_dir_all(&control_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\nBuild-Depends:  cdbs (>= 0.4.123~),\n  anotherline\n",
+        )
+        .unwrap();
 
-        let control_content = "Source: blah\nBuild-Depends:  cdbs (>= 0.4.123~),\n  anotherline\n";
-        let control_path = control_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(temp_dir.path());
-        assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert!(updated_content.contains("Build-Depends: cdbs"));
-        assert!(updated_content.contains("  anotherline"));
+        run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nBuild-Depends: cdbs (>= 0.4.123~),\n  anotherline\n",
+        );
     }
 }
