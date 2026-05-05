@@ -490,7 +490,10 @@ pub enum DesktopIniAction {
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum YamlAction {
     /// Set a scalar value at `parent_path`'s mapping under `key`. Inserts
-    /// the key if missing.
+    /// the key if missing. New keys are appended at the end of the
+    /// mapping; use [`SetFieldOrdered`](Self::SetFieldOrdered) to
+    /// position the new key according to a canonical field order
+    /// (e.g. DEP-12).
     SetField {
         /// File to edit, relative to the package root.
         file: PathBuf,
@@ -501,6 +504,24 @@ pub enum YamlAction {
         key: String,
         /// New value (string scalar).
         value: String,
+    },
+    /// Like [`SetField`](Self::SetField), but when inserting a new key,
+    /// position it according to `field_order`. Keys not listed in
+    /// `field_order` are placed at the end. A no-op if the key already
+    /// exists with the requested value.
+    SetFieldOrdered {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Path from the document root to the parent mapping.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        parent_path: Vec<YamlPathComponent>,
+        /// Key to set (string scalar).
+        key: String,
+        /// New value (string scalar).
+        value: String,
+        /// Canonical field order. Keys appearing earlier in this list
+        /// are placed earlier in the mapping.
+        field_order: Vec<String>,
     },
     /// Remove a key from the mapping at `parent_path`.
     RemoveField {

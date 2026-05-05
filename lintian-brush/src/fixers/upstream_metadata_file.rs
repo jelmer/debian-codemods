@@ -1,7 +1,8 @@
+use crate::diagnostic::{Action, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::{Certainty, FixerError, LintianIssue};
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tracing::debug;
 use upstream_ontologist::vcs::convert_cvs_list_to_str;
@@ -9,6 +10,10 @@ use upstream_ontologist::{
     check_upstream_metadata, extend_upstream_metadata, guess_upstream_metadata_items,
     update_from_guesses, UpstreamMetadata,
 };
+
+fn dep12_field_order() -> Vec<String> {
+    DEP12_FIELD_ORDER.iter().map(|s| s.to_string()).collect()
+}
 
 fn upstream_metadata_sort_key(field_name: &str) -> usize {
     // Return the index in DEP12_FIELD_ORDER, or a large value for unknown fields
@@ -22,35 +27,28 @@ fn is_valid_dep12_field(field_name: &str) -> bool {
     DEP12_FIELD_ORDER.contains(&field_name)
 }
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
     current_version: &debversion::Version,
     preferences: &crate::FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    // Skip native packages
+) -> Result<Vec<Diagnostic>, FixerError> {
+    // Skip native packages.
     if is_native_package(current_version)? {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let metadata_path = base_path.join("debian/upstream/metadata");
-    let file_existed = metadata_path.exists();
+    let metadata_rel = PathBuf::from("debian/upstream/metadata");
+    let metadata_abs = base_path.join(&metadata_rel);
+    let file_existed = metadata_abs.exists();
 
-    // Check if the missing file issue should be fixed (respects lintian overrides)
-    // We need to do this check BEFORE opening the YamlUpdater because opening it
-    // will cause the Drop implementation to create the file on cleanup
     let missing_file_issue =
         LintianIssue::source_with_info("upstream-metadata-file-is-missing", vec![]);
 
-    if !file_existed && !missing_file_issue.should_fix(base_path) {
-        return Err(FixerError::NoChanges);
-    }
-
     // Load or create the YAML document
-    let doc = if metadata_path.exists() {
-        yaml_edit::Document::from_file(&metadata_path)
+    let doc = if metadata_abs.exists() {
+        yaml_edit::Document::from_file(&metadata_abs)
             .map_err(|e| FixerError::Other(e.to_string()))?
     } else {
-        // Create a new document initialized as a mapping
         let new_mapping = yaml_edit::Mapping::new();
         yaml_edit::Document::from_mapping(new_mapping)
     };
@@ -68,6 +66,11 @@ pub fn run(
             _ => None,
         })
         .collect();
+
+    // Recorded YAML actions to apply. Built as we mutate `mapping` /
+    // `doc` so the in-memory state used for change-detection stays in
+    // sync with the action stream we'll emit.
+    let mut yaml_actions: Vec<YamlAction> = Vec::new();
 
     // Convert repository list to string if needed (for CVS repositories)
     let mut repository_converted = false;
@@ -94,7 +97,13 @@ pub fn run(
                     "Converting Repository from list to string: {:?} -> {}",
                     url_strings, converted
                 );
-                mapping.set("Repository", converted);
+                mapping.set("Repository", converted.as_str());
+                yaml_actions.push(YamlAction::SetField {
+                    file: metadata_rel.clone(),
+                    parent_path: Vec::new(),
+                    key: "Repository".to_string(),
+                    value: converted,
+                });
                 repository_converted = true;
                 // Note: Don't add to changed_fields here yet, we'll add it later if it's different
             }
@@ -468,11 +477,20 @@ pub fn run(
         }
     }
 
-    // Apply updates using set_with_field_order for proper DEP-12 field ordering
-    if !fields_to_update.is_empty() {
-        for (k, v) in fields_to_update {
-            doc.set_with_field_order(k, v, DEP12_FIELD_ORDER);
-        }
+    // Apply updates: keep the in-memory doc in sync (so subsequent
+    // change-detection sees the new state) AND record a
+    // YamlAction::SetFieldOrdered per update so we can emit them as
+    // typed actions instead of one whole-file Write.
+    let order = dep12_field_order();
+    for (k, v) in &fields_to_update {
+        doc.set_with_field_order(*k, v.as_str(), DEP12_FIELD_ORDER);
+        yaml_actions.push(YamlAction::SetFieldOrdered {
+            file: metadata_rel.clone(),
+            parent_path: Vec::new(),
+            key: (*k).to_string(),
+            value: v.clone(),
+            field_order: order.clone(),
+        });
     }
 
     // If repository was converted, add it to changed_fields
@@ -488,8 +506,8 @@ pub fn run(
     );
 
     if changed_fields.is_empty() && !repository_converted {
-        debug!("No changes detected, returning NoChanges");
-        return Err(FixerError::NoChanges);
+        debug!("No changes detected, returning empty");
+        return Ok(Vec::new());
     }
 
     // Skip if only non-substantive fields would be added and no repository conversion
@@ -499,19 +517,8 @@ pub fn run(
         .count();
 
     if substantive_fields == 0 && !repository_converted {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    // Create the debian/upstream directory if it doesn't exist and we have content
-    if let Some(parent) = metadata_path.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| FixerError::Other(e.to_string()))?;
-        }
-    }
-
-    // Save the document
-    doc.to_file(&metadata_path)
-        .map_err(|e| FixerError::Other(e.to_string()))?;
 
     // Determine which lintian issues were fixed
     // Following the Python logic, only report tags as fixed if fields were actually missing before
@@ -546,8 +553,10 @@ pub fn run(
         ));
     }
 
-    // Check if we created the file (add this at the end to match expected order)
-    if !file_existed && missing_file_issue.should_fix(base_path) {
+    // Check if we created the file (add this at the end to match expected order).
+    // Note: should_fix filtering happens later in the framework; emit the
+    // issue unconditionally here.
+    if !file_existed {
         fixed_issues.push(missing_file_issue);
     }
 
@@ -580,23 +589,82 @@ pub fn run(
     // Calculate final certainty from the certainties of fields that were actually changed
     debug!("Final certainties for changed fields: {:?}", certainties);
     let achieved_certainty = if certainties.is_empty() {
-        crate::Certainty::Likely
+        Certainty::Likely
     } else {
         // Find the minimum certainty (most conservative)
         let min_certainty = certainties.into_iter().min().unwrap();
         debug!("Minimum certainty for output: {:?}", min_certainty);
         match min_certainty {
-            upstream_ontologist::Certainty::Certain => crate::Certainty::Certain,
-            upstream_ontologist::Certainty::Confident => crate::Certainty::Confident,
-            upstream_ontologist::Certainty::Likely => crate::Certainty::Likely,
-            upstream_ontologist::Certainty::Possible => crate::Certainty::Possible,
+            upstream_ontologist::Certainty::Certain => Certainty::Certain,
+            upstream_ontologist::Certainty::Confident => Certainty::Confident,
+            upstream_ontologist::Certainty::Likely => Certainty::Likely,
+            upstream_ontologist::Certainty::Possible => Certainty::Possible,
         }
     };
 
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .certainty(achieved_certainty)
-        .build())
+    // Wrap the YAML actions for use as Action::Yaml.
+    let actions_typed: Vec<Action> = yaml_actions.into_iter().map(Action::Yaml).collect();
+
+    // Attach the actions to whichever diagnostic gates whether any
+    // change can happen. When the file doesn't exist yet, all outputs
+    // depend on creating the file — so we anchor the actions on the
+    // missing-file issue. If the user overrides that issue, the actions
+    // drop out and the other diagnostics (Repository / Bug-Tracking)
+    // survive only as informational entries with no action.
+    let action_anchor_tag: String = if !file_existed {
+        "upstream-metadata-file-is-missing".to_string()
+    } else {
+        // File already exists; pick the first issue (or fall back to
+        // an untagged diagnostic).
+        fixed_issues
+            .first()
+            .and_then(|i| i.tag.clone())
+            .unwrap_or_default()
+    };
+
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    let mut action_attached = false;
+    let mut take_action = |attached: &mut bool| -> Vec<Action> {
+        if *attached {
+            Vec::new()
+        } else {
+            *attached = true;
+            actions_typed.clone()
+        }
+    };
+
+    if fixed_issues.is_empty() {
+        diagnostics.push(
+            Diagnostic::untagged(description.clone(), take_action(&mut action_attached))
+                .with_certainty(achieved_certainty),
+        );
+    } else {
+        for issue in fixed_issues {
+            let actions = if issue.tag.as_deref() == Some(action_anchor_tag.as_str()) {
+                take_action(&mut action_attached)
+            } else {
+                Vec::new()
+            };
+            diagnostics.push(
+                Diagnostic::with_actions(issue, description.clone(), actions)
+                    .with_certainty(achieved_certainty),
+            );
+        }
+        // Safety: if for some reason the anchor tag wasn't among the
+        // issues, attach the actions to the first diagnostic so they
+        // still run.
+        if !action_attached {
+            if let Some(first) = diagnostics.first_mut() {
+                if let Some(plan) = first.plans.first_mut() {
+                    plan.actions.extend(actions_typed.iter().cloned());
+                }
+                action_attached = true;
+            }
+        }
+    }
+    let _ = action_attached;
+
+    Ok(diagnostics)
 }
 
 fn get_current_version(preferences: &crate::FixerPreferences) -> Option<debversion::Version> {
@@ -641,23 +709,33 @@ declare_fixer! {
         "upstream-metadata-missing-bug-tracking",
         "upstream-metadata-missing-repository"
     ],
-    apply: |basedir, _package, version, preferences| {
-        run(basedir, version, preferences)
+    diagnose: |basedir, _package, version, preferences| {
+        detect(basedir, version, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = version_str.parse().unwrap();
+        FixerImpl.apply(
+            base,
+            "test-package",
+            &v,
+            &crate::FixerPreferences::default(),
+        )
+    }
 
     #[test]
     fn test_javascript_package() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
-
-        // Create a simple package.json
         let package_json = r#"{
   "name": "test-package",
   "description": "A test package",
@@ -668,23 +746,15 @@ mod tests {
   },
   "homepage": "https://github.com/example/test-package"
 }"#;
-
         fs::write(base_path.join("package.json"), package_json).unwrap();
-
-        // Create debian directory structure
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
-
-        // Create a non-native changelog
         let changelog = "test-package (1.0.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test <test@example.com>  Mon, 01 Jan 2024 00:00:00 +0000\n";
         fs::write(debian_dir.join("changelog"), changelog).unwrap();
 
-        let preferences = crate::FixerPreferences::default();
-        let version: debversion::Version = "1.0.0-1".parse().unwrap();
-        let result = run(base_path, &version, &preferences).unwrap();
+        let result = run_apply(base_path, "1.0.0-1").unwrap();
         assert!(result.description.contains("Set upstream metadata fields"));
 
-        // Check that metadata file was created
         let metadata_path = base_path.join("debian/upstream/metadata");
         assert!(metadata_path.exists());
 
@@ -697,35 +767,27 @@ mod tests {
     fn test_native_package_skipped() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
-
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
-
-        // Create a native package changelog (no debian revision)
         let changelog = "test-package (1.0.0) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test <test@example.com>  Mon, 01 Jan 2024 00:00:00 +0000\n";
         fs::write(debian_dir.join("changelog"), changelog).unwrap();
-
-        let preferences = crate::FixerPreferences::default();
-        let version: debversion::Version = "1.0.0".parse().unwrap();
-        let result = run(base_path, &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(base_path, "1.0.0"),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_package_files() {
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();
-
         let debian_dir = base_path.join("debian");
         fs::create_dir(&debian_dir).unwrap();
-
-        // Create a non-native changelog
         let changelog = "test-package (1.0.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Test <test@example.com>  Mon, 01 Jan 2024 00:00:00 +0000\n";
         fs::write(debian_dir.join("changelog"), changelog).unwrap();
-
-        let preferences = crate::FixerPreferences::default();
-        let version: debversion::Version = "1.0.0-1".parse().unwrap();
-        let result = run(base_path, &version, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(base_path, "1.0.0-1"),
+            Err(FixerError::NoChanges)
+        ));
     }
 }
