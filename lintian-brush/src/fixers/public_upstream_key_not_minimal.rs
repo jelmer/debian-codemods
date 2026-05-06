@@ -1,6 +1,6 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use std::fs;
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::{Path, PathBuf};
 
 const KEY_BLOCK_START: &[u8] = b"-----BEGIN PGP PUBLIC KEY BLOCK-----";
 const KEY_BLOCK_END: &[u8] = b"-----END PGP PUBLIC KEY BLOCK-----";
@@ -123,46 +123,46 @@ fn minimize_key_block(
     ))
 }
 
-pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerError> {
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let opinionated = preferences.opinionated.unwrap_or(false);
     let paths = [
         "debian/upstream/signing-key.asc",
         "debian/upstream/signing-key.pgp",
         "debian/upstream-signing-key.pgp",
     ];
 
-    let mut signatures_removed = false;
-    let mut format_upgraded = false;
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     for path_str in &paths {
-        let path = base_path.join(path_str);
-        if !path.exists() {
+        let abs = base_path.join(path_str);
+        if !abs.exists() {
             continue;
         }
-
-        // Read the file
-        let contents = fs::read(&path)?;
+        let contents = std::fs::read(&abs)?;
         let mut outlines: Vec<u8> = Vec::new();
         let mut key_block: Vec<u8> = Vec::new();
         let mut in_key_block = false;
+        let mut signatures_removed_here = false;
+        let mut format_upgraded_here = false;
+        let mut issues_here: Vec<LintianIssue> = Vec::new();
         let mut i = 0;
 
         while i < contents.len() {
-            // Find line boundaries
             let line_start = i;
             let line_end = contents[i..]
                 .iter()
                 .position(|&b| b == b'\n')
                 .map(|pos| i + pos + 1)
                 .unwrap_or(contents.len());
-
             let line = &contents[line_start..line_end];
-            let trimmed = line
+            let trimmed: Vec<u8> = line
                 .iter()
                 .filter(|&&b| b != b'\r' && b != b'\n')
                 .copied()
-                .collect::<Vec<u8>>();
+                .collect();
 
             if trimmed == KEY_BLOCK_START {
                 in_key_block = true;
@@ -170,42 +170,30 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
                 key_block.extend_from_slice(line);
             } else if trimmed == KEY_BLOCK_END && in_key_block {
                 key_block.extend_from_slice(line);
-
-                // Process the key block
                 match minimize_key_block(&key_block, opinionated) {
                     Ok(MinimizeResult::NoChanges) => {
-                        // Keep original key block
                         outlines.extend_from_slice(&key_block);
                     }
                     Ok(MinimizeResult::SignaturesRemoved(minimized, keyid, count)) => {
-                        let issue = LintianIssue::source_with_info(
+                        outlines.extend_from_slice(&minimized);
+                        signatures_removed_here = true;
+                        issues_here.push(LintianIssue::source_with_info(
                             "public-upstream-key-not-minimal",
                             vec![format!(
                                 "has {} extra signature(s) for keyid {} [{}]",
                                 count, keyid, path_str
                             )],
-                        );
-
-                        if issue.should_fix(base_path) {
-                            outlines.extend_from_slice(&minimized);
-                            signatures_removed = true;
-                            fixed_issues.push(issue);
-                        } else {
-                            // Keep original if overridden
-                            outlines.extend_from_slice(&key_block);
-                            overridden_issues.push(issue);
-                        }
+                        ));
                     }
                     Ok(MinimizeResult::FormatUpgraded(upgraded)) => {
                         outlines.extend_from_slice(&upgraded);
-                        format_upgraded = true;
+                        format_upgraded_here = true;
                     }
                     Err(e) => {
                         tracing::debug!("Unable to minimize key block in {}: {}", path_str, e);
                         outlines.extend_from_slice(&key_block);
                     }
                 }
-
                 in_key_block = false;
                 key_block.clear();
             } else if in_key_block {
@@ -213,50 +201,68 @@ pub fn run(base_path: &Path, opinionated: bool) -> Result<FixerResult, FixerErro
             } else {
                 outlines.extend_from_slice(line);
             }
-
             i = line_end;
         }
-
         if in_key_block {
             return Err(FixerError::Other("Key block without end".to_string()));
         }
 
-        // Check if contents changed
-        if contents != outlines {
-            fs::write(&path, &outlines)?;
+        if contents == outlines {
+            continue;
+        }
+        let rel = PathBuf::from(*path_str);
+        let action = Action::Filesystem(FilesystemAction::Write {
+            file: rel,
+            content: outlines,
+        });
+        let message = if signatures_removed_here {
+            "Re-export upstream signing key without extra signatures."
+        } else if format_upgraded_here {
+            "Upgrade upstream signing key to new packet format."
+        } else {
+            continue;
+        };
+        if issues_here.is_empty() {
+            diagnostics.push(Diagnostic::untagged(message, vec![action]));
+        } else {
+            for (i, issue) in issues_here.into_iter().enumerate() {
+                let actions = if i == 0 {
+                    vec![action.clone()]
+                } else {
+                    Vec::new()
+                };
+                diagnostics.push(Diagnostic::with_actions(issue, message, actions));
+            }
         }
     }
 
-    // Return appropriate result based on what changed
-    if signatures_removed {
-        Ok(
-            FixerResult::builder("Re-export upstream signing key without extra signatures.")
-                .fixed_issues(fixed_issues)
-                .overridden_issues(overridden_issues)
-                .build(),
-        )
-    } else if format_upgraded {
-        Ok(FixerResult::builder("Upgrade upstream signing key to new packet format.").build())
-    } else if !overridden_issues.is_empty() {
-        Err(FixerError::NoChangesAfterOverrides(overridden_issues))
-    } else {
-        Err(FixerError::NoChanges)
-    }
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "public-upstream-key-not-minimal",
     tags: ["public-upstream-key-not-minimal"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences.opinionated.unwrap_or(false))
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
+
+    fn run_apply(base: &Path, opinionated: bool) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        let prefs = FixerPreferences {
+            opinionated: Some(opinionated),
+            ..Default::default()
+        };
+        FixerImpl.apply(base, "test", &v, &prefs)
+    }
 
     #[test]
     fn test_minimize_key() {
@@ -284,7 +290,7 @@ mod tests {
         fs::write(&key_path, &input_key).unwrap();
 
         // Apply the fixer (not opinionated)
-        let result = run(temp_dir.path(), false);
+        let result = run_apply(temp_dir.path(), false);
         assert!(result.is_ok());
 
         // Check that the file was modified and is smaller
@@ -328,7 +334,7 @@ mod tests {
         fs::write(&key_path, &input_key).unwrap();
 
         // Apply the fixer (not opinionated)
-        let result = run(temp_dir.path(), false);
+        let result = run_apply(temp_dir.path(), false);
 
         // Should return NoChanges if already minimal
         assert!(matches!(result, Err(FixerError::NoChanges)));
@@ -365,7 +371,7 @@ mod tests {
         fs::write(&key_path, &input_key).unwrap();
 
         // Apply the fixer with opinionated=true
-        let result = run(temp_dir.path(), true);
+        let result = run_apply(temp_dir.path(), true);
         assert!(
             result.is_ok(),
             "Opinionated mode should upgrade format: {:?}",
@@ -395,7 +401,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         // Apply the fixer
-        let result = run(temp_dir.path(), false);
+        let result = run_apply(temp_dir.path(), false);
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }
