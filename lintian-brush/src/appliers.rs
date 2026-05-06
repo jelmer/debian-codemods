@@ -101,7 +101,8 @@ fn action_file(action: &Action) -> &Path {
             WatchAction::SetEntryMatchingPattern { file, .. }
             | WatchAction::RemoveEntryOption { file, .. }
             | WatchAction::SetEntryOption { file, .. }
-            | WatchAction::SetEntryUrl { file, .. } => file,
+            | WatchAction::SetEntryUrl { file, .. }
+            | WatchAction::ConvertEntryToTemplate { file, .. } => file,
         },
         Action::Makefile(a) => match a {
             MakefileAction::ReplaceRecipe { file, .. }
@@ -2045,6 +2046,20 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     }
                     entry.set_url(new_url);
                     any_change = true;
+                    break;
+                }
+            }
+            WatchAction::ConvertEntryToTemplate { url, .. } => {
+                for mut entry in watch_file.entries() {
+                    if &entry.url() != url {
+                        continue;
+                    }
+                    // Templates are a v5 (deb822) feature only.
+                    if let debian_watch::parse::ParsedEntry::Deb822(e) = &mut entry {
+                        if e.try_convert_to_template().is_some() {
+                            any_change = true;
+                        }
+                    }
                     break;
                 }
             }
