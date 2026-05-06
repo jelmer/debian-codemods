@@ -1,12 +1,8 @@
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::{Certainty, FixerError, FixerPreferences};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path, opinionated: bool) -> Result<Vec<Diagnostic>, FixerError> {
-    if !opinionated {
-        return Ok(Vec::new());
-    }
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/patches/series");
     let abs = base_path.join(&rel);
     if !abs.exists() {
@@ -18,18 +14,24 @@ pub fn detect(base_path: &Path, opinionated: bool) -> Result<Vec<Diagnostic>, Fi
         return Ok(Vec::new());
     }
 
-    Ok(vec![Diagnostic::untagged(
-        "Remove empty debian/patches/series.",
-        vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
-    )
-    .with_certainty(Certainty::Certain)])
+    Ok(vec![Diagnostic {
+        issue: None,
+        message: "Remove empty debian/patches/series.".to_string(),
+        certainty: Some(Certainty::Certain),
+        patch_name: None,
+        plans: vec![ActionPlan {
+            label: None,
+            opinionated: true,
+            actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+        }],
+    }])
 }
 
 declare_fixer! {
     name: "empty-debian-patches-series",
     tags: [],
-    diagnose: |basedir, _package, _version, preferences: &FixerPreferences| {
-        detect(basedir, preferences.opinionated.unwrap_or(false))
+    diagnose: |basedir, _package, _version, _preferences: &FixerPreferences| {
+        detect(basedir)
     }
 }
 
