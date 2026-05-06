@@ -116,8 +116,9 @@ pub fn default_describe(
 /// Default driver for fixers that emit [`Diagnostic`](crate::diagnostic::Diagnostic)s.
 ///
 /// Filters diagnostics by lintian overrides and `preferences.minimum_certainty`,
-/// then applies the first plan of each surviving diagnostic. The
-/// description is built via [`default_describe`].
+/// then applies the first plan whose `opinionated` flag is satisfied by
+/// `preferences.opinionated`. Opinionated plans only fire when the user
+/// has opted in. The description is built via [`default_describe`].
 pub fn apply_diagnostics(
     basedir: &std::path::Path,
     diagnostics: &[crate::diagnostic::Diagnostic],
@@ -165,7 +166,12 @@ pub fn apply_diagnostics_with(
             }
             continue;
         }
-        let Some(plan) = diag.plans.first() else {
+        let allow_opinionated = preferences.opinionated.unwrap_or(false);
+        let Some(plan) = diag
+            .plans
+            .iter()
+            .find(|p| !p.opinionated || allow_opinionated)
+        else {
             continue;
         };
         all_actions.extend(plan.actions.iter().cloned());

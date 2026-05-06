@@ -46,15 +46,31 @@ impl Diagnostic {
         message: impl Into<String>,
         actions: Vec<Action>,
     ) -> Self {
+        Self::with_plans(
+            issue,
+            message,
+            vec![ActionPlan {
+                label: None,
+                opinionated: false,
+                actions,
+            }],
+        )
+    }
+
+    /// Build a diagnostic with caller-provided plans. Use this when the
+    /// fixer offers more than one plan (e.g. a safe default plus an
+    /// opinionated alternative).
+    pub fn with_plans(
+        issue: LintianIssue,
+        message: impl Into<String>,
+        plans: Vec<ActionPlan>,
+    ) -> Self {
         Self {
             issue: Some(issue),
             message: message.into(),
             certainty: None,
             patch_name: None,
-            plans: vec![ActionPlan {
-                label: None,
-                actions,
-            }],
+            plans,
         }
     }
 
@@ -71,6 +87,7 @@ impl Diagnostic {
             patch_name: None,
             plans: vec![ActionPlan {
                 label: None,
+                opinionated: false,
                 actions,
             }],
         }
@@ -96,6 +113,11 @@ pub struct ActionPlan {
     /// Label shown in an LSP code-action menu. `None` for the default plan.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub label: Option<String>,
+    /// If true, this plan only applies when the user has opted into
+    /// opinionated fixes (`--opinionated` / `preferences.opinionated`).
+    /// The driver skips opinionated plans otherwise.
+    #[serde(default, skip_serializing_if = "core::ops::Not::not")]
+    pub opinionated: bool,
     /// Actions applied as a unit.
     pub actions: Vec<Action>,
 }
