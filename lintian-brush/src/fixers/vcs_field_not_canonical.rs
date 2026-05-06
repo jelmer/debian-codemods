@@ -3,7 +3,7 @@ use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, Paragr
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const VCS_TYPES: &[&str] = &[
     "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
@@ -147,10 +147,10 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
