@@ -23,7 +23,7 @@ serde_json = "1"
 tempfile = "3"
 configparser = "3"
 url = "2"
-debian-copyright = "0.1.41"
+debian-copyright = "0.1.48"
 debian-changelog = "0.2.13"
 debian-control = ">=0.3.6,<0.4"
 deb822-lossless = "0.5.15"
@@ -35,7 +35,7 @@ sqlx = { version = "0.8", default-features = false }
 semver = "1"
 toml_edit = ">=0.22,<0.29"
 tokio = "1.39"
-debian-analyzer = { version = "0.160.11" }
+debian-analyzer = { version = "0.160.15" }
 svp-client = "0.2.0"
 regex = "1"
 indexmap = "2.7"
