@@ -1,4 +1,6 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
 use regex::bytes::Regex;
@@ -251,16 +253,14 @@ fn eliminate_dbgsym_migration(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read(&rules_abs)?;
+    let content = match ws.read_file(Path::new("debian/rules"))? {
+        Some(c) => c,
+        None => return Ok(Vec::new()),
+    };
     let makefile = makefile_lossless::Makefile::read_relaxed(content.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/rules: {}", e)))?;
 
@@ -374,13 +374,9 @@ fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
     "Drop transition for old debug package migration.".to_string()
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debug-symbol-migration-possibly-complete",
     tags: ["debug-symbol-migration-possibly-complete"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
