@@ -1,5 +1,5 @@
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{is_debcargo_package, FixerError, FixerPreferences, LintianIssue};
 use debversion::Version;
 use std::path::{Path, PathBuf};
 
@@ -7,10 +7,6 @@ use std::path::{Path, PathBuf};
 /// description in `describe_aggregate`.
 const TAG_MISSING: char = 'M';
 const TAG_OLDER: char = 'O';
-
-fn is_debcargo_package(base_path: &Path) -> bool {
-    base_path.join("debian/debcargo.toml").exists()
-}
 
 fn find_patches_directory(base_path: &Path) -> Result<Option<PathBuf>, FixerError> {
     let rules_path = base_path.join("debian/rules");
