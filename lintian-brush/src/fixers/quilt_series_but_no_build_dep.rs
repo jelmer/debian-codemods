@@ -1,11 +1,11 @@
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
+use crate::{is_debcargo_package, FixerError, LintianIssue};
 use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    if base_path.join("debian/debcargo.toml").exists() {
+    if is_debcargo_package(base_path) {
         return Ok(Vec::new());
     }
 
