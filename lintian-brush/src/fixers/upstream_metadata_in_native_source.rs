@@ -1,12 +1,16 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Version};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    base_path: &Path,
-    current_version: &Version,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    let Some(current_version) = ws.current_version() else {
+        return Ok(Vec::new());
+    };
     if !current_version.is_native() {
         return Ok(Vec::new());
     }
@@ -15,7 +19,10 @@ pub fn detect(
     }
 
     let metadata_rel = PathBuf::from("debian/upstream/metadata");
-    if !base_path.join(&metadata_rel).exists() {
+    if ws
+        .read_file(Path::new("debian/upstream/metadata"))?
+        .is_none()
+    {
         return Ok(Vec::new());
     }
 
@@ -36,18 +43,18 @@ pub fn detect(
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "upstream-metadata-in-native-source",
     tags: ["upstream-metadata-in-native-source"],
-    diagnose: |basedir, _package, version, preferences| {
-        detect(basedir, version, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
+    use crate::Version;
     use std::fs;
     use std::str::FromStr;
     use tempfile::TempDir;
@@ -58,7 +65,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let v = Version::from_str(version).unwrap();
-        FixerImpl.apply(base, "test", &v, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, preferences)
     }
 
     #[test]

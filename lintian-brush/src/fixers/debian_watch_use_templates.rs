@@ -1,15 +1,20 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
-use crate::{Certainty, FixerError};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
-    let watch_abs = base_path.join(&watch_rel);
-    if !watch_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&watch_abs)?;
+    let bytes = match ws.read_file(Path::new("debian/watch"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let content = String::from_utf8(bytes)
+        .map_err(|e| FixerError::Other(format!("debian/watch is not valid UTF-8: {}", e)))?;
     let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
@@ -73,25 +78,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-watch-use-templates",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

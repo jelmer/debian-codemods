@@ -1,6 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{is_debcargo_package, FixerError, FixerPreferences, LintianIssue};
-use debversion::Version;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
 /// Tag for the diagnostic message; used to assemble the final
@@ -8,13 +9,12 @@ use std::path::{Path, PathBuf};
 const TAG_MISSING: char = 'M';
 const TAG_OLDER: char = 'O';
 
-fn find_patches_directory(base_path: &Path) -> Result<Option<PathBuf>, FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
-        return Ok(None);
-    }
-    let rules_content = std::fs::read_to_string(&rules_path)?;
-    let makefile = makefile_lossless::Makefile::read(rules_content.as_bytes())
+fn find_patches_directory(ws: &dyn FixerWorkspace) -> Result<Option<PathBuf>, FixerError> {
+    let rules = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(None),
+    };
+    let makefile = makefile_lossless::Makefile::read(rules.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/rules: {}", e)))?;
     Ok(debian_analyzer::patches::rules_find_patches_directory(
         &makefile,
@@ -22,22 +22,19 @@ fn find_patches_directory(base_path: &Path) -> Result<Option<PathBuf>, FixerErro
 }
 
 pub fn detect(
-    base_path: &Path,
-    current_version: &Version,
+    ws: &dyn FixerWorkspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    if is_debcargo_package(base_path) {
+    if ws.read_file(Path::new("debian/debcargo.toml"))?.is_some() {
         return Ok(Vec::new());
     }
 
-    let format_rel = PathBuf::from("debian/source/format");
-    let format_abs = base_path.join(&format_rel);
-
-    let orig_format = if format_abs.exists() {
-        Some(std::fs::read_to_string(&format_abs)?.trim().to_string())
-    } else {
-        None
+    let Some(current_version) = ws.current_version() else {
+        return Ok(Vec::new());
     };
+
+    let format_rel = PathBuf::from("debian/source/format");
+    let orig_format = ws.source_format()?;
 
     if let Some(ref fmt) = orig_format {
         if fmt != "1.0" {
@@ -48,7 +45,7 @@ pub fn detect(
     let target_format = if current_version.is_native() {
         "3.0 (native)"
     } else {
-        let patches_dir = find_patches_directory(base_path)?;
+        let patches_dir = find_patches_directory(ws)?;
         if let Some(ref dir) = patches_dir {
             if dir != &PathBuf::from("debian/patches") {
                 return Ok(Vec::new());
@@ -101,26 +98,25 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "source-format",
     tags: ["missing-debian-source-format", "older-source-format"],
-    diagnose: |basedir, _package, version, preferences| {
-        detect(basedir, version, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
+    use debversion::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, version: &Version) -> Result<crate::FixerResult, FixerError> {
-        FixerImpl.apply(base, "test", version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", version, &FixerPreferences::default())
     }
 
     #[test]

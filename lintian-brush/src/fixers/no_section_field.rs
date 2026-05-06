@@ -1,10 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use lazy_regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 /// Get the name-to-section mappings from lintian data
 fn get_name_section_mappings(
@@ -61,18 +61,14 @@ fn find_expected_section<'a>(regexes: &'a [(Regex, String)], name: &str) -> Opti
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     if let Some(source) = control.source() {
@@ -289,28 +285,26 @@ fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "no-section-field",
     tags: ["recommended-field"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

@@ -28,6 +28,7 @@ use std::path::{Path, PathBuf};
 
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
+use debian_copyright::lossless::Copyright;
 
 use crate::{FixerError, LintianIssue, Version};
 
@@ -82,6 +83,27 @@ pub trait FixerWorkspace {
     ///
     /// Returns `Err(FixerError::NoChanges)` if the file is missing.
     fn parsed_changelog(&self) -> Result<ChangeLog, FixerError>;
+
+    /// Read `debian/copyright` and return a parsed value.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing.
+    /// Returns the lossless `Copyright` even when the file isn't a
+    /// machine-readable DEP-5 document — callers that care should check
+    /// for a header paragraph.
+    fn parsed_copyright(&self) -> Result<Copyright, FixerError>;
+
+    /// Read `debian/upstream/metadata` and return its parsed YAML.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing or
+    /// unparseable.
+    fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError>;
+
+    /// Read the trimmed contents of `debian/source/format`.
+    ///
+    /// Returns `Ok(None)` if the file is missing. The default format
+    /// (`1.0`) is *not* substituted — callers see exactly what is on
+    /// disk so they can distinguish "no file" from "explicit 1.0".
+    fn source_format(&self) -> Result<Option<String>, FixerError>;
 
     /// Open `debian/control` for editing.
     ///
@@ -255,6 +277,31 @@ impl FixerWorkspace for TreeFixerWorkspace {
         let text = fs::read_to_string(&path).map_err(map_open_error)?;
         ChangeLog::read_relaxed(text.as_bytes())
             .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
+    }
+
+    fn parsed_copyright(&self) -> Result<Copyright, FixerError> {
+        let path = self.full_path(Path::new("debian/copyright"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        text.parse()
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e)))
+    }
+
+    fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError> {
+        use std::str::FromStr;
+        let path = self.full_path(Path::new("debian/upstream/metadata"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        yaml_edit::YamlFile::from_str(&text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
+    }
+
+    fn source_format(&self) -> Result<Option<String>, FixerError> {
+        match self.read_file(Path::new("debian/source/format"))? {
+            Some(b) => Ok(String::from_utf8(b)
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())),
+            None => Ok(None),
+        }
     }
 
     fn control(&self) -> Result<Box<dyn Editor<Control> + '_>, FixerError> {
