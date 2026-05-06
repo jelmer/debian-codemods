@@ -29,6 +29,8 @@ use std::path::{Path, PathBuf};
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
 use debian_copyright::lossless::Copyright;
+use debian_watch::parse::ParsedWatchFile;
+use makefile_lossless::Makefile;
 
 use crate::{FixerError, LintianIssue, Version};
 
@@ -97,6 +99,18 @@ pub trait FixerWorkspace {
     /// Returns `Err(FixerError::NoChanges)` if the file is missing or
     /// unparseable.
     fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError>;
+
+    /// Read `debian/watch` and return a parsed value.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing.
+    fn parsed_watch(&self) -> Result<ParsedWatchFile, FixerError>;
+
+    /// Read `debian/rules` and return the parsed Makefile.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing. Uses
+    /// `Makefile::read_relaxed`, mirroring the behaviour every fixer
+    /// currently expects from `debian/rules` parsing.
+    fn parsed_rules(&self) -> Result<Makefile, FixerError>;
 
     /// Read the trimmed contents of `debian/source/format`.
     ///
@@ -308,6 +322,20 @@ impl FixerWorkspace for TreeFixerWorkspace {
         let path = self.full_path(Path::new("debian/upstream/metadata"));
         let text = fs::read_to_string(&path).map_err(map_open_error)?;
         yaml_edit::YamlFile::from_str(&text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
+    }
+
+    fn parsed_watch(&self) -> Result<ParsedWatchFile, FixerError> {
+        let path = self.full_path(Path::new("debian/watch"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        debian_watch::parse::parse(&text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e)))
+    }
+
+    fn parsed_rules(&self) -> Result<Makefile, FixerError> {
+        let path = self.full_path(Path::new("debian/rules"));
+        let bytes = fs::read(&path).map_err(map_open_error)?;
+        Makefile::read_relaxed(bytes.as_slice())
             .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
     }
 

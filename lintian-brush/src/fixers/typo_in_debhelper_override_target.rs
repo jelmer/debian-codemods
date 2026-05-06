@@ -2,7 +2,6 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use makefile_lossless::Makefile;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use strsim::levenshtein;
@@ -44,9 +43,10 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_bytes = match ws.read_file(&rules_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     let known_dh_commands = match get_dh_commands() {
@@ -59,9 +59,6 @@ pub fn detect(
         known_targets.insert(format!("execute_before_{}", cmd));
         known_targets.insert(format!("execute_after_{}", cmd));
     }
-
-    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     let mut renamed: Vec<(String, String)> = Vec::new();

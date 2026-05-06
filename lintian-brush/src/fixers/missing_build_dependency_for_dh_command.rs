@@ -3,10 +3,9 @@ use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::rules::dh_invoke_get_with;
-use makefile_lossless::Makefile;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const LINTIAN_DATA_PATH: &str = "/usr/share/lintian/data";
 
@@ -155,9 +154,10 @@ pub fn detect(
     ws: &dyn FixerWorkspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
@@ -168,9 +168,6 @@ pub fn detect(
 
     let command_to_dep = load_command_deps();
     let addon_to_dep = load_addon_deps();
-
-    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -291,6 +288,7 @@ mod tests {
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

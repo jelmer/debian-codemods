@@ -3,10 +3,9 @@ use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use lazy_static::lazy_static;
-use makefile_lossless::Makefile;
 use regex::Regex;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const PKG_INFO_PATH: &str = "/usr/share/dpkg/pkg-info.mk";
 
@@ -51,12 +50,11 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let makefile = Makefile::read_relaxed(bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let pkg_info_vars = load_pkg_info_variables();
     let already_included = makefile.included_files().any(|f| f == PKG_INFO_PATH);
@@ -124,6 +122,7 @@ mod tests {
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

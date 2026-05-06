@@ -16,12 +16,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-fn autoreconf_disabled(base_path: &Path) -> bool {
-    let rules_path = base_path.join("debian/rules");
-    let Ok(text) = fs::read_to_string(&rules_path) else {
-        return false;
-    };
-    let Ok(mf) = Makefile::read_relaxed(text.as_bytes()) else {
+fn autoreconf_disabled(ws: &dyn FixerWorkspace) -> bool {
+    let Ok(mf) = ws.parsed_rules() else {
         return false;
     };
 
@@ -790,7 +786,7 @@ pub fn detect(
     }
 
     // Autoreconf disabled and old configure → cap to 10.
-    if autoreconf_disabled(base_path) {
+    if autoreconf_disabled(ws) {
         let configure_path = base_path.join("configure");
         if configure_path.exists() {
             if let Ok(contents) = fs::read_to_string(&configure_path) {
