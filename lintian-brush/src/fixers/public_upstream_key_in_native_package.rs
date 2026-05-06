@@ -1,16 +1,9 @@
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Version};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, LintianIssue, Version};
 use std::path::{Path, PathBuf};
 
-pub fn detect(
-    base_path: &Path,
-    current_version: &Version,
-    preferences: &FixerPreferences,
-) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnostic>, FixerError> {
     if !current_version.is_native() {
-        return Ok(Vec::new());
-    }
-    if !preferences.opinionated.unwrap_or(false) {
         return Ok(Vec::new());
     }
 
@@ -24,24 +17,29 @@ pub fn detect(
         "public-upstream-key-in-native-package",
         vec!["[debian/upstream/signing-key.asc]".to_string()],
     );
-    Ok(vec![Diagnostic::with_actions(
-        issue,
-        "Remove upstream signing key in native source package.",
-        vec![
-            Action::Filesystem(FilesystemAction::Delete { file: key_rel }),
-            Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
-                file: PathBuf::from("debian/upstream"),
-            }),
-        ],
-    )
-    .with_certainty(Certainty::Certain)])
+    Ok(vec![Diagnostic {
+        issue: Some(issue),
+        message: "Remove upstream signing key in native source package.".to_string(),
+        certainty: Some(Certainty::Certain),
+        patch_name: None,
+        plans: vec![ActionPlan {
+            label: None,
+            opinionated: true,
+            actions: vec![
+                Action::Filesystem(FilesystemAction::Delete { file: key_rel }),
+                Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+                    file: PathBuf::from("debian/upstream"),
+                }),
+            ],
+        }],
+    }])
 }
 
 declare_fixer! {
     name: "public-upstream-key-in-native-package",
     tags: ["public-upstream-key-in-native-package"],
-    diagnose: |basedir, _package, version, preferences| {
-        detect(basedir, version, preferences)
+    diagnose: |basedir, _package, version, _preferences| {
+        detect(basedir, version)
     }
 }
 
@@ -49,6 +47,7 @@ declare_fixer! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::FixerPreferences;
     use std::fs;
     use std::str::FromStr;
     use tempfile::TempDir;

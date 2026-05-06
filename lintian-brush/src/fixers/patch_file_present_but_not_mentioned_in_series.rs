@@ -1,4 +1,4 @@
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
@@ -19,11 +19,7 @@ fn mentioned_in_comments(series: &Series) -> HashSet<String> {
     mentioned
 }
 
-pub fn detect(base_path: &Path, opinionated: bool) -> Result<Vec<Diagnostic>, FixerError> {
-    if !opinionated {
-        return Ok(Vec::new());
-    }
-
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let series_abs = base_path.join("debian/patches/series");
     let patches_dir = base_path.join("debian/patches");
 
@@ -73,10 +69,17 @@ pub fn detect(base_path: &Path, opinionated: bool) -> Result<Vec<Diagnostic>, Fi
             vec![format!("[debian/patches/{}]", name)],
         );
         let rel = PathBuf::from("debian/patches").join(name);
-        diagnostics.push(Diagnostic::with_actions(
+        // Removing the file is destructive — in plenty of packages the
+        // unreferenced patch is intentional (kept around for reference).
+        // Only fire under --opinionated.
+        diagnostics.push(Diagnostic::with_plans(
             issue,
             format!("file{}{}", SEP, name),
-            vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+            vec![ActionPlan {
+                label: Some(format!("Remove unreferenced patch {}.", name)),
+                opinionated: true,
+                actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
+            }],
         ));
     }
 
@@ -111,8 +114,8 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_fixer! {
     name: "patch-file-present-but-not-mentioned-in-series",
     tags: ["patch-file-present-but-not-mentioned-in-series"],
-    diagnose: |basedir, _package, _version, preferences: &FixerPreferences| {
-        detect(basedir, preferences.opinionated.unwrap_or(false))
+    diagnose: |basedir, _package, _version, _preferences: &FixerPreferences| {
+        detect(basedir)
     },
     describe: |fixed, actions| {
         describe_aggregate(fixed, actions)
