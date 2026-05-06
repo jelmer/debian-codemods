@@ -303,11 +303,17 @@ pub fn detect(
     tracing::debug!("Running pubkey detect for package {}", package);
 
     let watch_rel = PathBuf::from("debian/watch");
-    let watch_bytes = match ws.read_file(Path::new("debian/watch"))? {
-        Some(b) => b,
-        None => {
+    let watch_file = match ws.parsed_watch() {
+        Ok(w) => w,
+        Err(FixerError::NoChanges) => {
             tracing::debug!("No debian/watch file found");
             return Ok(Vec::new());
+        }
+        Err(e) => {
+            return Err(FixerError::Other(format!(
+                "Failed to parse debian/watch: {}",
+                e
+            )))
         }
     };
 
@@ -335,11 +341,6 @@ pub fn detect(
             None => (false, Vec::new()),
         }
     };
-
-    let content = String::from_utf8(watch_bytes)
-        .map_err(|e| FixerError::Other(format!("debian/watch is not valid UTF-8: {}", e)))?;
-    let watch_file = debian_watch::parse::parse(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut needed_keys: HashSet<String> = HashSet::new();
     let mut description: Option<String> = None;

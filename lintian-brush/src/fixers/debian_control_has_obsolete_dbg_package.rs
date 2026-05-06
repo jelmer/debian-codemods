@@ -2,7 +2,6 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
-use makefile_lossless::Makefile;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -61,9 +60,10 @@ pub fn detect(
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_content = match ws.read_file(Path::new("debian/rules"))? {
-        Some(c) => c,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     let current_version_str = current_version.to_string();
@@ -72,9 +72,6 @@ pub fn detect(
     } else {
         format!("<< {}~", current_version_str)
     };
-
-    let makefile = Makefile::read_relaxed(rules_content.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut recipe_actions: Vec<Action> = Vec::new();
     let mut migrated: HashSet<String> = HashSet::new();

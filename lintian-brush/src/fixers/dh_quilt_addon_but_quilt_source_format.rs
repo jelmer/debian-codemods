@@ -2,9 +2,8 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use makefile_lossless::Makefile;
 use regex::bytes::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -15,12 +14,11 @@ pub fn detect(
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     // Skip when QUILT_PATCH_DIR points somewhere other than the default;
     // the addon's `--with quilt` may be load-bearing in that case.
@@ -120,6 +118,7 @@ mod tests {
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

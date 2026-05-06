@@ -6,7 +6,6 @@ use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 // For the Debian Policy upgrade checklist, see
 // https://www.debian.org/doc/debian-policy/upgrading-checklist.html
@@ -40,7 +39,7 @@ enum UpgradeCheckResult {
     Unable { section: String, reason: String },
 }
 
-fn check_4_1_1(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_1_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let changelog_path = base_path.join("debian/changelog");
     if !changelog_path.exists() {
         return UpgradeCheckResult::Failure {
@@ -67,21 +66,13 @@ fn has_debhelper_compat_in_control(control: &Control) -> bool {
     }
 }
 
-fn check_4_4_0(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_4_0(ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     // Check that the package uses debhelper
     if base_path.join("debian/compat").exists() {
         return UpgradeCheckResult::Success(vec!["package uses debhelper".to_string()]);
     }
 
-    let control_path = base_path.join("debian/control");
-    let Ok(content) = std::fs::read_to_string(&control_path) else {
-        return UpgradeCheckResult::Failure {
-            section: "4.9".to_string(),
-            reason: "package does not use dh".to_string(),
-        };
-    };
-
-    let Ok(control) = Control::from_str(&content) else {
+    let Ok(control) = ws.parsed_control() else {
         return UpgradeCheckResult::Failure {
             section: "4.9".to_string(),
             reason: "package does not use dh".to_string(),
@@ -110,18 +101,15 @@ fn count_vcs_fields(source: &debian_control::lossless::Source) -> usize {
         .count()
 }
 
-fn check_copyright_files_not_directories(base_path: &Path) -> Result<(), String> {
-    let copyright_path = base_path.join("debian/copyright");
-    if !copyright_path.exists() {
-        return Ok(());
-    }
-
-    let content = std::fs::read_to_string(&copyright_path)
-        .map_err(|_| "cannot read copyright".to_string())?;
-
-    let copyright: debian_copyright::lossless::Copyright = content
-        .parse()
-        .map_err(|_| "not machine-readable".to_string())?;
+fn check_copyright_files_not_directories(
+    ws: &dyn FixerWorkspace,
+    base_path: &Path,
+) -> Result<(), String> {
+    let copyright = match ws.parsed_copyright() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(()),
+        Err(_) => return Err("not machine-readable".to_string()),
+    };
 
     for para in copyright.iter_files() {
         for glob in para.files() {
@@ -137,16 +125,11 @@ fn check_copyright_files_not_directories(base_path: &Path) -> Result<(), String>
     Ok(())
 }
 
-fn check_4_4_1(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_4_1(ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let mut results = Vec::new();
 
     // Check that there is only one Vcs field
-    let control_path = base_path.join("debian/control");
-    let Ok(content) = std::fs::read_to_string(&control_path) else {
-        return UpgradeCheckResult::Success(results);
-    };
-
-    let Ok(control) = Control::from_str(&content) else {
+    let Ok(control) = ws.parsed_control() else {
         return UpgradeCheckResult::Success(results);
     };
 
@@ -166,7 +149,7 @@ fn check_4_4_1(base_path: &Path) -> UpgradeCheckResult {
     }
 
     // Check that Files entries don't refer to directories
-    if let Err(reason) = check_copyright_files_not_directories(base_path) {
+    if let Err(reason) = check_copyright_files_not_directories(ws, base_path) {
         return UpgradeCheckResult::Failure {
             section: "copyright-format".to_string(),
             reason,
@@ -177,13 +160,8 @@ fn check_4_4_1(base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(results)
 }
 
-fn check_changelog_epoch_changes(base_path: &Path) -> bool {
-    let changelog_path = base_path.join("debian/changelog");
-    let Ok(content) = std::fs::read_to_string(&changelog_path) else {
-        return false;
-    };
-
-    let Ok(cl) = debian_changelog::ChangeLog::read_relaxed(content.as_bytes()) else {
+fn check_changelog_epoch_changes(ws: &dyn FixerWorkspace) -> bool {
+    let Ok(cl) = ws.parsed_changelog() else {
         return false;
     };
 
@@ -199,8 +177,8 @@ fn check_changelog_epoch_changes(base_path: &Path) -> bool {
     epochs.len() > 1
 }
 
-fn check_4_1_5(base_path: &Path) -> UpgradeCheckResult {
-    if check_changelog_epoch_changes(base_path) {
+fn check_4_1_5(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+    if check_changelog_epoch_changes(ws) {
         return UpgradeCheckResult::Unable {
             section: "5.6.12".to_string(),
             reason: "last release changes epoch".to_string(),
@@ -289,7 +267,7 @@ fn check_init_files_have_systemd_units(
     Ok(())
 }
 
-fn check_4_5_0(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_5_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let debian_dir = base_path.join("debian");
     if !debian_dir.is_dir() {
         return UpgradeCheckResult::Success(vec![
@@ -321,7 +299,7 @@ fn check_4_5_0(base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(results)
 }
 
-fn check_4_5_1(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_5_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let patches_dir = base_path.join("debian/patches");
     if !patches_dir.is_dir() {
         return UpgradeCheckResult::Success(vec!["Package does not have any patches".to_string()]);
@@ -347,7 +325,7 @@ fn check_4_5_1(base_path: &Path) -> UpgradeCheckResult {
     ])
 }
 
-fn check_4_2_1(_base_path: &Path) -> UpgradeCheckResult {
+fn check_4_2_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(vec![])
 }
 
@@ -372,7 +350,7 @@ fn check_for_lib64_references(debian_dir: &Path) -> Result<(), UpgradeCheckResul
     Ok(())
 }
 
-fn check_4_6_0(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let debian_dir = base_path.join("debian");
     if !debian_dir.is_dir() {
         return UpgradeCheckResult::Success(vec![
@@ -389,7 +367,7 @@ fn check_4_6_0(base_path: &Path) -> UpgradeCheckResult {
     ])
 }
 
-fn check_4_6_1(_base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 9.1.1: Restore permission for packages for non-64-bit architectures to
     // install files to /usr/lib64/.
     // -> No need to check anything.
@@ -417,7 +395,7 @@ fn check_for_x_window_manager(debian_dir: &Path) -> Result<(), UpgradeCheckResul
     Ok(())
 }
 
-fn check_4_6_2(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_2(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     let debian_dir = base_path.join("debian");
     if !debian_dir.is_dir() {
         return UpgradeCheckResult::Success(vec![
@@ -467,7 +445,7 @@ fn check_for_dpkg_divert(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
     Ok(())
 }
 
-fn check_4_7_0(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     // 3.9: maintainer scripts should prefer native mechanisms over dpkg-divert;
     // must not divert systemd configuration files
     let debian_dir = base_path.join("debian");
@@ -535,7 +513,7 @@ fn check_for_non_usr_paths(debian_dir: &Path) -> Result<(), UpgradeCheckResult> 
     Ok(())
 }
 
-fn check_4_7_1(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
     // 10.1: packages must not install files to /bin, /lib, /lib*, /sbin
     let debian_dir = base_path.join("debian");
     if !debian_dir.is_dir() {
@@ -553,31 +531,25 @@ fn check_4_7_1(base_path: &Path) -> UpgradeCheckResult {
     ])
 }
 
-fn check_4_7_2(_base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_2(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 10.1: Relaxation of previous restrictions for /usr/games.
     // No new requirements to check.
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_4_7_3(_base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_3(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 5.6.6: Priority field no longer recommended; dpkg defaults to optional.
     // 5.6.32 & 5.6.33: New documentation for Git-Tag-Tagger and Git-Tag-Info fields.
     // No new requirements to check.
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_4_7_4(base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_4(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 8.4: *.so files in shared library development packages may be linker scripts
     //      instead of symbolic links. (Relaxation, no check needed.)
     // 12.5: The requirement to explain in the copyright file why the package is not
     //       part of the Debian distribution also applies to packages in non-free-firmware.
-    let control_path = base_path.join("debian/control");
-    let Ok(content) = std::fs::read_to_string(&control_path) else {
-        return UpgradeCheckResult::Success(
-            vec!["Package is not in non-free-firmware".to_string()],
-        );
-    };
-    let Ok(control) = Control::from_str(&content) else {
+    let Ok(control) = ws.parsed_control() else {
         return UpgradeCheckResult::Success(
             vec!["Package is not in non-free-firmware".to_string()],
         );
@@ -598,7 +570,7 @@ fn check_4_7_4(base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(vec!["Package is not in non-free-firmware".to_string()])
 }
 
-fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
+fn get_check_fn(version: &str) -> Option<fn(&dyn FixerWorkspace, &Path) -> UpgradeCheckResult> {
     match version {
         "4.1.1" => Some(check_4_1_1),
         "4.2.1" => Some(check_4_2_1),
@@ -746,7 +718,7 @@ pub fn detect(
 
     while let Some(&target) = path.get(current.as_str()) {
         if let Some(check_fn) = get_check_fn(target) {
-            match check_fn(&base_path) {
+            match check_fn(ws, &base_path) {
                 UpgradeCheckResult::Success(reasons) => {
                     if !reasons.is_empty() {
                         upgrade_reasons.push((current.clone(), target.to_string(), reasons));

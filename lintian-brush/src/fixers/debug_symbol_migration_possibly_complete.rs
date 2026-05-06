@@ -4,7 +4,7 @@ use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
 use regex::bytes::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn previous_release(release: &str) -> Option<String> {
     use chrono::Utc;
@@ -257,12 +257,11 @@ pub fn detect(
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let content = match ws.read_file(Path::new("debian/rules"))? {
-        Some(c) => c,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let makefile = makefile_lossless::Makefile::read_relaxed(content.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/rules: {}", e)))?;
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
