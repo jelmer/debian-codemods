@@ -1,8 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use url::Url;
 
 const SEP: char = '\t';
@@ -57,18 +57,14 @@ fn guess_homepage(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -99,7 +95,10 @@ pub fn detect(
         }
     };
 
-    let Some((homepage_url, upstream_certainty)) = guess_homepage(base_path, preferences) else {
+    let homepage_guess = ws
+        .base_path()
+        .and_then(|base_path| guess_homepage(base_path, preferences));
+    let Some((homepage_url, upstream_certainty)) = homepage_guess else {
         return Ok(vec![Diagnostic::with_actions(
             issue,
             format!("{}{}", message_kind, SEP),
@@ -132,21 +131,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "no-homepage-field",
     tags: ["no-homepage-field", "pypi-homepage", "rubygem-homepage"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -156,7 +152,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, preferences)
     }
 
     #[test]
