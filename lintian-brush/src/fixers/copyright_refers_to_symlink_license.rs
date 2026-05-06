@@ -1,18 +1,25 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
 use regex::Regex;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let copyright_abs = base_path.join(&copyright_rel);
-    if !copyright_abs.exists() {
+    let bytes = match ws.read_file(&copyright_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(bytes) else {
         return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&copyright_abs)?;
+    };
     let Ok(deb822) = Deb822::from_str(&content) else {
         return Ok(Vec::new());
     };
@@ -110,12 +117,10 @@ fn replace_symlink_path(synopsis: &str, path: &str, _license_name: &str) -> Opti
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "copyright-refers-to-symlink-license",
     tags: ["copyright-refers-to-symlink-license", "copyright-refers-to-versionless-license-file"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]

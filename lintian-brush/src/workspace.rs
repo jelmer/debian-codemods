@@ -116,6 +116,14 @@ pub trait FixerWorkspace {
     /// (an LSP) may not have a meaningful directory ordering.
     fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError>;
 
+    /// Read the Unix file mode of `rel`, or `None` if the file is missing.
+    ///
+    /// Hosts that don't track a meaningful mode (e.g. an LSP serving an
+    /// in-memory buffer) may return `Ok(None)` even when the file exists.
+    /// Detectors that key off mode (e.g. checking that `debian/rules` is
+    /// executable) treat that the same as "not present" and skip.
+    fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError>;
+
     /// Whether the given lintian issue should be fixed in this workspace,
     /// after taking lintian-overrides into account.
     fn should_fix(&self, issue: &LintianIssue) -> bool;
@@ -304,6 +312,16 @@ impl FixerWorkspace for TreeFixerWorkspace {
             names.push(entry.file_name().to_string_lossy().into_owned());
         }
         Ok(Some(names))
+    }
+
+    fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError> {
+        use std::os::unix::fs::PermissionsExt;
+        let path = self.full_path(rel);
+        match fs::metadata(&path) {
+            Ok(m) => Ok(Some(m.permissions().mode())),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(FixerError::Io(e)),
+        }
     }
 
     fn should_fix(&self, issue: &LintianIssue) -> bool {
