@@ -1928,7 +1928,8 @@
     Remove Essential field from source stanza in debian/control;
     it only belongs in binary stanzas.
 - tag: essential-no-not-needed
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove "Essential: no" from debian/control since "no" is the

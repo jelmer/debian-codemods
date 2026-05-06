@@ -1,0 +1,4 @@
+Remove redundant Essential: no from package blah.
+Certainty: certain
+Fixed-Lintian-Issues:
+ blah binary: essential-no-not-needed
