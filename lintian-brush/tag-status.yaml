@@ -999,7 +999,7 @@
     (e.g. clean target calling debian/control target). This is
     fragile and discouraged.
 - tag: debian-rules-uses-as-needed-linker-flag
-  detector: false
+  detector: true
   status: implemented
 - tag: debian-rules-uses-deb-build-opts
   detector: false
@@ -1014,7 +1014,7 @@
     if included file is /usr/share/cdbs/1/rules/simple-patchsys.mk, then
     upgrade to 3.0 (quilt) source format
 - tag: debian-rules-uses-deprecated-systemd-override
-  detector: false
+  detector: true
   status: implemented
   difficulty: easy
 - tag: debian-rules-uses-installed-python-versions
@@ -1024,7 +1024,7 @@
     Replace py3versions/pyversions calls in debian/rules with a
     static list or use pybuild instead.
 - tag: debian-rules-uses-special-shell-variable
-  detector: false
+  detector: true
   status: implemented
 - tag: debian-rules-uses-supported-python-versions-without-python-all-build-depends
   detector: false
@@ -1044,7 +1044,7 @@
   comment: |
     Convert debian/tests/control from legacy encoding to UTF-8.
 - tag: debian-watch-contains-dh_make-template
-  detector: false
+  detector: true
   status: implemented
 - tag: debian-watch-could-verify-download
   detector: false
@@ -1053,7 +1053,7 @@
     Add pgpsigurlmangle or similar option to debian/watch to enable
     download verification. Requires finding the upstream signing key.
 - tag: debian-watch-does-not-check-openpgp-signature
-  detector: false
+  detector: true
   status: implemented
 - tag: debian-watch-file-declares-multiple-versions
   detector: false
@@ -1073,7 +1073,7 @@
   comment: |
     Add version=N header to debian/watch file.
 - tag: debian-watch-file-pubkey-file-is-missing
-  detector: false
+  detector: true
   status: implemented
 - tag: debian-watch-file-specifies-old-upstream-version
   detector: false
@@ -1127,7 +1127,7 @@
     Fix uversionmangle regex in debian/watch. Requires understanding
     the intended version transformation.
 - tag: debian-watch-not-mangling-version
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: debian-watch-upstream-component
@@ -1735,7 +1735,7 @@
   detector: false
   status: build-stage
 - tag: dpatch-build-dep-but-no-patch-list
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: dpatch-index-references-non-existent-patch
@@ -2029,10 +2029,10 @@
   detector: false
   status: build-stage
 - tag: extended-description-contains-empty-paragraph
-  detector: false
+  detector: true
   status: implemented
 - tag: extended-description-is-empty
-  detector: false
+  detector: true
   status: implemented
 - tag: extended-description-is-probably-too-short
   detector: false
@@ -2516,7 +2516,7 @@
     Change shebang in init.d script from /usr/bin/... to /bin/...
     since /usr may not be mounted when init.d runs.
 - tag: initial-upload-closes-no-bugs
-  detector: false
+  detector: true
   status: implemented
 - tag: install-info-used-in-maintainer-script
   detector: false
@@ -2678,7 +2678,7 @@
     Rename libapp-*-perl package to lib*-perl. Would need to update
     package name in debian/control and all references.
 - tag: libmodule-build-tiny-perl-needs-to-be-in-build-depends
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: library-in-root-and-usr
@@ -2900,7 +2900,7 @@
     Add "[ -x /usr/bin/update-menus ]" guard around update-menus
     calls in maintainer scripts. needs-shell-parser
 - tag: maintainer-script-empty
-  detector: false
+  detector: true
   status: implemented
 - tag: maintainer-script-has-invalid-update-inetd-options
   detector: false
@@ -3089,7 +3089,7 @@
   detector: false
   status: build-stage
 - tag: malformed-override
-  detector: false
+  detector: true
   status: implemented
 - tag: malformed-prompt-in-templates
   detector: false
@@ -3555,10 +3555,10 @@
   detector: false
   difficulty: impossible
 - tag: new-package-uses-date-based-version-number
-  detector: false
+  detector: true
   status: implemented
 - tag: newer-debconf-templates
-  detector: false
+  detector: true
   status: implemented
 - tag: newer-standards-version
   detector: false
@@ -3591,7 +3591,7 @@
     Would need to complete translations in PO files. Requires
     human translators.
 - tag: no-copyright-file
-  detector: false
+  detector: true
   status: implemented
 - tag: no-ctrl-scripts
   detector: false
@@ -3851,7 +3851,7 @@
     Replace obsolete dependency relation form in source stanza
     of debian/control.
 - tag: obsolete-url-in-packaging
-  detector: false
+  detector: true
   status: implemented
 - tag: ocaml-custom-executable
   detector: false
@@ -3890,7 +3890,7 @@
   detector: false
   status: build-stage
 - tag: old-python-version-field
-  detector: false
+  detector: true
   status: implemented
 - tag: old-style-config-script
   detector: false
@@ -4262,7 +4262,7 @@
   detector: false
   status: build-stage
 - tag: package-relation-with-perl-modules
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: package-relation-with-self
@@ -4287,7 +4287,7 @@
     Add debhelper-compat to Build-Depends in debian/control. Uses
     TemplatedControlEditor and Relations API to add the missing dependency.
 - tag: package-uses-deprecated-dpatch-patch-system
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: package-uses-dh-exec-but-lacks-build-depends
@@ -4436,7 +4436,7 @@
     The pkg-js-tools test file is empty. Could populate with a basic
     test skeleton or remove the empty test file.
 - tag: pkg-js-tools-test-is-missing
-  detector: false
+  detector: true
   status: implemented
 - tag: pkg-not-in-package-test
   detector: false
@@ -4575,7 +4575,7 @@
   detector: false
   status: build-stage
 - tag: public-upstream-key-in-native-package
-  detector: false
+  detector: true
   status: implemented
 - tag: public-upstream-key-unusable
   detector: false
@@ -4758,7 +4758,7 @@
   detector: false
   status: classification
 - tag: rules-silently-require-root
-  detector: false
+  detector: true
   status: implemented
 - tag: run-parts-cron-filename-contains-illegal-chars
   detector: false
@@ -5486,7 +5486,7 @@
     Set Section to introspection for typelib packages in debian/control.
     Uses TemplatedControlEditor.
 - tag: typo-in-debhelper-override-target
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: udeb-contains-documentation-file
@@ -5766,10 +5766,10 @@
     Replace debian/upstream/metadata (which is a directory or symlink)
     with a proper YAML file.
 - tag: upstream-metadata-not-yaml-mapping
-  detector: false
+  detector: true
   status: implemented
 - tag: upstream-metadata-yaml-invalid
-  detector: false
+  detector: true
   status: implemented
 - tag: use-of-compat-symlink
   detector: false
@@ -5854,7 +5854,7 @@
   difficulty: medium
   comment: easy to do, but may be hard to figure out which VCS is canonical
 - tag: vcs-git-uses-invalid-user-uri
-  detector: false
+  detector: true
   status: implemented
   difficulty: easy
 - tag: vcs-uri
@@ -5918,7 +5918,7 @@
   comment: |
     Remove whitespace after line continuation backslash in debian/rules.
 - tag: wiki-copyright-format-uri
-  detector: false
+  detector: true
   status: implemented
 - tag: wildcard-matches-nothing-in-dep5-copyright
   detector: false
@@ -6024,7 +6024,7 @@
     Fix capitalization in lintian override comment. Parse and edit
     debian/source/lintian-overrides.
 - tag: carriage-return-line-feed
-  detector: false
+  detector: true
   status: implemented
 - tag: country-in-manual
   detector: false
@@ -6036,7 +6036,7 @@
     Remove custom compression settings from debian/rules and use
     debian/source/options instead. Requires parsing debian/rules.
 - tag: custom-compression-in-debian-source-options
-  detector: false
+  detector: true
   status: implemented
 - tag: duplicate-contact
   detector: false
@@ -6054,7 +6054,7 @@
     Fix the QA group address in Maintainer field. Similar to existing
     wrong-debian-qa-group-name fixer.
 - tag: faulty-debian-qa-group-phrase
-  detector: false
+  detector: true
   status: implemented
 - tag: groff-message
   detector: false
@@ -6133,7 +6133,7 @@
   detector: false
   status: build-stage
 - tag: old-source-override-location
-  detector: false
+  detector: true
   status: implemented
 - tag: pod-conversion-message
   detector: false
@@ -6142,7 +6142,7 @@
   detector: false
   status: build-stage
 - tag: recommended-field
-  detector: false
+  detector: true
   status: implemented
 - tag: recursive-privilege-change
   detector: false
@@ -6151,7 +6151,7 @@
   detector: false
   difficulty: hard
 - tag: required-field
-  detector: false
+  detector: true
   status: implemented
 - tag: requires-r-api
   detector: false
@@ -6185,7 +6185,7 @@
     Remove excess Uploaders from debian/control. Requires knowing which
     uploaders to keep.
 - tag: trailing-whitespace
-  detector: false
+  detector: true
   status: implemented
 - tag: trimmed-field
   detector: false
@@ -6320,7 +6320,7 @@
     Remove duplicate globbing patterns from debian/copyright or lintian
     overrides.
 - tag: globbing-patterns-out-of-order
-  detector: false
+  detector: true
   status: implemented
   difficulty: easy
 - tag: patch-not-forwarded-upstream
@@ -6523,7 +6523,7 @@
     Remove empty Provides field from Rust library package in debian/control.
     Uses TemplatedControlEditor.
 - tag: duplicate-override-context
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: backgrounded-test-command
@@ -6564,7 +6564,7 @@
     Add missing version override for Node.js module in
     debian/nodejs/additional_components or similar.
 - tag: obsolete-vim-addon-manager
-  detector: false
+  detector: true
   status: implemented
 - tag: python-traceback-in-manpage
   detector: false
@@ -6674,7 +6674,7 @@
     Add missing copyright information for components in debian/copyright.
     Requires knowing the correct license and copyright holders.
 - tag: adopted-extended-field
-  detector: false
+  detector: true
   status: implemented
 - tag: anticipated-repack-count
   detector: false
@@ -6740,7 +6740,7 @@
   detector: false
   status: build-stage
 - tag: installable-field-mirrors-source
-  detector: false
+  detector: true
   status: implemented
 - tag: invalid-systemd-documentation
   detector: false
@@ -6769,7 +6769,7 @@
     Add dversionmangle or use symlink option in debian/watch to handle
     version mangling.
 - tag: redundant-installation-prerequisite
-  detector: false
+  detector: true
   status: implemented
 - tag: relative-library-search-path
   detector: false
@@ -6805,7 +6805,7 @@
     Remove lintian overrides for tags that don't exist in lintian.
     Similar to existing unused-override fixer.
 - tag: chown-with-dot
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: conflicting-test-fields
@@ -6832,7 +6832,7 @@
     Fix invalid restriction in lintian override. Parse and edit the
     lintian-overrides file.
 - tag: missing-prerequisite-for-pyproject-backend
-  detector: false
+  detector: true
   status: implemented
 - tag: old-devhelp-standard
   detector: false
@@ -6864,10 +6864,10 @@
 
 # 2.5.100
 - tag: skip-systemd-native-flag-missing-pre-depends
-  detector: false
+  detector: true
   status: implemented
 - tag: obsolete-runtime-tests-restriction
-  detector: false
+  detector: true
   status: implemented
 - tag: package-contains-python-dot-directory
   detector: false
@@ -6888,15 +6888,15 @@
   detector: false
   status: build-stage
 - tag: homepage-github-url-ends-with-dot-git
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: homepage-gitlab-url-ends-with-dot-git
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: homepage-salsa-url-ends-with-dot-git
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: uses-pdm-cli
@@ -6999,11 +6999,11 @@
   detector: false
   status: build-stage
 - tag: missing-static-built-using-field-for-golang-package
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: trailing-comma-in-maintainer-field
-  detector: false
+  detector: true
   difficulty: easy
   status: implemented
 - tag: built-using-field-on-arch-all-package
