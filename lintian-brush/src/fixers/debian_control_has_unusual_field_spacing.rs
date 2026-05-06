@@ -1,5 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
 use std::path::{Path, PathBuf};
@@ -87,7 +89,15 @@ fn generic_selector_for(paragraph: &deb822_lossless::Paragraph, idx: usize) -> P
     ParagraphSelector::Index { index: idx }
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    // check_generated_file walks template paths from disk; fall back
+    // to the filesystem escape hatch.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
     let control_rel = PathBuf::from("debian/control");
     let control_abs = base_path.join(&control_rel);
     if !control_abs.exists() {
@@ -122,26 +132,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-control-has-unusual-field-spacing",
     tags: ["debian-control-has-unusual-field-spacing"],
     before: ["file-contains-trailing-whitespace"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

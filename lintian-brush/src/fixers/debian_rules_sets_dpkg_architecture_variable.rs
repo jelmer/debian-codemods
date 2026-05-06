@@ -1,4 +1,6 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use lazy_static::lazy_static;
 use makefile_lossless::Makefile;
@@ -42,18 +44,19 @@ fn is_standard_dpkg_arch_call(name: &str, value: &str) -> bool {
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let opinionated = preferences.opinionated.unwrap_or(false);
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
+    let bytes = match ws.read_file(&rules_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(bytes) else {
         return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&rules_abs)?;
+    };
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
@@ -184,18 +187,17 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-sets-dpkg-architecture-variable",
     tags: ["debian-rules-sets-dpkg-architecture-variable"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -206,7 +208,8 @@ mod tests {
             opinionated: Some(opinionated),
             ..Default::default()
         };
-        FixerImpl.apply(base, "test", &v, &prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &prefs)
     }
 
     #[test]
