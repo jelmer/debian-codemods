@@ -107,6 +107,15 @@ pub trait FixerWorkspace {
     /// Creates the file if it does not exist.
     fn write_file(&self, rel: &Path, content: &[u8]) -> Result<(), FixerError>;
 
+    /// List the entries of a directory relative to the package root.
+    ///
+    /// Returns the file (and subdirectory) names within `rel`, without any
+    /// path prefix. Returns `Ok(None)` if the directory does not exist.
+    ///
+    /// The order of returned entries is unspecified — a non-`Tree` host
+    /// (an LSP) may not have a meaningful directory ordering.
+    fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError>;
+
     /// Whether the given lintian issue should be fixed in this workspace,
     /// after taking lintian-overrides into account.
     fn should_fix(&self, issue: &LintianIssue) -> bool;
@@ -280,6 +289,21 @@ impl FixerWorkspace for TreeFixerWorkspace {
         let path = self.full_path(rel);
         fs::write(&path, content)?;
         Ok(())
+    }
+
+    fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError> {
+        let path = self.full_path(rel);
+        let read_dir = match fs::read_dir(&path) {
+            Ok(it) => it,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(FixerError::Io(e)),
+        };
+        let mut names = Vec::new();
+        for entry in read_dir {
+            let entry = entry?;
+            names.push(entry.file_name().to_string_lossy().into_owned());
+        }
+        Ok(Some(names))
     }
 
     fn should_fix(&self, issue: &LintianIssue) -> bool {
