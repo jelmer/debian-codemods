@@ -1,15 +1,21 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/patches/series");
-    let abs = base_path.join(&rel);
-    if !abs.exists() {
+    let bytes = match ws.read_file(&rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = std::str::from_utf8(&bytes) else {
         return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&abs)?;
+    };
     if !content.trim().is_empty() {
         return Ok(Vec::new());
     }
@@ -27,20 +33,20 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "empty-debian-patches-series",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences: &FixerPreferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, opinionated: bool) -> Result<crate::FixerResult, FixerError> {
@@ -49,7 +55,8 @@ mod tests {
             opinionated: Some(opinionated),
             ..Default::default()
         };
-        FixerImpl.apply(base, "test", &version, &preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &preferences)
     }
 
     #[test]

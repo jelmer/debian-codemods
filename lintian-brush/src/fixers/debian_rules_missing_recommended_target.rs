@@ -1,34 +1,44 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
-use debian_analyzer::rules::check_cdbs;
-use debian_control::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::{Makefile, Parse};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
-fn get_archs(base_path: &Path) -> Result<HashSet<String>, FixerError> {
-    let control_path = base_path.join("debian/control");
-    if !control_path.exists() {
-        return Ok(HashSet::new());
-    }
-    let content = std::fs::read_to_string(&control_path)?;
-    let control = Control::from_str(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse control file: {}", e)))?;
+fn get_archs(ws: &dyn FixerWorkspace) -> Result<HashSet<String>, FixerError> {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(HashSet::new()),
+        Err(e) => return Err(e),
+    };
     Ok(control
         .binaries()
         .filter_map(|b| b.architecture().map(|a| a.to_string()))
         .collect())
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+fn check_cdbs_ws(ws: &dyn FixerWorkspace) -> Result<bool, FixerError> {
+    let Some(content) = ws.read_file(Path::new("debian/rules"))? else {
+        return Ok(false);
+    };
+    Ok(content
+        .windows(b"/usr/share/cdbs/".len())
+        .any(|w| w == b"/usr/share/cdbs/"))
+}
 
-    let content = std::fs::read_to_string(&rules_abs)?;
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_rel = PathBuf::from("debian/rules");
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(rules_bytes) else {
+        return Ok(Vec::new());
+    };
     let parsed = Parse::<Makefile>::parse_makefile(&content);
     if !parsed.ok() {
         tracing::warn!(
@@ -54,11 +64,11 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
 
     // Includes (especially CDBS) can supply these targets out-of-band; we
     // can't see through them.
-    if check_cdbs(&rules_abs) || makefile.includes().count() > 0 {
+    if check_cdbs_ws(ws)? || makefile.includes().count() > 0 {
         return Ok(Vec::new());
     }
 
-    let archs = get_archs(base_path)?;
+    let archs = get_archs(ws)?;
     let phony_present = makefile.find_rule_by_target(".PHONY").is_some();
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -133,25 +143,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-missing-recommended-target",
     tags: ["debian-rules-missing-recommended-target"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

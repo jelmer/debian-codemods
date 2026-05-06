@@ -1,43 +1,32 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, LintianIssue};
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
-fn find_desktop_files(debian_dir: &Path) -> Result<Vec<PathBuf>, FixerError> {
-    let mut desktop_files = Vec::new();
-    let entries = fs::read_dir(debian_dir)
-        .map_err(|e| FixerError::Other(format!("Failed to read debian directory: {}", e)))?;
-    for entry in entries {
-        let entry = entry
-            .map_err(|e| FixerError::Other(format!("Failed to read directory entry: {}", e)))?;
-        let path = entry.path();
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("desktop") {
-            desktop_files.push(path);
-        }
-    }
-    Ok(desktop_files)
-}
-
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
-    for desktop_file in find_desktop_files(&debian_dir)? {
-        let metadata = fs::metadata(&desktop_file)?;
-        let current_mode = metadata.permissions().mode();
+    for filename in entries {
+        if !filename.ends_with(".desktop") {
+            continue;
+        }
+        let rel = PathBuf::from("debian").join(&filename);
+        let Some(current_mode) = ws.file_mode(&rel)? else {
+            continue;
+        };
         if (current_mode & 0o111) == 0 {
             continue;
         }
 
-        let filename = desktop_file
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
         let installed_path = format!("usr/share/applications/{}", filename);
         let perms_octal = format!("{:04o}", current_mode & 0o777);
 
@@ -46,10 +35,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             vec![format!("{} [{}]", perms_octal, installed_path)],
         );
 
-        let rel = desktop_file
-            .strip_prefix(base_path)
-            .unwrap_or(&desktop_file)
-            .to_path_buf();
         diagnostics.push(Diagnostic::with_actions(
             issue,
             "Remove executable bit from desktop files.",
@@ -62,54 +47,30 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "executable-desktop-file",
     tags: ["executable-desktop-file"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
     use tempfile::tempdir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     fn mode_of(path: &Path) -> u32 {
         fs::metadata(path).unwrap().permissions().mode() & 0o777
-    }
-
-    #[test]
-    fn test_find_desktop_files() {
-        let temp_dir = tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-        fs::write(debian_dir.join("test.desktop"), "test content").unwrap();
-        fs::write(debian_dir.join("another.desktop"), "test content").unwrap();
-        fs::write(debian_dir.join("not-desktop.txt"), "test content").unwrap();
-
-        let mut found: Vec<String> = find_desktop_files(&debian_dir)
-            .unwrap()
-            .into_iter()
-            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
-            .collect();
-        found.sort();
-        assert_eq!(found, vec!["another.desktop", "test.desktop"]);
-    }
-
-    #[test]
-    fn test_find_desktop_files_empty_directory() {
-        let temp_dir = tempdir().unwrap();
-        let debian_dir = temp_dir.path().join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-        assert!(find_desktop_files(&debian_dir).unwrap().is_empty());
     }
 
     #[test]

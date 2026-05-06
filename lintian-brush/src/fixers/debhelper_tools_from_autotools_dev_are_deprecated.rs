@@ -1,22 +1,23 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::rules::drop_dh_with_argument;
-use crate::{FixerError, LintianIssue};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const MIN_DEBHELPER_VERSION: &str = "9.20160114";
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut issues: Vec<LintianIssue> = Vec::new();
@@ -93,21 +94,17 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     // Bump debhelper minimum if we're using debhelper directly (no
     // debhelper-compat seen). The applier's EnsureRelation handles >=.
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if control_abs.exists() {
-        let content = std::fs::read_to_string(&control_abs)?;
-        if let Ok(control) = Control::from_str(&content) {
-            if let Some(source) = control.source() {
-                let bd_str = source.as_deb822().get("Build-Depends").unwrap_or_default();
-                let has_compat = bd_str.contains("debhelper-compat");
-                if !has_compat {
-                    actions.push(Action::Deb822(Deb822Action::EnsureRelation {
-                        file: control_rel,
-                        paragraph: ParagraphSelector::Source,
-                        field: "Build-Depends".into(),
-                        entry: format!("debhelper (>= {})", MIN_DEBHELPER_VERSION),
-                    }));
-                }
+    if let Ok(control) = ws.parsed_control() {
+        if let Some(source) = control.source() {
+            let bd_str = source.as_deb822().get("Build-Depends").unwrap_or_default();
+            let has_compat = bd_str.contains("debhelper-compat");
+            if !has_compat {
+                actions.push(Action::Deb822(Deb822Action::EnsureRelation {
+                    file: control_rel,
+                    paragraph: ParagraphSelector::Source,
+                    field: "Build-Depends".into(),
+                    entry: format!("debhelper (>= {})", MIN_DEBHELPER_VERSION),
+                }));
             }
         }
     }
@@ -124,25 +121,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debhelper-tools-from-autotools-dev-are-deprecated",
     tags: ["debhelper-tools-from-autotools-dev-are-deprecated"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

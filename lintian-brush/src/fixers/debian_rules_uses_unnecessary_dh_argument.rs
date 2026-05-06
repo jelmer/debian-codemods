@@ -1,18 +1,22 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
-use debian_analyzer::debhelper::get_debhelper_compat_level;
+use crate::workspace::{compat_level, FixerWorkspace};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::rules::{dh_invoke_drop_argument, dh_invoke_drop_with};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
-    let compat_version = get_debhelper_compat_level(base_path)?;
+    let compat_version = compat_level(ws)?;
     let mut unnecessary_args: Vec<&str> = Vec::new();
     let mut unnecessary_with: Vec<&str> = Vec::new();
     if let Some(compat) = compat_version {
@@ -25,8 +29,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         return Ok(Vec::new());
     }
 
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     // First pass: scan wildcard rules for `--no-X` to skip the matching `--X`
@@ -158,25 +161,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-uses-unnecessary-dh-argument",
     tags: ["debian-rules-uses-unnecessary-dh-argument"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     fn write_compat(base: &Path, level: u32) {

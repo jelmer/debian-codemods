@@ -1,10 +1,12 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use sequoia_openpgp::armor::{Kind, Writer};
 use sequoia_openpgp::cert::Cert;
 use sequoia_openpgp::parse::Parse;
 use sequoia_openpgp::serialize::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const MAIN: &str = "debian/upstream/signing-key.asc";
 const OTHERS: &[&str] = &[
@@ -46,33 +48,36 @@ fn merge_keys(key_data: Vec<Vec<u8>>) -> Result<String, Box<dyn std::error::Erro
     Ok(String::from_utf8(output)?)
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     // Walk other locations first then the main location, matching the
     // legacy ordering (this affects the LintianIssue's info list).
-    let mut existing: Vec<PathBuf> = Vec::new();
+    let mut existing: Vec<(PathBuf, Vec<u8>)> = Vec::new();
     for rel in OTHERS {
         let p = PathBuf::from(rel);
-        if base_path.join(&p).exists() {
-            existing.push(p);
+        if let Some(data) = ws.read_file(&p)? {
+            existing.push((p, data));
         }
     }
     let main_rel = PathBuf::from(MAIN);
-    if base_path.join(&main_rel).exists() {
-        existing.push(main_rel.clone());
+    if let Some(data) = ws.read_file(&main_rel)? {
+        existing.push((main_rel.clone(), data));
     }
 
     if existing.len() < 2 {
         return Ok(Vec::new());
     }
 
-    let mut key_data: Vec<Vec<u8>> = Vec::new();
-    for rel in &existing {
-        key_data.push(std::fs::read(base_path.join(rel))?);
-    }
+    let key_data: Vec<Vec<u8>> = existing.iter().map(|(_, d)| d.clone()).collect();
     let merged = merge_keys(key_data)
         .map_err(|e| FixerError::Other(format!("Failed to merge keys: {}", e)))?;
 
-    let info: Vec<String> = existing.iter().map(|p| p.display().to_string()).collect();
+    let info: Vec<String> = existing
+        .iter()
+        .map(|(p, _)| p.display().to_string())
+        .collect();
     let issue = LintianIssue::source_with_info("public-upstream-keys-in-multiple-locations", info);
 
     let mut actions: Vec<Action> = vec![Action::Filesystem(FilesystemAction::Write {
@@ -81,7 +86,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     })];
     for rel in OTHERS {
         let p = PathBuf::from(rel);
-        if base_path.join(&p).exists() {
+        if ws.read_file(&p)?.is_some() {
             actions.push(Action::Filesystem(FilesystemAction::Delete { file: p }));
         }
     }
@@ -94,25 +99,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "public-upstream-keys-in-multiple-locations",
     tags: ["public-upstream-keys-in-multiple-locations"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
