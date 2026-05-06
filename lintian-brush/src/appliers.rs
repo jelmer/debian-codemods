@@ -168,20 +168,24 @@ fn apply_deb822_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool
     // Selectors are tagged with the file family they belong to. We dispatch
     // on the first selector in the group: Source/Binary go through the
     // typed control editor (which applies canonical field ordering on
-    // insert); CopyrightHeader/CopyrightFiles go through the generic
-    // deb822 editor; Index/ByKey work on either and use the generic path.
-    // AppendParagraph carries no selector and always uses the generic
-    // path.
+    // insert); CopyrightHeader/CopyrightFiles go through the typed
+    // copyright editor (DEP-5 field ordering); Index/ByKey use the
+    // generic deb822 editor. AppendParagraph carries no selector and
+    // always uses the generic path.
     let first = first_selector(group);
-    let use_control_editor = matches!(
+    if matches!(
         first,
         Some(ParagraphSelector::Source | ParagraphSelector::Binary { .. })
-    );
-    if use_control_editor {
-        apply_control_deb822_group(base, rel, group)
-    } else {
-        apply_generic_deb822_group(base, rel, group)
+    ) {
+        return apply_control_deb822_group(base, rel, group);
     }
+    if matches!(
+        first,
+        Some(ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. })
+    ) {
+        return apply_copyright_deb822_group(base, rel, group);
+    }
+    apply_generic_deb822_group(base, rel, group)
 }
 
 fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> {
@@ -363,6 +367,158 @@ fn apply_control_deb822_group(
 
     if any_change {
         editor.commit()?;
+    }
+    Ok(any_change)
+}
+
+/// Apply deb822 actions targeting `debian/copyright` paragraphs through
+/// the typed `Copyright` editor, so SetField/RemoveField on the header
+/// or Files paragraphs honour DEP-5 field ordering.
+fn apply_copyright_deb822_group(
+    base: &Path,
+    rel: &Path,
+    group: &[&Action],
+) -> Result<bool, FixerError> {
+    use std::str::FromStr;
+
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "deb822 action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    // The typed Copyright parser rejects legacy headers (e.g. files
+    // using `Format-Specification` instead of `Format`). Those are
+    // exactly the kind of file the fixers need to migrate, so fall back
+    // to the generic deb822 path when the typed parser refuses.
+    let Ok(copyright) = debian_copyright::lossless::Copyright::from_str(&content) else {
+        return apply_generic_deb822_group(base, rel, group);
+    };
+
+    // If any action targets something other than the typed-copyright
+    // selectors, fall back to the generic deb822 path (which handles
+    // ByKey, Index, etc.). The typed path is only worth the round-trip
+    // when every action speaks the typed selectors.
+    if group.iter().any(|a| {
+        let Action::Deb822(deb) = a else {
+            return true;
+        };
+        let p = match deb {
+            Deb822Action::SetField { paragraph, .. }
+            | Deb822Action::SetFieldWithIndent { paragraph, .. }
+            | Deb822Action::RemoveField { paragraph, .. }
+            | Deb822Action::RenameField { paragraph, .. }
+            | Deb822Action::RemoveParagraph { paragraph, .. }
+            | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
+            | Deb822Action::DropRelation { paragraph, .. }
+            | Deb822Action::ReplaceRelation { paragraph, .. }
+            | Deb822Action::EnsureSubstvar { paragraph, .. }
+            | Deb822Action::DropSubstvar { paragraph, .. }
+            | Deb822Action::EnsureRelation { paragraph, .. }
+            | Deb822Action::MoveRelation { paragraph, .. } => paragraph,
+            Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => {
+                return false;
+            }
+        };
+        !matches!(
+            p,
+            ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. }
+        )
+    }) {
+        return apply_generic_deb822_group(base, rel, group);
+    }
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Deb822(deb) = action else {
+            unreachable!("apply_copyright_deb822_group called with non-deb822 action");
+        };
+        match deb {
+            Deb822Action::SetField {
+                paragraph,
+                field,
+                value,
+                ..
+            } => match paragraph {
+                ParagraphSelector::CopyrightHeader => {
+                    let Some(mut header) = copyright.header() else {
+                        return Err(FixerError::Other(format!(
+                            "deb822 SetField on {}: no header paragraph",
+                            rel.display()
+                        )));
+                    };
+                    if header.as_deb822().get(field).as_deref() == Some(value.as_str()) {
+                        continue;
+                    }
+                    header.set_field(field, value);
+                    any_change = true;
+                }
+                ParagraphSelector::CopyrightFiles { glob } => {
+                    let Some(mut files_para) = copyright
+                        .iter_files()
+                        .find(|p| p.as_deb822().get("Files").as_deref() == Some(glob.as_str()))
+                    else {
+                        return Err(FixerError::Other(format!(
+                            "deb822 SetField on {}: no Files paragraph for glob {:?}",
+                            rel.display(),
+                            glob
+                        )));
+                    };
+                    if files_para.as_deb822().get(field).as_deref() == Some(value.as_str()) {
+                        continue;
+                    }
+                    files_para.set_field(field, value);
+                    any_change = true;
+                }
+                other => {
+                    return Err(FixerError::Other(format!(
+                        "Copyright SetField does not support paragraph selector {:?}",
+                        other
+                    )));
+                }
+            },
+            Deb822Action::RemoveField {
+                paragraph, field, ..
+            } => match paragraph {
+                ParagraphSelector::CopyrightHeader => {
+                    let Some(mut header) = copyright.header() else {
+                        continue;
+                    };
+                    if header.as_deb822().get(field).is_some() {
+                        header.remove_field(field);
+                        any_change = true;
+                    }
+                }
+                ParagraphSelector::CopyrightFiles { glob } => {
+                    if let Some(mut files_para) = copyright
+                        .iter_files()
+                        .find(|p| p.as_deb822().get("Files").as_deref() == Some(glob.as_str()))
+                    {
+                        if files_para.as_deb822().get(field).is_some() {
+                            files_para.remove_field(field);
+                            any_change = true;
+                        }
+                    }
+                }
+                other => {
+                    return Err(FixerError::Other(format!(
+                        "Copyright RemoveField does not support paragraph selector {:?}",
+                        other
+                    )));
+                }
+            },
+            // Other deb822 actions on copyright paragraphs aren't common
+            // enough to special-case; fall through to the generic path.
+            _ => {
+                return apply_generic_deb822_group(base, rel, group);
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, copyright.to_string())?;
     }
     Ok(any_change)
 }
