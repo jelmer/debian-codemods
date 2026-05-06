@@ -1,8 +1,9 @@
-use crate::{FixerError, FixerResult, LintianIssue};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, LintianIssue};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // For the Debian Policy upgrade checklist, see
@@ -616,20 +617,25 @@ fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
     }
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    // Check if this is a debcargo package - debcargo packages manage their own control files
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    // Debcargo packages manage their own control file — skip.
     if base_path.join("debian/debcargo.toml").exists() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    let control_path = base_path.join("debian/control");
-    let control_content = std::fs::read_to_string(&control_path)?;
-    let control = Control::from_str(&control_content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/control: {:?}", e)))?;
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let control_content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&control_content) else {
+        return Ok(Vec::new());
+    };
 
-    let mut source = control
-        .source()
-        .ok_or_else(|| FixerError::Other("No source paragraph in debian/control".to_string()))?;
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
 
     let current_version_str = match source.standards_version() {
         Some(sv) => {
@@ -638,7 +644,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
         None => {
             tracing::debug!("No standards version found");
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     };
 
@@ -684,7 +690,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         if let Some(ref latest_ver) = latest {
             if &current_version >= latest_ver {
                 // Already at latest or newer
-                return Err(FixerError::NoChanges);
+                return Ok(Vec::new());
             }
         }
 
@@ -706,7 +712,7 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         // Like Python, continue with None values
         let _current_version: StandardsVersion = match current_version_str.parse() {
             Ok(sv) => sv,
-            Err(_) => return Err(FixerError::NoChanges),
+            Err(_) => return Ok(Vec::new()),
         };
         (None, None, None, "out-of-date-standards-version")
     };
@@ -722,10 +728,6 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
     let info_str = info_parts.join(" ");
 
     let issue = LintianIssue::source_with_info(tag, vec![info_str]);
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
 
     // Now try to upgrade through the path
     let mut current = current_version_str.clone();
@@ -770,12 +772,8 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
 
     // If we didn't upgrade at all, return no changes
     if current == current_version_str {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
-
-    // Update the control file
-    source.set("Standards-Version", &current);
-    std::fs::write(&control_path, control.to_string())?;
 
     let mut description = format!(
         "Update standards version to {}, no changes needed.",
@@ -792,10 +790,17 @@ pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
         }
     }
 
-    Ok(FixerResult::builder(description)
-        .certainty(crate::Certainty::Certain)
-        .fixed_issues(vec![issue])
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        description,
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel,
+            paragraph: ParagraphSelector::Source,
+            field: "Standards-Version".into(),
+            value: current,
+        })],
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_fixer! {
@@ -807,7 +812,7 @@ declare_fixer! {
         "out-of-date-copyright-format-uri",
         "missing-vcs-browser-field"
     ],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
