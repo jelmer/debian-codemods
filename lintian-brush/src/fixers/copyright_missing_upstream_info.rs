@@ -1,6 +1,7 @@
-use crate::{certainty_sufficient, min_certainty, FixerError, FixerPreferences, FixerResult};
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{certainty_sufficient, min_certainty, FixerError, FixerPreferences};
 use debian_copyright::lossless::Copyright;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamDatum;
 
 fn convert_certainty(upstream_certainty: upstream_ontologist::Certainty) -> crate::Certainty {
@@ -18,9 +19,7 @@ fn guess_upstream_metadata(
 ) -> Option<upstream_ontologist::UpstreamMetadata> {
     use futures::StreamExt;
 
-    // Create a tokio runtime to call the async function
     let rt = tokio::runtime::Runtime::new().ok()?;
-
     let trust_package = if preferences.trust_package.unwrap_or(false) {
         Some(true)
     } else {
@@ -28,289 +27,241 @@ fn guess_upstream_metadata(
     };
 
     rt.block_on(async {
-        // Use guess_upstream_metadata_items (like the Python version) which doesn't
-        // do extra mapping like Maintainer -> Contact
-        let stream = upstream_ontologist::guess_upstream_metadata_items(
-            base_path,
-            trust_package,
-            None, // minimum_certainty (we'll filter later)
-        );
-
+        let stream =
+            upstream_ontologist::guess_upstream_metadata_items(base_path, trust_package, None);
         let items: Vec<upstream_ontologist::UpstreamDatumWithMetadata> = stream
             .filter_map(|result| async move { result.ok() })
             .collect()
             .await;
-
         Some(items.into())
     })
 }
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
-    _package_name: &str,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-    if !copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let copyright_abs = base_path.join(&copyright_rel);
+    if !copyright_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let content = std::fs::read_to_string(&copyright_path)?;
-    let copyright: Copyright = match content.parse() {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
-            return Err(FixerError::NoChanges);
-        }
+    let content = std::fs::read_to_string(&copyright_abs)?;
+    let Ok(copyright) = content.parse::<Copyright>() else {
+        return Ok(Vec::new());
+    };
+    let Some(header) = copyright.header() else {
+        return Ok(Vec::new());
     };
 
-    let header = copyright
-        .header()
-        .ok_or_else(|| FixerError::Other("No header paragraph in debian/copyright".to_string()))?;
-
-    // Check if both fields are already present
     if header.upstream_name().is_some() && header.upstream_contact().is_some() {
-        return Err(FixerError::NoChanges);
+        return Ok(Vec::new());
     }
 
-    // Get upstream metadata
-    let mut upstream_metadata =
-        guess_upstream_metadata(base_path, preferences).ok_or(FixerError::NoChanges)?;
+    let Some(mut upstream_metadata) = guess_upstream_metadata(base_path, preferences) else {
+        return Ok(Vec::new());
+    };
 
-    // Also check debian/upstream/metadata if it exists
-    // These entries should override guessed metadata (unless already "Certain")
+    // Fold in debian/upstream/metadata, marking anything found there as
+    // Certain (it's authoritative for this package).
     let upstream_metadata_path = base_path.join("debian/upstream/metadata");
     if upstream_metadata_path.exists() {
-        let upstream_metadata_content = std::fs::read_to_string(&upstream_metadata_path)?;
-        if let Ok(yaml_value) =
-            serde_yaml::from_str::<serde_yaml::Value>(&upstream_metadata_content)
-        {
-            if let Some(mapping) = yaml_value.as_mapping() {
-                for (key, value) in mapping {
-                    if let (Some(key_str), Some(value_str)) = (key.as_str(), value.as_str()) {
-                        // Replace if existing entry is not "Certain"
-                        let should_replace = if let Some(existing) = upstream_metadata.get(key_str)
-                        {
-                            existing.certainty != Some(upstream_ontologist::Certainty::Certain)
-                        } else {
-                            true
+        if let Ok(content) = std::fs::read_to_string(&upstream_metadata_path) {
+            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(mapping) = yaml.as_mapping() {
+                    for (key, value) in mapping {
+                        let (Some(key_str), Some(value_str)) = (key.as_str(), value.as_str())
+                        else {
+                            continue;
                         };
-
-                        if should_replace {
-                            let datum = match key_str {
-                                "Name" => UpstreamDatum::Name(value_str.to_string()),
-                                "Contact" => UpstreamDatum::Contact(value_str.to_string()),
-                                _ => continue,
-                            };
-
-                            // Remove existing entry if present
-                            upstream_metadata.remove(key_str);
-
-                            // Insert new entry with Certain certainty
-                            upstream_metadata.insert(
-                                upstream_ontologist::UpstreamDatumWithMetadata {
-                                    datum,
-                                    certainty: Some(upstream_ontologist::Certainty::Certain),
-                                    origin: Some(upstream_ontologist::Origin::Other(
-                                        "debian/upstream/metadata".to_string(),
-                                    )),
-                                },
-                            );
+                        let datum = match key_str {
+                            "Name" => UpstreamDatum::Name(value_str.to_string()),
+                            "Contact" => UpstreamDatum::Contact(value_str.to_string()),
+                            _ => continue,
+                        };
+                        let should_replace = upstream_metadata
+                            .get(key_str)
+                            .map(|d| d.certainty != Some(upstream_ontologist::Certainty::Certain))
+                            .unwrap_or(true);
+                        if !should_replace {
+                            continue;
                         }
+                        upstream_metadata.remove(key_str);
+                        upstream_metadata.insert(upstream_ontologist::UpstreamDatumWithMetadata {
+                            datum,
+                            certainty: Some(upstream_ontologist::Certainty::Certain),
+                            origin: Some(upstream_ontologist::Origin::Other(
+                                "debian/upstream/metadata".to_string(),
+                            )),
+                        });
                     }
                 }
             }
         }
     }
 
-    let mut fields = Vec::new();
-    let mut certainties = Vec::new();
-    let mut made_changes = false;
+    let mut actions: Vec<Action> = Vec::new();
+    let mut fields: Vec<&'static str> = Vec::new();
+    let mut certainties: Vec<upstream_ontologist::Certainty> = Vec::new();
 
-    let header = copyright
-        .header()
-        .ok_or_else(|| FixerError::Other("No header paragraph in debian/copyright".to_string()))?;
+    let needs_name = header.upstream_name().is_none();
+    let needs_contact = header.upstream_contact().is_none();
 
-    // Check what we need to set
-    let needs_upstream_name = header.upstream_name().is_none();
-    let needs_upstream_contact = header.upstream_contact().is_none();
-
-    // Set Upstream-Name if missing
-    if needs_upstream_name {
-        if let Some(name_datum) = upstream_metadata.get("Name") {
-            let datum_certainty = name_datum
-                .certainty
-                .unwrap_or(upstream_ontologist::Certainty::Possible);
-
-            // Check if certainty is sufficient
-            if !certainty_sufficient(
-                convert_certainty(datum_certainty),
-                preferences.minimum_certainty,
-            ) {
-                // Skip this datum due to insufficient certainty
-            } else if let UpstreamDatum::Name(name) = &name_datum.datum {
-                if !name.is_empty() {
-                    copyright.header().unwrap().set_upstream_name(name);
-                    fields.push("Upstream-Name");
-                    certainties.push(datum_certainty);
-                    made_changes = true;
-                }
-            }
+    let mut take = |key: &str,
+                    field: &'static str,
+                    extract: fn(&UpstreamDatum) -> Option<String>|
+     -> Option<()> {
+        let datum = upstream_metadata.get(key)?;
+        let cert = datum
+            .certainty
+            .unwrap_or(upstream_ontologist::Certainty::Possible);
+        if !certainty_sufficient(convert_certainty(cert), preferences.minimum_certainty) {
+            return None;
         }
-    }
-
-    // Set Upstream-Contact if missing
-    if needs_upstream_contact {
-        if let Some(contact_datum) = upstream_metadata.get("Contact") {
-            let datum_certainty = contact_datum
-                .certainty
-                .unwrap_or(upstream_ontologist::Certainty::Possible);
-
-            // Check if certainty is sufficient
-            if !certainty_sufficient(
-                convert_certainty(datum_certainty),
-                preferences.minimum_certainty,
-            ) {
-                // Skip this datum due to insufficient certainty
-            } else if let UpstreamDatum::Contact(contact) = &contact_datum.datum {
-                if !contact.is_empty() {
-                    copyright.header().unwrap().set_upstream_contact(contact);
-                    fields.push("Upstream-Contact");
-                    certainties.push(datum_certainty);
-                    made_changes = true;
-                }
-            }
+        let value = extract(&datum.datum)?;
+        if value.is_empty() {
+            return None;
         }
+        actions.push(Action::Deb822(Deb822Action::SetField {
+            file: copyright_rel.clone(),
+            paragraph: ParagraphSelector::CopyrightHeader,
+            field: field.to_string(),
+            value,
+        }));
+        fields.push(field);
+        certainties.push(cert);
+        Some(())
+    };
+
+    if needs_name {
+        take("Name", "Upstream-Name", |d| match d {
+            UpstreamDatum::Name(n) => Some(n.clone()),
+            _ => None,
+        });
+    }
+    if needs_contact {
+        take("Contact", "Upstream-Contact", |d| match d {
+            UpstreamDatum::Contact(c) => Some(c.clone()),
+            _ => None,
+        });
     }
 
-    if !made_changes {
-        return Err(FixerError::NoChanges);
+    if actions.is_empty() {
+        return Ok(Vec::new());
     }
 
-    // Write back the copyright file
-    std::fs::write(&copyright_path, copyright.to_string())?;
-
-    let converted_certainties: Vec<crate::Certainty> =
+    let converted: Vec<crate::Certainty> =
         certainties.iter().map(|c| convert_certainty(*c)).collect();
-    let certainty = min_certainty(&converted_certainties).unwrap_or(crate::Certainty::Possible);
+    let certainty = min_certainty(&converted).unwrap_or(crate::Certainty::Possible);
 
-    let description = if fields.len() == 1 {
+    let message = if fields.len() == 1 {
         format!("Set field {} in debian/copyright.", fields[0])
     } else {
         format!("Set fields {} in debian/copyright.", fields.join(", "))
     };
 
-    Ok(FixerResult::builder(description)
-        .certainty(certainty)
-        .build())
+    Ok(vec![
+        Diagnostic::untagged(message, actions).with_certainty(certainty)
+    ])
 }
 
 declare_fixer! {
     name: "copyright-missing-upstream-info",
     tags: [],
-    apply: |basedir, package, _version, preferences| {
-        run(basedir, package, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(
+        base: &Path,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test-package", &v, preferences)
+    }
+
     #[test]
     fn test_both_fields_present() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: test-package
-Upstream-Contact: Test User <test@example.com>
-
-Files: *
-Copyright: 2024 Test User <test@example.com>
-License: GPL-3+
-
-License: GPL-3+
- This program is free software.
-"#;
-        fs::write(debian_dir.join("copyright"), copyright_content).unwrap();
-
-        let preferences = FixerPreferences {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: test-package\nUpstream-Contact: Test User <test@example.com>\n\nFiles: *\nCopyright: 2024 Test User <test@example.com>\nLicense: GPL-3+\n\nLicense: GPL-3+\n This program is free software.\n",
+        )
+        .unwrap();
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, "test-package", &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_no_upstream_metadata_available() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let copyright_content = r#"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Files: *
-Copyright: 2024 Test User <test@example.com>
-License: GPL-3+
-
-License: GPL-3+
- This program is free software.
-"#;
-        fs::write(debian_dir.join("copyright"), copyright_content).unwrap();
-
-        let preferences = FixerPreferences {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("copyright"),
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n\nFiles: *\nCopyright: 2024 Test User <test@example.com>\nLicense: GPL-3+\n\nLicense: GPL-3+\n This program is free software.\n",
+        )
+        .unwrap();
+        let prefs = FixerPreferences {
             net_access: Some(false),
             trust_package: Some(false),
-            minimum_certainty: Some(crate::Certainty::Likely), // Require at least "likely" certainty
+            minimum_certainty: Some(crate::Certainty::Likely),
             ..Default::default()
         };
-
-        let result = run(base_path, "test-package", &preferences);
-        // Should not make changes when only low-certainty metadata available
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_not_machine_readable() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
         fs::write(
-            debian_dir.join("copyright"),
+            debian.join("copyright"),
             "This is not a machine-readable copyright file.\n",
         )
         .unwrap();
-
-        let preferences = FixerPreferences {
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, "test-package", &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 
     #[test]
     fn test_copyright_file_missing() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences {
+        let tmp = TempDir::new().unwrap();
+        let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()
         };
-
-        let result = run(base_path, "test-package", &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        assert!(matches!(
+            run_apply(tmp.path(), &prefs),
+            Err(FixerError::NoChanges)
+        ));
     }
 }
