@@ -188,39 +188,32 @@ fn check_4_1_5(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(vec!["Package did not recently introduce epoch".to_string()])
 }
 
-fn poor_grep(path: &Path, needle: &[u8]) -> bool {
-    if let Ok(content) = std::fs::read(path) {
-        content.windows(needle.len()).any(|window| window == needle)
-    } else {
-        false
-    }
+fn poor_grep(ws: &dyn FixerWorkspace, rel: &Path, needle: &[u8]) -> bool {
+    let Ok(Some(content)) = ws.read_file(rel) else {
+        return false;
+    };
+    content.windows(needle.len()).any(|window| window == needle)
 }
 
-fn check_maintainer_scripts_for_users(debian_dir: &Path) -> Result<bool, UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+fn check_maintainer_scripts_for_users(ws: &dyn FixerWorkspace) -> Result<bool, UpgradeCheckResult> {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(false);
     };
 
     let mut uses_update_rc_d = false;
-
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-
-        if !name_str.ends_with(".postinst") && !name_str.ends_with(".preinst") {
+    for name in entries {
+        if !name.ends_with(".postinst") && !name.ends_with(".preinst") {
             continue;
         }
-
-        let path = entry.path();
-        if poor_grep(&path, b"adduser") || poor_grep(&path, b"useradd") {
+        let rel = PathBuf::from("debian").join(&name);
+        if poor_grep(ws, &rel, b"adduser") || poor_grep(ws, &rel, b"useradd") {
             return Err(UpgradeCheckResult::Unable {
                 section: "9.2.1".to_string(),
                 reason: "dynamically generated usernames should start with an underscore"
                     .to_string(),
             });
         }
-
-        if poor_grep(&path, b"update-rc.d") {
+        if poor_grep(ws, &rel, b"update-rc.d") {
             uses_update_rc_d = true;
         }
     }
@@ -229,33 +222,28 @@ fn check_maintainer_scripts_for_users(debian_dir: &Path) -> Result<bool, Upgrade
 }
 
 fn check_init_files_have_systemd_units(
-    debian_dir: &Path,
+    ws: &dyn FixerWorkspace,
     uses_update_rc_d: bool,
 ) -> Result<(), UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
+    let entries_set: std::collections::HashSet<&String> = entries.iter().collect();
 
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-
-        if !name_str.ends_with(".init") {
+    for name in &entries {
+        if !name.ends_with(".init") {
             continue;
         }
-
-        let shortname = &name_str[..name_str.len() - 5];
-        let service_path = debian_dir.join(format!("{}.service", shortname));
-        let template_service_path = debian_dir.join(format!("{}@.service", shortname));
-
-        if !service_path.exists() && !template_service_path.exists() {
+        let shortname = &name[..name.len() - 5];
+        let service = format!("{}.service", shortname);
+        let template_service = format!("{}@.service", shortname);
+        if !entries_set.contains(&service) && !entries_set.contains(&template_service) {
             return Err(UpgradeCheckResult::Failure {
                 section: "9.3.1".to_string(),
                 reason: "packages that include system services should include systemd units"
                     .to_string(),
             });
         }
-
         if !uses_update_rc_d {
             return Err(UpgradeCheckResult::Failure {
                 section: "9.3.3".to_string(),
@@ -267,23 +255,22 @@ fn check_init_files_have_systemd_units(
     Ok(())
 }
 
-fn check_4_5_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
+fn check_4_5_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+    if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not create users".to_string(),
             "Package does not ship init files".to_string(),
         ]);
     }
 
-    let uses_update_rc_d = match check_maintainer_scripts_for_users(&debian_dir) {
+    let uses_update_rc_d = match check_maintainer_scripts_for_users(ws) {
         Ok(uses) => uses,
         Err(result) => return result,
     };
 
     let mut results = vec!["Package does not create users".to_string()];
 
-    if let Err(result) = check_init_files_have_systemd_units(&debian_dir, uses_update_rc_d) {
+    if let Err(result) = check_init_files_have_systemd_units(ws, uses_update_rc_d) {
         return result;
     }
 
@@ -299,25 +286,16 @@ fn check_4_5_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(results)
 }
 
-fn check_4_5_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
-    let patches_dir = base_path.join("debian/patches");
-    if !patches_dir.is_dir() {
-        return UpgradeCheckResult::Success(vec!["Package does not have any patches".to_string()]);
-    }
-
-    let Ok(entries) = std::fs::read_dir(&patches_dir) else {
+fn check_4_5_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian/patches")) else {
         return UpgradeCheckResult::Success(vec!["Package does not have any patches".to_string()]);
     };
 
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-        if name_str.ends_with(".series") {
-            return UpgradeCheckResult::Failure {
-                section: "4.5.1".to_string(),
-                reason: "package contains non-default series file".to_string(),
-            };
-        }
+    if entries.iter().any(|n| n.ends_with(".series")) {
+        return UpgradeCheckResult::Failure {
+            section: "4.5.1".to_string(),
+            reason: "package contains non-default series file".to_string(),
+        };
     }
 
     UpgradeCheckResult::Success(vec![
@@ -329,16 +307,13 @@ fn check_4_2_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResul
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_for_lib64_references(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+fn check_for_lib64_references(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
-
-    for entry in entries.flatten() {
-        if !entry.path().is_file() {
-            continue;
-        }
-        if poor_grep(&entry.path(), b"lib64") {
+    for name in entries {
+        let rel = PathBuf::from("debian").join(&name);
+        if poor_grep(ws, &rel, b"lib64") {
             return Err(UpgradeCheckResult::Unable {
                 section: "9.1.1".to_string(),
                 reason: "unable to verify whether package install files into /usr/lib/64"
@@ -350,15 +325,14 @@ fn check_for_lib64_references(debian_dir: &Path) -> Result<(), UpgradeCheckResul
     Ok(())
 }
 
-fn check_4_6_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
+fn check_4_6_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+    if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not contain any references to lib64".to_string(),
         ]);
     }
 
-    if let Err(result) = check_for_lib64_references(&debian_dir) {
+    if let Err(result) = check_for_lib64_references(ws) {
         return result;
     }
 
@@ -374,16 +348,13 @@ fn check_4_6_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResul
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_for_x_window_manager(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+fn check_for_x_window_manager(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
-
-    for entry in entries.flatten() {
-        if !entry.path().is_file() {
-            continue;
-        }
-        if poor_grep(&entry.path(), b"x-window-manager") {
+    for name in entries {
+        let rel = PathBuf::from("debian").join(&name);
+        if poor_grep(ws, &rel, b"x-window-manager") {
             return Err(UpgradeCheckResult::Unable {
                 section: "11.8.4".to_string(),
                 reason: "unable to verify priority for /usr/bin/x-window-manager alternative"
@@ -395,15 +366,14 @@ fn check_for_x_window_manager(debian_dir: &Path) -> Result<(), UpgradeCheckResul
     Ok(())
 }
 
-fn check_4_6_2(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
+fn check_4_6_2(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+    if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not provide x-window-manager alternative".to_string(),
         ]);
     }
 
-    if let Err(result) = check_for_x_window_manager(&debian_dir) {
+    if let Err(result) = check_for_x_window_manager(ws) {
         return result;
     }
 
@@ -412,28 +382,20 @@ fn check_4_6_2(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult
     ])
 }
 
-fn check_for_dpkg_divert(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+fn check_for_dpkg_divert(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
-
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-
-        if !name_str.ends_with(".postinst")
-            && !name_str.ends_with(".preinst")
-            && !name_str.ends_with(".postrm")
-            && !name_str.ends_with(".prerm")
+    for name in entries {
+        if !name.ends_with(".postinst")
+            && !name.ends_with(".preinst")
+            && !name.ends_with(".postrm")
+            && !name.ends_with(".prerm")
         {
             continue;
         }
-
-        if !entry.path().is_file() {
-            continue;
-        }
-
-        if poor_grep(&entry.path(), b"dpkg-divert") {
+        let rel = PathBuf::from("debian").join(&name);
+        if poor_grep(ws, &rel, b"dpkg-divert") {
             return Err(UpgradeCheckResult::Unable {
                 section: "3.9".to_string(),
                 reason: "unable to verify dpkg-divert usage follows new policy requirements"
@@ -445,40 +407,34 @@ fn check_for_dpkg_divert(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
     Ok(())
 }
 
-fn check_4_7_0(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 3.9: maintainer scripts should prefer native mechanisms over dpkg-divert;
     // must not divert systemd configuration files
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
+    if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec!["Package does not use dpkg-divert".to_string()]);
     }
 
-    if let Err(result) = check_for_dpkg_divert(&debian_dir) {
+    if let Err(result) = check_for_dpkg_divert(ws) {
         return result;
     }
 
     UpgradeCheckResult::Success(vec!["Package does not use dpkg-divert".to_string()])
 }
 
-fn check_for_non_usr_paths(debian_dir: &Path) -> Result<(), UpgradeCheckResult> {
-    let Ok(entries) = std::fs::read_dir(debian_dir) else {
+fn check_for_non_usr_paths(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+    let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
 
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-
-        if !name_str.ends_with(".install") && !name_str.ends_with(".dirs") {
+    for name in entries {
+        if !name.ends_with(".install") && !name.ends_with(".dirs") {
             continue;
         }
-
-        if !entry.path().is_file() {
+        let rel = PathBuf::from("debian").join(&name);
+        let Ok(Some(bytes)) = ws.read_file(&rel) else {
             continue;
-        }
-
-        // Check for installations to /bin, /lib, /sbin (without /usr prefix)
-        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+        };
+        let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
 
@@ -488,7 +444,7 @@ fn check_for_non_usr_paths(debian_dir: &Path) -> Result<(), UpgradeCheckResult> 
                 continue;
             }
             // Check destination (last path component in .install files)
-            let dest = if name_str.ends_with(".install") {
+            let dest = if name.ends_with(".install") {
                 line.split_whitespace().last().unwrap_or(line)
             } else {
                 line
@@ -513,16 +469,15 @@ fn check_for_non_usr_paths(debian_dir: &Path) -> Result<(), UpgradeCheckResult> 
     Ok(())
 }
 
-fn check_4_7_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
     // 10.1: packages must not install files to /bin, /lib, /lib*, /sbin
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
+    if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not install to non-/usr paths".to_string()
         ]);
     }
 
-    if let Err(result) = check_for_non_usr_paths(&debian_dir) {
+    if let Err(result) = check_for_non_usr_paths(ws) {
         return result;
     }
 
@@ -600,9 +555,9 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    // Upgrade-checklist callbacks (check_4_*) walk the package tree
-    // directly, so we need a real on-disk base. LSP hosts won't supply
-    // one and skip.
+    // check_copyright_files_not_directories does is_dir() probes against
+    // arbitrary glob targets — only resolvable on a real on-disk base.
+    // LSP hosts won't supply one and skip the standards-version bump.
     let Some(base_path) = ws.base_path() else {
         return Ok(Vec::new());
     };
