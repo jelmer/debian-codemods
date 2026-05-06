@@ -152,6 +152,36 @@ pub trait FixerWorkspace {
     /// (an LSP) may not have a meaningful directory ordering.
     fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError>;
 
+    /// Recursively walk `rel`, returning the relative paths of every
+    /// regular file beneath it (paths are relative to the package root,
+    /// not to `rel`).
+    ///
+    /// Symbolic links and other non-regular entries are skipped. Returns
+    /// `Ok(None)` if `rel` does not exist.
+    ///
+    /// The order of returned paths is unspecified. Hosts that can't
+    /// meaningfully walk a tree (e.g. an LSP that only knows about open
+    /// buffers) may return only the files they currently track.
+    fn walk_dir(&self, rel: &Path) -> Result<Option<Vec<PathBuf>>, FixerError> {
+        // Default impl: depth-first walk via list_dir + read_file.
+        // Hosts that have a faster path can override.
+        let Some(top_entries) = self.list_dir(rel)? else {
+            return Ok(None);
+        };
+        let mut out = Vec::new();
+        let mut stack: Vec<(PathBuf, Vec<String>)> = vec![(rel.to_path_buf(), top_entries)];
+        while let Some((dir, entries)) = stack.pop() {
+            for name in entries {
+                let child = dir.join(&name);
+                match self.list_dir(&child)? {
+                    Some(sub) => stack.push((child, sub)),
+                    None => out.push(child),
+                }
+            }
+        }
+        Ok(Some(out))
+    }
+
     /// Read the Unix file mode of `rel`, or `None` if the file is missing.
     ///
     /// Hosts that don't track a meaningful mode (e.g. an LSP serving an
@@ -404,6 +434,38 @@ impl FixerWorkspace for TreeFixerWorkspace {
             names.push(entry.file_name().to_string_lossy().into_owned());
         }
         Ok(Some(names))
+    }
+
+    fn walk_dir(&self, rel: &Path) -> Result<Option<Vec<PathBuf>>, FixerError> {
+        let abs = self.full_path(rel);
+        if !abs.exists() {
+            return Ok(None);
+        }
+        let mut out = Vec::new();
+        let mut stack: Vec<PathBuf> = vec![abs.clone()];
+        while let Some(dir) = stack.pop() {
+            let read_dir = match fs::read_dir(&dir) {
+                Ok(it) => it,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(FixerError::Io(e)),
+            };
+            for entry in read_dir {
+                let entry = entry?;
+                let ft = entry.file_type()?;
+                let path = entry.path();
+                if ft.is_dir() {
+                    stack.push(path);
+                } else if ft.is_file() {
+                    let rel_path = path
+                        .strip_prefix(&self.base_path)
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or(path);
+                    out.push(rel_path);
+                }
+                // Skip symlinks and other non-regular entries.
+            }
+        }
+        Ok(Some(out))
     }
 
     fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError> {
@@ -815,5 +877,35 @@ mod tests {
         // Don't make_pkg — no debian/ at all.
         let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
         assert!(matches!(ws.control(), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn tree_workspace_walk_dir_returns_relative_files() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        // Add a subdirectory with a file to verify recursion.
+        let nested = tmp.path().join("debian/source");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("format"), "3.0 (quilt)\n").unwrap();
+
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let mut paths = ws.walk_dir(Path::new("debian")).unwrap().unwrap();
+        paths.sort();
+
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("debian/changelog"),
+                PathBuf::from("debian/control"),
+                PathBuf::from("debian/source/format"),
+            ]
+        );
+    }
+
+    #[test]
+    fn tree_workspace_walk_dir_missing_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        assert!(ws.walk_dir(Path::new("debian")).unwrap().is_none());
     }
 }
