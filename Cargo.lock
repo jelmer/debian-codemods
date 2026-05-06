@@ -983,9 +983,9 @@ dependencies = [
 
 [[package]]
 name = "debian-analyzer"
-version = "0.160.14"
+version = "0.160.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ea81c6cbcb3cda14ca1e19c4df63d9978391cdab5e78144093aa8cc32c915d7"
+checksum = "63f410cd0b178ba5ee08a900072f862cff3ff610257afc0e1786c6bf0b08ed1c"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -1055,9 +1055,9 @@ dependencies = [
 
 [[package]]
 name = "debian-copyright"
-version = "0.1.47"
+version = "0.1.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3945e6b8948e9c84a5b0bd5ae9cfd632ada990d0da4fc49ff27e85274d5dbe08"
+checksum = "de3424ff8ed8521aa2ad9ef969000ed34cd7d8bd62098d4ca382f5d9f5ca277a"
 dependencies = [
  "deb822-fast",
  "deb822-lossless",
