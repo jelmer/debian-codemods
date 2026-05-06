@@ -311,6 +311,58 @@ impl FixerWorkspace for TreeFixerWorkspace {
     }
 }
 
+/// Read the debhelper compat level from a workspace.
+///
+/// Looks at `debian/compat` first, then falls back to the `X-DH-Compat`
+/// field or a `debhelper-compat` build dependency in `debian/control`.
+/// Returns `Ok(None)` when neither source is present or parseable.
+pub fn compat_level(ws: &dyn FixerWorkspace) -> Result<Option<u8>, FixerError> {
+    if let Some(bytes) = ws.read_file(Path::new("debian/compat"))? {
+        if let Ok(text) = std::str::from_utf8(&bytes) {
+            let trimmed = text
+                .split_once('#')
+                .map_or(text, |(before, _)| before)
+                .trim();
+            if let Ok(level) = trimmed.parse::<u8>() {
+                return Ok(Some(level));
+            }
+        }
+    }
+
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    let Some(source) = control.source() else {
+        return Ok(None);
+    };
+
+    if let Some(dh_compat) = source.as_deb822().get("X-DH-Compat") {
+        let trimmed = dh_compat
+            .split_once('#')
+            .map_or(dh_compat.as_str(), |(before, _)| before)
+            .trim();
+        if let Ok(level) = trimmed.parse::<u8>() {
+            return Ok(Some(level));
+        }
+    }
+
+    let Some(build_depends) = source.build_depends() else {
+        return Ok(None);
+    };
+    let Some(rel) = build_depends
+        .entries()
+        .flat_map(|entry| entry.relations().collect::<Vec<_>>())
+        .find(|r| r.try_name().as_deref() == Some("debhelper-compat"))
+    else {
+        return Ok(None);
+    };
+    Ok(rel
+        .version()
+        .and_then(|(_op, v)| v.to_string().parse::<u8>().ok()))
+}
+
 /// A detector reads a Debian source package and emits
 /// [`Diagnostic`](crate::diagnostic::Diagnostic)s describing what (if
 /// anything) needs fixing, together with the [`Action`](crate::diagnostic::Action)s

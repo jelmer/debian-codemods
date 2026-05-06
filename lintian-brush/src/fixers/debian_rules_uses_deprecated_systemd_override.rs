@@ -1,27 +1,30 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
-use debian_analyzer::debhelper::get_debhelper_compat_level;
+use crate::workspace::{compat_level, FixerWorkspace};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 const DEPRECATED_OVERRIDES: &[&str] = &["override_dh_systemd_enable", "override_dh_systemd_start"];
 const NEW_TARGET: &str = "override_dh_installsystemd";
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
     // Issue only applies to compat level >= 11.
-    match get_debhelper_compat_level(base_path)? {
+    match compat_level(ws)? {
         Some(level) if level >= 11 => {}
         _ => return Ok(Vec::new()),
     }
 
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let new_target_exists = makefile
@@ -75,25 +78,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-uses-deprecated-systemd-override",
     tags: ["debian-rules-uses-deprecated-systemd-override"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     fn write_compat(base: &Path, level: u32) {

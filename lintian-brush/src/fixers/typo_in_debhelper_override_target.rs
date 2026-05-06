@@ -1,8 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use strsim::levenshtein;
 
 const JAVAHELPER_COMMANDS: &[&str] = &[
@@ -37,12 +39,15 @@ const JAVAHELPER_COMMANDS: &[&str] = &[
     "mh_patchpom",
 ];
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let rules_bytes = match ws.read_file(&rules_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
     let known_dh_commands = match get_dh_commands() {
         Ok(c) => c,
@@ -55,8 +60,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         known_targets.insert(format!("execute_after_{}", cmd));
     }
 
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -160,25 +164,26 @@ fn get_dh_commands() -> Result<Vec<String>, FixerError> {
     Ok(dh_commands)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "typo-in-debhelper-override-target",
     tags: ["typo-in-debhelper-override-target"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]
