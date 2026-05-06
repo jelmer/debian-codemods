@@ -1,0 +1,9 @@
+Source: blah
+Section: net
+Priority: optional
+
+Package: blah
+Architecture: any
+Essential: yes
+Description: blah
+ blah
