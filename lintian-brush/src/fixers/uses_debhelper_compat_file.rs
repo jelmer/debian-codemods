@@ -1,33 +1,44 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
-use debian_analyzer::debhelper::{highest_stable_compat_level, read_debhelper_compat_file};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use debian_analyzer::debhelper::highest_stable_compat_level;
 use debian_analyzer::relations::is_relation_implied;
-use debian_control::lossless::{Control, Entry};
+use debian_control::lossless::Entry;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
 
-fn check_cdbs(base_path: &Path) -> bool {
-    let rules_path = base_path.join("debian/rules");
-    if let Ok(content) = std::fs::read_to_string(&rules_path) {
-        content.contains("/usr/share/cdbs/")
-    } else {
-        false
-    }
+fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
+    let Ok(Some(content)) = ws.read_file(Path::new("debian/rules")) else {
+        return false;
+    };
+    content
+        .windows(b"/usr/share/cdbs/".len())
+        .any(|w| w == b"/usr/share/cdbs/")
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let compat_rel = PathBuf::from("debian/compat");
-    let compat_abs = base_path.join(&compat_rel);
-    let Some(compat_version) = read_debhelper_compat_file(&compat_abs)? else {
+    let compat_bytes = match ws.read_file(&compat_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(compat_text) = std::str::from_utf8(&compat_bytes) else {
+        return Ok(Vec::new());
+    };
+    let Ok(compat_version) = compat_text.trim().parse::<u8>() else {
         return Ok(Vec::new());
     };
 
     if compat_version < 11 {
         return Ok(Vec::new());
     }
-    if check_cdbs(base_path) {
+    if check_cdbs(ws) {
         return Ok(Vec::new());
     }
     if compat_version > highest_stable_compat_level() {
@@ -35,13 +46,10 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }
 
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -99,25 +107,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "uses-debhelper-compat-file",
     tags: ["uses-debhelper-compat-file"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
