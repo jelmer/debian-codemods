@@ -1,8 +1,27 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
-use crate::lintian_overrides::{find_override_files, fix_override_info, LintianOverrides};
-use crate::{FixerError, LintianIssue};
+use crate::lintian_overrides::{fix_override_info, LintianOverrides};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+fn find_override_files(ws: &dyn FixerWorkspace) -> Result<Vec<PathBuf>, FixerError> {
+    let mut paths = Vec::new();
+    let source_rel = PathBuf::from("debian/source/lintian-overrides");
+    if ws.read_file(&source_rel)?.is_some() {
+        paths.push(source_rel);
+    }
+    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
+        entries.sort();
+        for name in entries {
+            if name.ends_with(".lintian-overrides") {
+                paths.push(PathBuf::from("debian").join(name));
+            }
+        }
+    }
+    Ok(paths)
+}
 
 fn shorten_path(path: &Path) -> String {
     let path_str = path.display().to_string();
@@ -43,24 +62,25 @@ fn linenos_to_ranges(linenos: &[usize]) -> String {
     ranges.join(", ")
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     let mut fixed_linenos: HashMap<PathBuf, Vec<usize>> = HashMap::new();
     let mut pending: Vec<(LintianIssue, OverrideLineSelector, PathBuf, String)> = Vec::new();
 
-    for path in find_override_files(base_path) {
-        let Ok(content) = std::fs::read_to_string(&path) else {
+    for rel in find_override_files(ws)? {
+        let Some(bytes) = ws.read_file(&rel)? else {
+            continue;
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
             continue;
         };
         let parsed = LintianOverrides::parse(&content);
         let Ok(overrides) = parsed.ok() else {
             continue;
         };
-
-        let rel = path
-            .strip_prefix(base_path)
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|_| path.clone());
 
         for (idx, line) in overrides.lines().enumerate() {
             if line.is_comment() || line.is_empty() {
@@ -150,25 +170,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "old-override-info-format",
     tags: ["mismatched-override"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

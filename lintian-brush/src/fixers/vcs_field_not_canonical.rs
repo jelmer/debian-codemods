@@ -1,9 +1,9 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const VCS_TYPES: &[&str] = &[
     "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
@@ -33,16 +33,20 @@ fn canonicalize_vcs_url(vcs_type: &str, url: &str) -> String {
 /// Per-diagnostic message tag, threaded through to the describer.
 const SEP: char = '\t';
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let debcargo_rel = PathBuf::from("debian/debcargo.toml");
     let control_rel = PathBuf::from("debian/control");
-    let debcargo_abs = base_path.join(&debcargo_rel);
-    let control_abs = base_path.join(&control_rel);
+    let debcargo_bytes = ws.read_file(&debcargo_rel)?;
+    let control_bytes = ws.read_file(&control_rel)?;
 
-    if debcargo_abs.exists() && !control_abs.exists() {
+    if debcargo_bytes.is_some() && control_bytes.is_none() {
         // Debcargo branch — fields live in [source] under TOML keys
         // vcs_git / vcs_browser. We canonicalize whichever is set.
-        let toml_text = std::fs::read_to_string(&debcargo_abs)?;
+        let toml_text = String::from_utf8(debcargo_bytes.unwrap())
+            .map_err(|e| FixerError::Other(format!("Failed to read debcargo.toml: {}", e)))?;
         let doc: toml_edit::DocumentMut = toml_text
             .parse()
             .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
@@ -76,13 +80,14 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         return Ok(diagnostics);
     }
 
-    if !control_abs.exists() {
+    if control_bytes.is_none() {
         return Ok(Vec::new());
     }
 
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -130,30 +135,28 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     format!("Use canonical URL in {}.", list)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "vcs-field-not-canonical",
     tags: ["vcs-field-not-canonical"],
     after: ["vcs-field-mismatch"],
     before: ["vcs-field-uses-insecure-uri"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
-    use crate::{FixerPreferences, Version};
+    use crate::workspace::DetectorAdapter;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]
