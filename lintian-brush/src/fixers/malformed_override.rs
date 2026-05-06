@@ -1,7 +1,7 @@
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::lintian_overrides::{filter_overrides, LintianOverrides};
+use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
+use crate::lintian_overrides::{find_override_files, LintianOverrides};
 use crate::{FixerError, LintianIssue};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const REMOVED_TAGS: &[&str] = &[
     "hardening-no-stackprotector",
@@ -12,28 +12,6 @@ const REMOVED_TAGS: &[&str] = &[
     "copyright-year-in-future",
     "script-calls-init-script-directly",
 ];
-
-fn find_override_files(base_path: &Path) -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    let source_overrides = base_path.join("debian/source/lintian-overrides");
-    if source_overrides.exists() {
-        paths.push(source_overrides);
-    }
-    let debian_dir = base_path.join("debian");
-    if let Ok(entries) = std::fs::read_dir(&debian_dir) {
-        let mut sorted: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-        sorted.sort_by_key(|e| e.file_name());
-        for entry in sorted {
-            let path = entry.path();
-            if let Some(name) = path.file_name() {
-                if name.to_string_lossy().ends_with(".lintian-overrides") {
-                    paths.push(path);
-                }
-            }
-        }
-    }
-    paths
-}
 
 pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -48,8 +26,11 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             continue;
         };
 
-        let mut removed_in_this_file: Vec<String> = Vec::new();
-        let mut issues: Vec<LintianIssue> = Vec::new();
+        let rel = path
+            .strip_prefix(base_path)
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|_| path.clone());
+
         for (lineno, line) in overrides.lines().enumerate() {
             if line.is_comment() || line.is_empty() {
                 continue;
@@ -62,16 +43,13 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
                 continue;
             }
             let tag_string = tag.to_string();
-            if !removed_in_this_file.contains(&tag_string) {
-                removed_in_this_file.push(tag_string.clone());
-            }
             if !all_removed_tags.contains(&tag_string) {
-                all_removed_tags.push(tag_string);
+                all_removed_tags.push(tag_string.clone());
             }
             let package_name = line.package_spec().and_then(|s| s.package_name());
-            issues.push(if let Some(pkg) = package_name {
+            let issue = if let Some(ref pkg) = package_name {
                 LintianIssue::binary_with_info(
-                    &pkg,
+                    pkg,
                     "malformed-override",
                     vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
                 )
@@ -80,40 +58,23 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
                     "malformed-override",
                     vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
                 )
-            });
-        }
-        if issues.is_empty() {
-            continue;
-        }
-
-        let filtered = filter_overrides(&overrides, |line| {
-            if line.is_comment() || line.is_empty() {
-                return true;
-            }
-            line.tag()
-                .map(|t| !REMOVED_TAGS.contains(&t.text()))
-                .unwrap_or(true)
-        });
-        let new_content = filtered.text();
-        let rel = path
-            .strip_prefix(base_path)
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|_| path.clone());
-        let action = if new_content.trim().is_empty() {
-            Action::Filesystem(FilesystemAction::Delete { file: rel })
-        } else {
-            Action::Filesystem(FilesystemAction::Write {
-                file: rel,
-                content: new_content.into_bytes(),
-            })
-        };
-        for (i, issue) in issues.into_iter().enumerate() {
-            let actions = if i == 0 {
-                vec![action.clone()]
-            } else {
-                Vec::new()
             };
-            diagnostics.push(Diagnostic::with_actions(issue, String::new(), actions));
+            let info = line
+                .info()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                String::new(),
+                vec![Action::LintianOverrides(LintianOverridesAction::DropLine {
+                    file: rel.clone(),
+                    selector: OverrideLineSelector {
+                        tag: tag_string,
+                        info,
+                        package: package_name,
+                    },
+                })],
+            ));
         }
     }
 
@@ -121,14 +82,10 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         return Ok(Vec::new());
     }
 
-    let summary = if all_removed_tags.is_empty() {
-        "Remove overrides for lintian tags that are no longer supported".to_string()
-    } else {
-        format!(
-            "Remove overrides for lintian tags that are no longer supported: {}",
-            all_removed_tags.join(", ")
-        )
-    };
+    let summary = format!(
+        "Remove overrides for lintian tags that are no longer supported: {}",
+        all_removed_tags.join(", ")
+    );
     for d in &mut diagnostics {
         d.message = summary.clone();
     }

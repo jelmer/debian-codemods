@@ -123,6 +123,9 @@ pub enum Action {
     /// An edit to a DEP-3 patch header (a quilt patch under
     /// `debian/patches/`).
     Dep3(Dep3Action),
+    /// An edit to a lintian-overrides file (`debian/source/lintian-overrides`
+    /// or `debian/<pkg>.lintian-overrides`).
+    LintianOverrides(LintianOverridesAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -918,6 +921,52 @@ pub enum Dep3Action {
         from_field: String,
         /// New field name.
         to_field: String,
+    },
+}
+
+/// Identifies a specific override line for in-place edits.
+///
+/// We address lines by their visible content rather than by index because
+/// other actions may shift the line numbering between detect and apply.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct OverrideLineSelector {
+    /// Tag name (matched exactly).
+    pub tag: String,
+    /// Optional info string the override carries (matched exactly, no
+    /// wildcard expansion). `None` matches lines with no info.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub info: Option<String>,
+    /// Optional package name from the `package:` prefix. `None` matches
+    /// lines without a package spec.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+}
+
+/// Edits to a `debian/source/lintian-overrides` or
+/// `debian/<pkg>.lintian-overrides` file.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum LintianOverridesAction {
+    /// Drop the first override line that matches `selector`. Each
+    /// DropLine action consumes one line — to remove N copies of the
+    /// same line, emit N actions. If the file becomes empty (no
+    /// override lines remain), it is removed entirely.
+    DropLine {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which override line to drop.
+        selector: OverrideLineSelector,
+    },
+    /// Rename the tag on every line whose current tag is `from_tag`. The
+    /// rest of each line (whitespace, comments, package spec, info) is
+    /// preserved verbatim.
+    RenameTag {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Old tag name (matched exactly).
+        from_tag: String,
+        /// New tag name.
+        to_tag: String,
     },
 }
 
