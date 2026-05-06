@@ -1,5 +1,6 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use std::path::Path;
+use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use std::path::{Path, PathBuf};
 
 mod decopy {
     use pyo3::prelude::*;
@@ -223,32 +224,26 @@ mod decopy {
     }
 }
 
-pub fn run(
+pub fn detect(
     base_path: &Path,
-    _package_name: &str,
     preferences: &FixerPreferences,
-) -> Result<FixerResult, FixerError> {
-    let copyright_path = base_path.join("debian/copyright");
-
-    // Check if copyright file already exists
-    if copyright_path.exists() {
-        return Err(FixerError::NoChanges);
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let copyright_rel = PathBuf::from("debian/copyright");
+    let copyright_abs = base_path.join(&copyright_rel);
+    if copyright_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    // Check minimum certainty
-    let certainty = crate::Certainty::Possible;
+    // Result is Possible — only emit when the caller's certainty bar
+    // accepts that.
+    let certainty = Certainty::Possible;
     if !crate::certainty_sufficient(certainty, preferences.minimum_certainty) {
-        return Err(FixerError::NotCertainEnough(
-            certainty,
-            preferences.minimum_certainty,
-            vec![],
-        ));
+        return Ok(Vec::new());
     }
 
     use debian_copyright::lossless::Copyright;
     use debian_copyright::License;
 
-    // Scan the tree using decopy
     let (file_groups, license_names) = match decopy::scan_tree(base_path) {
         Ok(result) => result,
         Err(decopy::Error::NotAvailable) => {
@@ -259,50 +254,39 @@ pub fn run(
         }
     };
 
-    // Create a new copyright file
     let mut copyright = Copyright::new();
-
-    // Add files paragraphs
     for group in file_groups {
         let files_refs: Vec<&str> = group.files.iter().map(|s| s.as_str()).collect();
         let copyrights_refs: Vec<&str> = group.copyrights.iter().map(|s| s.as_str()).collect();
         let license = License::Name(group.license.clone());
-
         let mut files_para = copyright.add_files(&files_refs, &copyrights_refs, &license);
-
-        // Set comment if present
         if let Some(comment) = group.comments {
             files_para.set_comment(&comment);
         }
     }
-
-    // Add license paragraphs
     for license_name in license_names {
         let license = License::Name(license_name);
         let mut license_para = copyright.add_license(&license);
         license_para.set_comment("Add the corresponding license text here");
     }
 
-    // Write to file
-    std::fs::write(&copyright_path, copyright.to_string())?;
-
     let issue = LintianIssue::source_with_info("no-copyright-file", vec![]);
-
-    if !issue.should_fix(base_path) {
-        return Err(FixerError::NoChangesAfterOverrides(vec![issue]));
-    }
-
-    Ok(FixerResult::builder("Create a debian/copyright file.")
-        .certainty(certainty)
-        .fixed_issue(issue)
-        .build())
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Create a debian/copyright file.",
+        vec![Action::Filesystem(FilesystemAction::Write {
+            file: copyright_rel,
+            content: copyright.to_string().into_bytes(),
+        })],
+    )
+    .with_certainty(certainty)])
 }
 
 declare_fixer! {
     name: "no-copyright-file",
     tags: ["no-copyright-file"],
-    apply: |basedir, package, _version, preferences| {
-        run(basedir, package, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
     }
 }
 
