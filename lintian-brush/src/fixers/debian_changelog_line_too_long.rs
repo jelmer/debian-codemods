@@ -1,16 +1,17 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
-use debian_changelog::ChangeLog;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const WIDTH: usize = 80;
 
 pub fn detect(
-    base_path: &Path,
-    package: &str,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    let package = ws.package().unwrap_or("").to_string();
     let thorough = preferences
         .extra_env
         .as_ref()
@@ -19,14 +20,11 @@ pub fn detect(
         .unwrap_or(false);
 
     let changelog_rel = PathBuf::from("debian/changelog");
-    let abs = base_path.join(&changelog_rel);
-    if !abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&abs)?;
-    let changelog = ChangeLog::read_relaxed(content.as_bytes())
-        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
+    let changelog = match ws.parsed_changelog() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     let all_changes = debian_changelog::iter_changes_by_author(&changelog);
     if all_changes.is_empty() {
@@ -60,7 +58,7 @@ pub fn detect(
                     "debian-changelog-line-too-long",
                     vec![format!(
                         "[usr/share/doc/{}/changelog.Debian.gz:{}]",
-                        package, line_no
+                        &package, line_no
                     )],
                 );
                 let v = version.to_string();
@@ -141,28 +139,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-changelog-line-too-long",
     tags: ["debian-changelog-line-too-long"],
-    diagnose: |basedir, package, _version, preferences| {
-        detect(basedir, package, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, package: &str) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, package, &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, package, &version, &FixerPreferences::default())
     }
 
     #[test]
