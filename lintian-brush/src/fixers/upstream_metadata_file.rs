@@ -1,8 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use tracing::debug;
 use upstream_ontologist::vcs::convert_cvs_list_to_str;
@@ -28,10 +30,19 @@ fn is_valid_dep12_field(field_name: &str) -> bool {
 }
 
 pub fn detect(
-    base_path: &Path,
-    current_version: &debversion::Version,
-    preferences: &crate::FixerPreferences,
+    ws: &dyn FixerWorkspace,
+    preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    // Most of this fixer's work — guess_upstream_metadata_items, the
+    // copyright walker — runs over the package tree on disk. Fall
+    // back to the filesystem escape hatch.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
+    let Some(current_version) = ws.current_version() else {
+        return Ok(Vec::new());
+    };
+
     // Skip native packages.
     if is_native_package(current_version)? {
         return Ok(Vec::new());
@@ -702,29 +713,30 @@ fn is_native_package(current_version: &debversion::Version) -> Result<bool, Fixe
     Ok(is_native)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "upstream-metadata-file",
     tags: [
         "upstream-metadata-file-is-missing",
         "upstream-metadata-missing-bug-tracking",
         "upstream-metadata-missing-repository"
     ],
-    diagnose: |basedir, _package, version, preferences| {
-        detect(basedir, version, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
         let v: Version = version_str.parse().unwrap();
-        FixerImpl.apply(
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(
             base,
             "test-package",
             &v,

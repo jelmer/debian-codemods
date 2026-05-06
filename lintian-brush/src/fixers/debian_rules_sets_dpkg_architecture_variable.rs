@@ -6,7 +6,9 @@ use lazy_static::lazy_static;
 use makefile_lossless::Makefile;
 use regex::Regex;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::path::Path;
+use std::path::PathBuf;
 
 const ARCHITECTURE_MK_PATH: &str = "/usr/share/dpkg/architecture.mk";
 
