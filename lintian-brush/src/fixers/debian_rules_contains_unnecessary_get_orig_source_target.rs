@@ -1,32 +1,31 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Skip when not opinionated and the source tree is just the debian/
     // overlay (no upstream contents). See
     // https://salsa.debian.org/debian-ayatana-team/snapd-glib/-/merge_requests/6#note_358358.
     if !preferences.opinionated.unwrap_or(false) {
-        let entries: Vec<_> = std::fs::read_dir(base_path)?
-            .collect::<Result<_, _>>()
-            .map_err(FixerError::from)?;
-        if entries.len() == 1 && entries[0].file_name() == "debian" {
-            return Ok(Vec::new());
+        if let Some(entries) = ws.list_dir(Path::new(""))? {
+            if entries.len() == 1 && entries[0] == "debian" {
+                return Ok(Vec::new());
+            }
         }
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let Some(rule) = makefile
@@ -69,18 +68,17 @@ pub fn detect(
     .with_certainty(certainty)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-contains-unnecessary-get-orig-source-target",
     tags: ["debian-rules-contains-unnecessary-get-orig-source-target"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -90,7 +88,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, preferences)
     }
 
     #[test]
