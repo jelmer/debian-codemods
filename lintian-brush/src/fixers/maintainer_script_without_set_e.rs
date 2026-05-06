@@ -1,6 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::{FixerError, LintianIssue};
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
 const SCRIPTS: &[&str] = &["preinst", "prerm", "postinst", "config", "postrm"];
 
@@ -65,16 +67,15 @@ fn compute_insertion(content: &[u8]) -> Option<(usize, String)> {
     Some((insert_at, insert_text))
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_dir = base_path.join("debian");
-
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics = Vec::new();
     for script_name in SCRIPTS {
-        let script_abs = debian_dir.join(script_name);
-        let content = match std::fs::read(&script_abs) {
-            Ok(c) => c,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(e) => return Err(e.into()),
+        let rel = PathBuf::from("debian").join(script_name);
+        let Some(content) = ws.read_file(&rel)? else {
+            continue;
         };
         let Some((offset, insert_text)) = compute_insertion(&content) else {
             continue;
@@ -84,7 +85,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             "maintainer-script-without-set-e",
             vec![format!("[{}]", script_name)],
         );
-        let rel = PathBuf::from("debian").join(script_name);
         diagnostics.push(Diagnostic::with_actions(
             issue,
             "Use set -e rather than passing -e on the shebang-line.",
@@ -112,25 +112,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "maintainer-script-without-set-e",
     tags: ["maintainer-script-without-set-e"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]
