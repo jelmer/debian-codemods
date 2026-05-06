@@ -65,6 +65,7 @@ pub fn detect(
                             .to_string(),
                     plans,
                     certainty: Some(crate::Certainty::Confident),
+                    patch_name: None,
                 };
                 return Ok(vec![diagnostic]);
             }
@@ -152,6 +153,7 @@ pub fn detect(
                             .to_string(),
                     plans,
                     certainty: Some(crate::Certainty::Confident),
+                    patch_name: None,
                 });
             }
         }
@@ -183,6 +185,7 @@ pub fn detect(
                 ),
                 plans,
                 certainty: None,
+                patch_name: None,
             });
         }
     }
