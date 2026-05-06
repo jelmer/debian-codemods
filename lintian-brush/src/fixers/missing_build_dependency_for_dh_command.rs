@@ -1,12 +1,12 @@
-use crate::{FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_analyzer::relations::ensure_some_version;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
 use debian_analyzer::rules::dh_invoke_get_with;
+use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 const LINTIAN_DATA_PATH: &str = "/usr/share/lintian/data";
 
@@ -30,7 +30,7 @@ fn load_command_deps() -> HashMap<String, String> {
 
     // Try loading from lintian data
     let commands_path = format!("{}/debhelper/commands.json", LINTIAN_DATA_PATH);
-    if let Ok(content) = fs::read_to_string(&commands_path) {
+    if let Ok(content) = std::fs::read_to_string(&commands_path) {
         if let Ok(data) = serde_json::from_str::<CommandsData>(&content) {
             for (command, info) in data.commands {
                 command_to_dep.insert(command, info.installed_by.join(" | "));
@@ -75,7 +75,7 @@ fn load_addon_deps() -> HashMap<String, String> {
 
     // Try loading from lintian data
     let addons_path = format!("{}/debhelper/add_ons.json", LINTIAN_DATA_PATH);
-    if let Ok(content) = fs::read_to_string(&addons_path) {
+    if let Ok(content) = std::fs::read_to_string(&addons_path) {
         if let Ok(data) = serde_json::from_str::<AddOnsData>(&content) {
             for (addon, info) in data.add_ons {
                 addon_to_dep.insert(addon, info.installed_by.join(" | "));
@@ -151,40 +151,58 @@ fn is_relation_implied(required: &str, existing: &str) -> bool {
     false
 }
 
-pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_rel = PathBuf::from("debian/rules");
+    let rules_abs = base_path.join(&rules_rel);
+    if !rules_abs.exists() {
+        return Ok(Vec::new());
+    }
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
     let command_to_dep = load_command_deps();
     let addon_to_dep = load_addon_deps();
 
-    let content = fs::read_to_string(&rules_path)?;
+    let content = std::fs::read_to_string(&rules_abs)?;
     let makefile = Makefile::read_relaxed(content.as_bytes())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    let mut need: Vec<(String, String, String, LintianIssue)> = Vec::new(); // (dep, kind, name, issue)
-    let mut overridden_issues = Vec::new();
+    let control_content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&control_content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let existing_bd: Vec<String> = ["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"]
+        .iter()
+        .filter_map(|f| source.as_deb822().get(f))
+        .collect();
 
+    let is_already_satisfied = |dep: &str| -> bool {
+        if is_relation_implied(dep, "debhelper") {
+            return true;
+        }
+        existing_bd.iter().any(|v| is_relation_implied(dep, v))
+    };
+
+    // (dep, kind, name, issue)
+    let mut need: Vec<(String, &'static str, String, LintianIssue)> = Vec::new();
     for rule in makefile.rules() {
         for recipe in rule.recipes() {
             let trimmed = recipe.trim();
             if trimmed.starts_with('#') {
                 continue;
             }
-
-            // Parse the command
             let parts = shell_words::split(trimmed).unwrap_or_default();
-
-            if parts.is_empty() {
+            let Some(executable) = parts.first().cloned() else {
                 continue;
-            }
+            };
 
-            let executable = &parts[0];
-
-            // Check if this command needs a dependency
-            if let Some(dep) = command_to_dep.get(executable) {
+            if let Some(dep) = command_to_dep.get(&executable) {
                 let issue = LintianIssue::source_with_info(
                     "missing-build-dependency-for-dh_-command",
                     vec![format!(
@@ -192,20 +210,9 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                         executable, dep
                     )],
                 );
-
-                if !issue.should_fix(base_path) {
-                    overridden_issues.push(issue);
-                } else {
-                    need.push((
-                        dep.clone(),
-                        "command".to_string(),
-                        executable.to_string(),
-                        issue,
-                    ));
-                }
+                need.push((dep.clone(), "command", executable.clone(), issue));
             }
 
-            // Check for dh addons
             if executable == "dh" || executable.starts_with("dh_") {
                 let addons = dh_invoke_get_with(trimmed);
                 for addon in addons {
@@ -217,200 +224,133 @@ pub fn run(base_path: &Path, _preferences: &FixerPreferences) -> Result<FixerRes
                                 addon, dep
                             )],
                         );
-
-                        if !issue.should_fix(base_path) {
-                            overridden_issues.push(issue);
-                        } else {
-                            need.push((dep.clone(), "addon".to_string(), addon, issue));
-                        }
+                        need.push((dep.clone(), "addon", addon, issue));
                     }
                 }
             }
         }
     }
 
-    if need.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
+    let mut effective: Vec<(String, &'static str, String, LintianIssue)> = Vec::new();
+    let mut emitted_deps = std::collections::HashSet::<String>::new();
+    for entry in need {
+        if is_already_satisfied(&entry.0) {
+            continue;
         }
-        return Err(FixerError::NoChanges);
+        if !emitted_deps.insert(entry.0.clone()) {
+            continue;
+        }
+        effective.push(entry);
     }
 
-    let control_path = base_path.join("debian/control");
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+    if effective.is_empty() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
-    let mut source = editor.source().ok_or(FixerError::NoChanges)?;
-
-    let mut changed: Vec<(String, String, String)> = Vec::new();
-    let mut fixed_issues = Vec::new();
-
-    for (dep, kind, name, issue) in need {
-        let mut is_implied = false;
-
-        // Check if relation is implied by debhelper
-        if is_relation_implied(&dep, "debhelper") {
-            is_implied = true;
-        }
-
-        // Check all build dependency fields
-        if !is_implied {
-            for field_name in ["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"] {
-                if let Some(field_value) = source.as_deb822().get(field_name) {
-                    if is_relation_implied(&dep, &field_value) {
-                        is_implied = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if !is_implied {
-            let build_depends = source.build_depends().unwrap_or_default();
-            let mut new_build_depends = build_depends;
-            ensure_some_version(&mut new_build_depends, &dep);
-            source.set_build_depends(&new_build_depends);
-            changed.push((dep, kind, name));
-            fixed_issues.push(issue);
-        }
-    }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    let description = if changed.len() == 1 {
-        let (dep, kind, name) = &changed[0];
+    let summary = if effective.len() == 1 {
+        let (dep, kind, name, _) = &effective[0];
         format!(
             "Add missing build dependency on {} for {} {}.",
             dep, kind, name
         )
     } else {
         let mut desc = "Add missing build dependencies:".to_string();
-        for (dep, kind, name) in &changed {
+        for (dep, kind, name, _) in &effective {
             desc.push_str(&format!("\n* {} for {} {}.", dep, kind, name));
         }
         desc
     };
 
-    Ok(FixerResult::builder(&description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    // Each diagnostic carries its own EnsureRelation. The applier runs
+    // them in order against the same Build-Depends field; ensure_relation
+    // is idempotent and additive so concurrent dependent edits compose
+    // correctly.
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for (dep, _, _, issue) in effective {
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            summary.clone(),
+            vec![Action::Deb822(Deb822Action::EnsureRelation {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Build-Depends".into(),
+                entry: dep,
+            })],
+        ));
+    }
+    Ok(diagnostics)
 }
 
 declare_fixer! {
     name: "missing-build-dependency-for-dh_-command",
     tags: ["missing-build-dependency-for-dh_-command", "missing-build-dependency-for-dh-addon"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_no_rules() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_adds_missing_dh_python3() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("rules"),
+            "#!/usr/bin/make\n\n%:\n\tdh $@\n\noverride_dh_build:\n\t# The next line is empty\n\n\n\tdh_python3\n",
+        )
+        .unwrap();
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: blah\nBuild-Depends: libc6-dev\n\nPackage: python3-blah\nDescription: blah blah\n blah\n",
+        )
+        .unwrap();
 
-        let rules_content = r#"#!/usr/bin/make
-
-%:
-	dh $@
-
-override_dh_build:
-	# The next line is empty
-
-
-	dh_python3
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        let control_content = r#"Source: blah
-Build-Depends: libc6-dev
-
-Package: python3-blah
-Description: blah blah
- blah
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        if let Err(ref e) = result {
-            eprintln!("Error: {:?}", e);
-        }
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Add missing build dependency on dh-python | dh-sequence-python3 for command dh_python3."
         );
-
-        // Check that dh-python was added to Build-Depends
-        let editor = TemplatedControlEditor::open(&control_path).unwrap();
-        let source = editor.source().unwrap();
-        let build_depends_str = source.as_deb822().get("Build-Depends").unwrap();
         assert_eq!(
-            build_depends_str,
-            "dh-python | dh-sequence-python3, libc6-dev"
+            fs::read_to_string(&control).unwrap(),
+            "Source: blah\nBuild-Depends: dh-python | dh-sequence-python3, libc6-dev\n\nPackage: python3-blah\nDescription: blah blah\n blah\n",
         );
     }
 
     #[test]
     fn test_dependency_already_satisfied() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let rules_content = r#"#!/usr/bin/make
-
-%:
-	dh $@
-
-override_dh_build:
-	dh_python3
-"#;
-        fs::write(debian_dir.join("rules"), rules_content).unwrap();
-
-        let control_content = r#"Source: blah
-Build-Depends: dh-python, libc6-dev
-
-Package: python3-blah
-Description: blah blah
- blah
-"#;
-        fs::write(debian_dir.join("control"), control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("rules"),
+            "#!/usr/bin/make\n\n%:\n\tdh $@\n\noverride_dh_build:\n\tdh_python3\n",
+        )
+        .unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\nBuild-Depends: dh-python, libc6-dev\n\nPackage: python3-blah\nDescription: blah blah\n blah\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 }
