@@ -1,9 +1,10 @@
-use crate::{Certainty, FixerError, FixerPreferences, FixerResult, LintianIssue};
-use debian_analyzer::control::TemplatedControlEditor;
+use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use debian_control::lossless::Control;
 use lazy_regex::Regex;
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 /// Get the name-to-section mappings from lintian data
 fn get_name_section_mappings(
@@ -15,7 +16,7 @@ fn get_name_section_mappings(
         Path::new("/usr/share/lintian/data/fields/name_section_mappings").to_path_buf()
     };
 
-    let content = fs::read_to_string(&mappings_path)?;
+    let content = std::fs::read_to_string(&mappings_path)?;
     let mut regexes = Vec::new();
 
     for (lineno, line) in content.lines().enumerate() {
@@ -59,377 +60,367 @@ fn find_expected_section<'a>(regexes: &'a [(Regex, String)], name: &str) -> Opti
     None
 }
 
-pub fn run(base_path: &Path, preferences: &FixerPreferences) -> Result<FixerResult, FixerError> {
-    let control_path = base_path.join("debian/control");
-
-    if !control_path.exists() {
-        return Err(FixerError::NoChanges);
+pub fn detect(
+    base_path: &Path,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control_rel = PathBuf::from("debian/control");
+    let control_abs = base_path.join(&control_rel);
+    if !control_abs.exists() {
+        return Ok(Vec::new());
     }
 
-    let editor = TemplatedControlEditor::open(&control_path)?;
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
 
-    // Check if source already has a Section field
-    if let Some(source) = editor.source() {
-        if source.section().is_some() {
-            return Err(FixerError::NoChanges);
+    if let Some(source) = control.source() {
+        if source.as_deb822().contains_key("Section") {
+            return Ok(Vec::new());
         }
     }
 
-    // Load the name-to-section mappings
     let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("Failed to load name-section mappings: {}", e);
-            return Err(FixerError::NoChanges);
+            return Ok(Vec::new());
         }
     };
 
-    let mut binary_sections_set = HashSet::new();
-    let mut binary_sections = HashSet::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+    // For each binary, determine its current or assigned section.
+    struct BinaryInfo {
+        package: String,
+        line_no: usize,
+        existing_section: Option<String>,
+        assigned_section: Option<String>,
+    }
 
-    // First pass: set sections on binaries that don't have them
-    for mut binary in editor.binaries() {
-        if binary.section().is_none() {
-            let package_name = match binary.name() {
-                Some(name) => name.to_string(),
-                None => continue,
-            };
+    let mut binaries: Vec<BinaryInfo> = Vec::new();
+    for binary in control.binaries() {
+        let Some(package) = binary.name() else {
+            continue;
+        };
+        let p = binary.as_deb822();
+        let existing_section = p.get("Section");
+        let assigned_section = if existing_section.is_none() {
+            find_expected_section(&regexes, &package).map(str::to_string)
+        } else {
+            None
+        };
+        binaries.push(BinaryInfo {
+            package,
+            line_no: p.line() + 1,
+            existing_section,
+            assigned_section,
+        });
+    }
 
-            if let Some(section) = find_expected_section(&regexes, &package_name) {
-                let line_no = binary.as_deb822().line() + 1; // Convert to 1-indexed
-                let issue = LintianIssue {
-                    package: Some(package_name.clone()),
-                    package_type: Some(crate::PackageType::Binary),
-                    tag: Some("recommended-field".to_string()),
-                    info: Some(format!(
+    // The "effective" section of each binary, after applying assigned_section.
+    let effective_sections: Vec<Option<String>> = binaries
+        .iter()
+        .map(|b| {
+            b.assigned_section
+                .clone()
+                .or_else(|| b.existing_section.clone())
+        })
+        .collect();
+
+    let unique_effective: HashSet<&str> = effective_sections
+        .iter()
+        .filter_map(|s| s.as_deref())
+        .collect();
+    let any_assigned = binaries.iter().any(|b| b.assigned_section.is_some());
+
+    // Build diagnostics. Two cases:
+    //  (a) all binaries share a single effective section → set Section on
+    //      Source and remove from each binary that has it.
+    //  (b) otherwise → set Section on each binary that needs assignment.
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    let source_line = control
+        .source()
+        .map(|s| s.as_deb822().line() + 1)
+        .unwrap_or(1);
+
+    if unique_effective.len() == 1 && !effective_sections.iter().any(Option::is_none) {
+        let section = effective_sections[0].clone().unwrap();
+
+        let _ = any_assigned;
+        // Per-binary diagnostics first, so each binary's lintian issue is
+        // recorded with the right line number.
+        for b in &binaries {
+            if let Some(assigned) = &b.assigned_section {
+                let issue = LintianIssue::binary_with_info(
+                    &b.package,
+                    "recommended-field",
+                    vec![format!(
                         "(in section for {}) Section [debian/control:{}]",
-                        package_name, line_no
-                    )),
-                };
-
-                if issue.should_fix(base_path) {
-                    binary.set_section(Some(section));
-                    binary_sections_set.insert(package_name);
-                    fixed_issues.push(issue);
-                } else {
-                    overridden_issues.push(issue);
-                }
+                        b.package, b.line_no
+                    )],
+                );
+                diagnostics.push(
+                    Diagnostic::with_actions(
+                        issue,
+                        format!("Set Section for binary {}.", b.package),
+                        vec![Action::Deb822(Deb822Action::SetField {
+                            file: control_rel.clone(),
+                            paragraph: ParagraphSelector::Binary {
+                                package: b.package.clone(),
+                            },
+                            field: "Section".into(),
+                            value: assigned.clone(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Certain),
+                );
             }
         }
 
-        // Collect all sections from binaries
-        if let Some(section) = binary.section() {
-            binary_sections.insert(section.to_string());
+        // Source-level diagnostic that sets the shared section and removes
+        // it from every binary (those that had it explicitly, plus those
+        // that the per-binary diagnostics above just set).
+        let mut source_actions: Vec<Action> = vec![Action::Deb822(Deb822Action::SetField {
+            file: control_rel.clone(),
+            paragraph: ParagraphSelector::Source,
+            field: "Section".into(),
+            value: section.clone(),
+        })];
+        for b in &binaries {
+            source_actions.push(Action::Deb822(Deb822Action::RemoveField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Binary {
+                    package: b.package.clone(),
+                },
+                field: "Section".into(),
+            }));
         }
-    }
-
-    let mut source_section_set = false;
-
-    // If all binaries have the same section, move it to source
-    if binary_sections.len() == 1 {
-        let section = binary_sections.iter().next().unwrap().clone();
-
-        if let Some(mut source) = editor.source() {
-            let source_line = source.as_deb822().line() + 1;
-            let issue = LintianIssue {
-                package: None,
-                package_type: Some(crate::PackageType::Source),
-                tag: Some("recommended-field".to_string()),
-                info: Some(format!(
-                    "(in section for source) Section [debian/control:{}]",
-                    source_line
-                )),
+        let issue = LintianIssue::source_with_info(
+            "recommended-field",
+            vec![format!(
+                "(in section for source) Section [debian/control:{}]",
+                source_line
+            )],
+        );
+        diagnostics.push(
+            Diagnostic::with_actions(
+                issue,
+                format!("Set Section to {} on source.", section),
+                source_actions,
+            )
+            .with_certainty(Certainty::Certain),
+        );
+    } else {
+        for b in &binaries {
+            let Some(assigned) = &b.assigned_section else {
+                continue;
             };
+            let issue = LintianIssue::binary_with_info(
+                &b.package,
+                "recommended-field",
+                vec![format!(
+                    "(in section for {}) Section [debian/control:{}]",
+                    b.package, b.line_no
+                )],
+            );
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    format!("Set Section for binary {}.", b.package),
+                    vec![Action::Deb822(Deb822Action::SetField {
+                        file: control_rel.clone(),
+                        paragraph: ParagraphSelector::Binary {
+                            package: b.package.clone(),
+                        },
+                        field: "Section".into(),
+                        value: assigned.clone(),
+                    })],
+                )
+                .with_certainty(Certainty::Certain),
+            );
+        }
+    }
 
-            if issue.should_fix(base_path) {
-                // Set section on source
-                source.set_section(Some(&section));
-                source_section_set = true;
-                fixed_issues.push(issue);
+    Ok(diagnostics)
+}
 
-                // Remove section from binaries that have the same section
-                for mut binary in editor.binaries() {
-                    if let Some(bin_section) = binary.section() {
-                        if bin_section == section {
-                            binary.set_section(None);
-                        }
-                    }
-                }
-            } else {
-                overridden_issues.push(issue);
+/// The fixer can produce three end states, distinguishable from the
+/// action stream alone:
+///   1. Source got a Section AND at least one binary got a Section
+///      (binaries' name-based assignments turned out to be the same →
+///      hoisted to source).
+///   2. Source got a Section AND no binary got a Section (binaries
+///      already had matching explicit sections → just hoisted).
+///   3. No source Section was set; binaries got individual Sections
+///      (binaries had different name-based assignments).
+fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+    let mut source_section_set = false;
+    let mut binaries_with_section_set: Vec<String> = Vec::new();
+    for action in actions {
+        let Action::Deb822(Deb822Action::SetField {
+            paragraph, field, ..
+        }) = action
+        else {
+            continue;
+        };
+        if field != "Section" {
+            continue;
+        }
+        match paragraph {
+            ParagraphSelector::Source => source_section_set = true,
+            ParagraphSelector::Binary { package } => {
+                binaries_with_section_set.push(package.clone());
             }
+            _ => {}
         }
     }
+    binaries_with_section_set.sort();
+    binaries_with_section_set.dedup();
 
-    if !source_section_set && binary_sections_set.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit()?;
-
-    // Build description based on what was done
-    let description = if source_section_set && !binary_sections_set.is_empty() {
+    if source_section_set && !binaries_with_section_set.is_empty() {
         "Section field set in source based on binary package names.".to_string()
     } else if source_section_set {
         "Section field set in source stanza rather than binary packages.".to_string()
     } else {
-        let mut packages: Vec<_> = binary_sections_set.iter().cloned().collect();
-        packages.sort();
         format!(
             "Section field set for binary packages {} based on name.",
-            packages.join(", ")
+            binaries_with_section_set.join(", ")
         )
-    };
-
-    Ok(FixerResult::builder(&description)
-        .certainty(Certainty::Certain)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    }
 }
 
 declare_fixer! {
     name: "no-section-field",
     tags: ["recommended-field"],
-    apply: |basedir, _package, _version, preferences| {
-        run(basedir, preferences)
+    diagnose: |basedir, _package, _version, preferences| {
+        detect(basedir, preferences)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_no_control() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_source_already_has_section() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_content = r#"Source: test-pkg
-Section: libs
-Maintainer: Test User <test@example.com>
-
-Package: test-pkg
-Architecture: all
-Description: Test package
- Test description
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        // Should not change if source already has section
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-pkg\nSection: libs\nMaintainer: Test User <test@example.com>\n\nPackage: test-pkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_set_section_on_binary() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-pkg
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
-        // When there's only one binary, the section gets set on binary first,
-        // then moved to source
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Section field set in source based on binary package names."
         );
-
-        // Check that section was moved to source
-        let editor = TemplatedControlEditor::open(&control_path).unwrap();
-        let source = editor.source().unwrap();
-        assert_eq!(source.as_deb822().get("Section").as_deref(), Some("python"));
-
-        // Binary should not have Section
-        let binary = editor.binaries().next().unwrap();
-        assert_eq!(binary.as_deb822().get("Section"), None);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nSection: python\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        );
     }
 
     #[test]
     fn test_move_section_to_source() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nSection: python\nDescription: Test package\n Test description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-pkg
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Section: python
-Description: Test package
- Test description
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Section field set in source stanza rather than binary packages."
         );
-
-        // Check that section was moved to source
-        let editor = TemplatedControlEditor::open(&control_path).unwrap();
-
-        // Source should have Section
-        let source = editor.source().unwrap();
-        assert_eq!(source.as_deb822().get("Section").as_deref(), Some("python"));
-
-        // Binary should not have Section
-        let binary = editor.binaries().next().unwrap();
-        assert_eq!(binary.as_deb822().get("Section"), None);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nSection: python\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n",
+        );
     }
 
     #[test]
     fn test_multiple_binaries_same_section() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n\nPackage: python3-testpkg-extra\nArchitecture: all\nDescription: Extra package\n Extra description\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-pkg
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-
-Package: python3-testpkg-extra
-Architecture: all
-Description: Extra package
- Extra description
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Section field set in source based on binary package names."
         );
-
-        // Both packages should get python section, then moved to source
-        let editor = TemplatedControlEditor::open(&control_path).unwrap();
-
-        // Source should have Section
-        let source = editor.source().unwrap();
-        assert_eq!(source.as_deb822().get("Section").as_deref(), Some("python"));
-
-        // Binaries should not have Section
-        for binary in editor.binaries() {
-            assert_eq!(binary.as_deb822().get("Section"), None);
-        }
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nSection: python\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n\nPackage: python3-testpkg-extra\nArchitecture: all\nDescription: Extra package\n Extra description\n",
+        );
     }
 
     #[test]
     fn test_multiple_binaries_different_sections() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nDescription: Test package\n Test description\n\nPackage: test-pkg-doc\nArchitecture: all\nDescription: Documentation\n Documentation\n",
+        )
+        .unwrap();
 
-        let control_content = r#"Source: test-pkg
-Maintainer: Test User <test@example.com>
-
-Package: python3-testpkg
-Architecture: all
-Description: Test package
- Test description
-
-Package: test-pkg-doc
-Architecture: all
-Description: Documentation
- Documentation
-"#;
-        let control_path = debian_dir.join("control");
-        fs::write(&control_path, control_content).unwrap();
-
-        let preferences = FixerPreferences::default();
-        let result = run(base_path, &preferences);
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Section field set for binary packages python3-testpkg, test-pkg-doc based on name."
         );
-
-        // Packages should have different sections, so they stay on binaries
-        let editor = TemplatedControlEditor::open(&control_path).unwrap();
-
-        // Source should not have Section
-        let source = editor.source().unwrap();
-        assert_eq!(source.as_deb822().get("Section"), None);
-
-        // Check binary sections
-        let mut binaries: Vec<_> = editor.binaries().collect();
-        binaries.sort_by_key(|b| b.as_deb822().get("Package").unwrap_or_default());
-
         assert_eq!(
-            binaries[0].as_deb822().get("Package").as_deref(),
-            Some("python3-testpkg")
-        );
-        assert_eq!(
-            binaries[0].as_deb822().get("Section").as_deref(),
-            Some("python")
-        );
-
-        assert_eq!(
-            binaries[1].as_deb822().get("Package").as_deref(),
-            Some("test-pkg-doc")
-        );
-        assert_eq!(
-            binaries[1].as_deb822().get("Section").as_deref(),
-            Some("doc")
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-pkg\nMaintainer: Test User <test@example.com>\n\nPackage: python3-testpkg\nArchitecture: all\nSection: python\nDescription: Test package\n Test description\n\nPackage: test-pkg-doc\nArchitecture: all\nSection: doc\nDescription: Documentation\n Documentation\n",
         );
     }
 }
