@@ -1,4 +1,6 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
@@ -27,17 +29,18 @@ fn read_obsolete_restrictions(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/tests/control");
-    let abs = base_path.join(&control_rel);
-    if !abs.exists() {
-        return Ok(Vec::new());
-    }
+    let bytes = match ws.read_file(&control_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
     let deprecated = read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
-    let content = std::fs::read_to_string(&abs)?;
+    let content = String::from_utf8(bytes)
+        .map_err(|e| FixerError::Other(format!("debian/tests/control is not UTF-8: {}", e)))?;
     let parsed = Deb822::parse(&content);
     let deb822 = parsed.tree();
 
@@ -147,21 +150,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     )
 }
 
-declare_fixer! {
+declare_detector! {
     name: "obsolete-runtime-tests-restriction",
     tags: ["obsolete-runtime-tests-restriction"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -171,7 +171,8 @@ mod tests {
         prefs: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, prefs)
     }
 
     fn write_obsolete_data(tmp: &TempDir, contents: &str) -> PathBuf {
