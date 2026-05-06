@@ -1,22 +1,29 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::FixerError;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences};
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use strsim::levenshtein;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/upstream/metadata");
-    let abs = base_path.join(&rel);
-    if !abs.exists() {
+    let yaml = match ws.parsed_upstream_metadata() {
+        Ok(y) => y,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
+    };
+    let Some(doc) = yaml.documents().next() else {
         return Ok(Vec::new());
-    }
+    };
 
     let valid_fields: HashSet<&str> = DEP12_FIELD_ORDER.iter().copied().collect();
     let mut diagnostics = Vec::new();
 
-    let doc = yaml_edit::Document::from_file(&abs)
-        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
     let Some(mapping) = doc.as_mapping() else {
         return Ok(Vec::new());
     };
@@ -133,28 +140,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     )
 }
 
-declare_fixer! {
+declare_detector! {
     name: "field-name-typo-in-upstream-metadata",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

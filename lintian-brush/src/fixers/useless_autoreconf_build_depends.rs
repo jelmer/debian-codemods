@@ -1,11 +1,13 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::rules::dh_invoke_drop_with;
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Compat 10 is required for `dh` to autoreconf by default. If the
@@ -17,13 +19,11 @@ pub fn detect(
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut actions: Vec<Action> = Vec::new();
@@ -51,7 +51,7 @@ pub fn detect(
     }
 
     let control_rel = PathBuf::from("debian/control");
-    if base_path.join(&control_rel).exists() {
+    if ws.read_file(&control_rel)?.is_some() {
         actions.push(Action::Deb822(Deb822Action::EnsureRelation {
             file: control_rel.clone(),
             paragraph: ParagraphSelector::Source,
@@ -77,25 +77,25 @@ pub fn detect(
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "useless-autoreconf-build-depends",
     tags: ["useless-autoreconf-build-depends"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

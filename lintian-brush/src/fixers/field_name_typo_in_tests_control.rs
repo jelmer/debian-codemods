@@ -1,8 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::FixerError;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 const VALID_FIELD_NAMES: &[&str] = &[
@@ -14,13 +16,18 @@ const VALID_FIELD_NAMES: &[&str] = &[
     "Test-Command",
 ];
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/tests/control");
-    let abs = base_path.join(&rel);
-    if !abs.exists() {
+    let bytes = match ws.read_file(&rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(bytes) else {
         return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&abs)?;
+    };
     let deb822 = Deb822::from_str(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/tests/control: {:?}", e)))?;
 
@@ -129,28 +136,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     )
 }
 
-declare_fixer! {
+declare_detector! {
     name: "field-name-typo-in-tests-control",
     tags: ["field-name-typo-in-tests-control"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

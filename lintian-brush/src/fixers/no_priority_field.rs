@@ -1,24 +1,20 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(editor) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let editor = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
 
     // Get the compat_release from preferences, defaulting to "sid"
@@ -196,20 +192,23 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "no-priority-field",
     tags: ["recommended-field"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use std::fs;
     use tempfile::TempDir;
+
+    fn make_fixer() -> DetectorAdapter {
+        DetectorAdapter::new(Box::new(DetectorImpl))
+    }
 
     #[test]
     fn test_missing_priority_old_dpkg() {
@@ -221,7 +220,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
@@ -245,7 +244,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
@@ -267,7 +266,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
@@ -292,7 +291,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
@@ -315,7 +314,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
@@ -336,7 +335,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
@@ -354,7 +353,7 @@ mod tests {
         let control_path = debian_dir.join("control");
         fs::write(&control_path, control_content).unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
@@ -373,7 +372,7 @@ mod tests {
     fn test_no_change_when_no_file() {
         let temp_dir = TempDir::new().unwrap();
 
-        let fixer = FixerImpl;
+        let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
         let result = fixer.apply(
             temp_dir.path(),
