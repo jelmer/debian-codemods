@@ -1,15 +1,16 @@
-use lintian_brush::{declare_fixer, Certainty, FixerResult, LintianIssue};
+use lintian_brush::diagnostic::Diagnostic;
+use lintian_brush::{declare_fixer, Certainty, LintianIssue};
 
-// Example of a simple builtin fixer
 declare_fixer! {
     name: "example-fixer",
     tags: ["example-tag"],
-    apply: |_basedir, _package, _version, _preferences| {
-        // This is just an example - it doesn't actually do anything
-        Ok(FixerResult::builder("Fixed example issue")
-            .certainty(Certainty::Certain)
-            .fixed_issue(LintianIssue::source("example-tag"))
-            .build())
+    diagnose: |_basedir, _package, _version, _preferences| {
+        Ok(vec![Diagnostic::with_actions(
+            LintianIssue::source("example-tag"),
+            "Fixed example issue",
+            Vec::new(),
+        )
+        .with_certainty(Certainty::Certain)])
     }
 }
 
