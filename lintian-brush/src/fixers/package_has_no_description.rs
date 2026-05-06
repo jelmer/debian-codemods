@@ -141,6 +141,15 @@ pub fn detect(
         let Some(new_description) =
             guess_description(base_path, binary_count, summary_ref, preferences)
         else {
+            let issue = LintianIssue::binary_with_info(&name, tag, info);
+            diagnostics.push(
+                Diagnostic::with_actions(
+                    issue,
+                    format!("Cannot guess description for binary package {}.", name),
+                    vec![],
+                )
+                .with_certainty(Certainty::Possible),
+            );
             continue;
         };
         if new_description == existing {
