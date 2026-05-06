@@ -1,6 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
 use crate::licenses::{COMMON_LICENSES_DIR, FULL_LICENSE_NAME};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
@@ -232,14 +234,18 @@ struct LicensePlan {
 /// (issue, paragraph-affected) pair, all carrying the same final SetField
 /// for that paragraph — so override filtering is per-issue and the
 /// applier deduplicates by value-equality.
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let copyright_abs = base_path.join(&copyright_rel);
-    if !copyright_abs.exists() {
+    let bytes = match ws.read_file(&copyright_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(bytes) else {
         return Ok(Vec::new());
-    }
-
-    let content = fs::read_to_string(&copyright_abs)?;
+    };
     let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
         Ok(c) => c,
         Err(e) => {
@@ -579,7 +585,7 @@ fn build_description(
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "common-license",
     tags: [
         "copyright-does-not-refer-to-common-license-file",
@@ -591,21 +597,22 @@ declare_fixer! {
         "copyright-not-using-common-license-for-gpl",
         "copyright-not-using-common-license-for-lgpl"
     ],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

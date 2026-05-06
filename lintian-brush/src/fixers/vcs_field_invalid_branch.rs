@@ -1,11 +1,11 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use debian_control::vcs::ParsedVcs;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 #[cfg(feature = "udd")]
 async fn get_branch_from_url(vcs_type: &str, url: &str) -> Result<Option<String>, FixerError> {
@@ -112,7 +112,7 @@ fn get_default_branch(url: &str, branch: Option<&str>) -> Result<Option<String>,
 }
 
 pub async fn detect_async(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if preferences
@@ -124,14 +124,14 @@ pub async fn detect_async(
 
     let debcargo_rel = PathBuf::from("debian/debcargo.toml");
     let control_rel = PathBuf::from("debian/control");
-    let debcargo_abs = base_path.join(&debcargo_rel);
-    let control_abs = base_path.join(&control_rel);
-
-    let is_debcargo = debcargo_abs.exists() && !control_abs.exists();
+    let debcargo_bytes = ws.read_file(&debcargo_rel)?;
+    let control_bytes = ws.read_file(&control_rel)?;
+    let is_debcargo = debcargo_bytes.is_some() && control_bytes.is_none();
 
     // Read the current Vcs-Git URL.
     let vcs_git: Option<String> = if is_debcargo {
-        let toml_text = std::fs::read_to_string(&debcargo_abs)?;
+        let toml_text = String::from_utf8(debcargo_bytes.unwrap())
+            .map_err(|e| FixerError::Other(format!("Failed to read debcargo.toml: {}", e)))?;
         let doc: toml_edit::DocumentMut = toml_text
             .parse()
             .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
@@ -141,12 +141,13 @@ pub async fn detect_async(
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
     } else {
-        if !control_abs.exists() {
+        if control_bytes.is_none() {
             return Ok(Vec::new());
         }
-        let content = std::fs::read_to_string(&control_abs)?;
-        let Ok(control) = Control::from_str(&content) else {
-            return Ok(Vec::new());
+        let control = match ws.parsed_control() {
+            Ok(c) => c,
+            Err(FixerError::NoChanges) => return Ok(Vec::new()),
+            Err(_) => return Ok(Vec::new()),
         };
         control.source().and_then(|s| s.as_deb822().get("Vcs-Git"))
     };
@@ -244,21 +245,34 @@ pub async fn detect_async(
     )])
 }
 
-declare_fixer! {
+fn detect(
+    ws: &dyn FixerWorkspace,
+    preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| FixerError::Other(format!("Failed to create runtime: {}", e)))?;
+    rt.block_on(detect_async(ws, preferences))
+}
+
+declare_detector! {
     name: "vcs-field-invalid-branch",
     tags: ["vcs-field-invalid-branch"],
-    diagnose: |basedir, _package, _version, preferences| {
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| FixerError::Other(format!("Failed to create runtime: {}", e)))?;
-        rt.block_on(detect_async(basedir, preferences))
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::workspace::TreeFixerWorkspace;
+    use crate::Version;
     use std::fs;
+    use std::str::FromStr;
     use tempfile::TempDir;
+
+    fn make_ws(base: &Path) -> TreeFixerWorkspace {
+        let v = Version::from_str("1.0-1").unwrap();
+        TreeFixerWorkspace::new(base.to_path_buf(), "test", v)
+    }
 
     #[test]
     fn test_no_vcs_git() {
@@ -278,7 +292,8 @@ Description: Test package
 
         let preferences = FixerPreferences::default();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
+        let ws = make_ws(base_path);
+        let result = rt.block_on(detect_async(&ws, &preferences)).unwrap();
 
         // Should return no diagnostics since there's no Vcs-Git field
         assert!(result.is_empty());
@@ -392,7 +407,8 @@ Description: Test package
         preferences.minimum_certainty = Some(debian_analyzer::Certainty::Possible);
 
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
+        let ws = make_ws(base_path);
+        let result = rt.block_on(detect_async(&ws, &preferences)).unwrap();
 
         // Should return no diagnostics since minimum_certainty is below Certain
         assert!(result.is_empty());
@@ -418,7 +434,8 @@ Description: Test package
 
         let preferences = FixerPreferences::default();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(detect_async(base_path, &preferences)).unwrap();
+        let ws = make_ws(base_path);
+        let result = rt.block_on(detect_async(&ws, &preferences)).unwrap();
 
         // Without UDD feature, should return no diagnostics
         assert!(result.is_empty());

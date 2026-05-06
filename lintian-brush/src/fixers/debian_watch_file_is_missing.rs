@@ -1,7 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use breezyshim::branch::Branch;
-use debversion::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
@@ -494,19 +495,26 @@ fn candidates_from_upstream_metadata(
 }
 
 pub fn detect(
-    base_path: &Path,
-    version: &Version,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    let Some(version) = ws.current_version() else {
+        return Ok(Vec::new());
+    };
     if version.is_native() {
         return Ok(Vec::new());
     }
 
     let watch_rel = PathBuf::from("debian/watch");
-    let watch_abs = base_path.join(&watch_rel);
-    if watch_abs.exists() {
+    if ws.read_file(&watch_rel)?.is_some() {
         return Ok(Vec::new());
     }
+
+    // find_candidates probes setup.py, cabal files, etc. on disk; fall
+    // back to the filesystem escape hatch.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
 
     let upstream_version = version.upstream_version.to_string();
     let candidates = find_candidates(
@@ -544,25 +552,25 @@ pub fn detect(
     Ok(vec![diag])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-watch-file-is-missing",
     tags: ["debian-watch-file-is-missing"],
-    diagnose: |basedir, _package, version, preferences| {
-        detect(basedir, version, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use debversion::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
         let v: Version = version_str.parse().unwrap();
-        FixerImpl.apply(base, "testpkg", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "testpkg", &v, &FixerPreferences::default())
     }
 
     #[test]
