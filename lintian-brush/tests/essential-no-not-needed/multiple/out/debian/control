@@ -1,0 +1,13 @@
+Source: blah
+Section: net
+Priority: optional
+
+Package: blah
+Architecture: any
+Description: blah
+ blah
+
+Package: blah-extra
+Architecture: any
+Description: extra
+ extras
