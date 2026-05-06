@@ -561,7 +561,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use debversion::Version;
     use std::fs;

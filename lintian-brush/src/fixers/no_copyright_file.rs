@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod decopy {
     use pyo3::prelude::*;

@@ -5,7 +5,7 @@ use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_control::vcs::ParsedVcs;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[cfg(feature = "udd")]
 async fn get_branch_from_url(vcs_type: &str, url: &str) -> Result<Option<String>, FixerError> {
@@ -266,6 +266,7 @@ mod tests {
     use crate::workspace::TreeFixerWorkspace;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use std::str::FromStr;
     use tempfile::TempDir;
 

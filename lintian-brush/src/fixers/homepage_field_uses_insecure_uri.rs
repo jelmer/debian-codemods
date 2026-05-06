@@ -157,7 +157,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;

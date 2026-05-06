@@ -30,7 +30,6 @@ pub mod debhelper;
 pub mod diagnostic;
 #[macro_use]
 /// Macros for defining fixers
-pub mod macros;
 /// Fixer-related types and traits
 pub mod fixers;
 /// License name mappings and common license directories
