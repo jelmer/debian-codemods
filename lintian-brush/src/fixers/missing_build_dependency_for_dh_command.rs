@@ -1,12 +1,12 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::rules::dh_invoke_get_with;
-use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const LINTIAN_DATA_PATH: &str = "/usr/share/lintian/data";
 
@@ -151,29 +151,27 @@ fn is_relation_implied(required: &str, existing: &str) -> bool {
     false
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
+    };
 
     let command_to_dep = load_command_deps();
     let addon_to_dep = load_addon_deps();
 
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
-    let control_content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&control_content) else {
-        return Ok(Vec::new());
-    };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
     };
@@ -281,25 +279,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "missing-build-dependency-for-dh_-command",
     tags: ["missing-build-dependency-for-dh_-command", "missing-build-dependency-for-dh-addon"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

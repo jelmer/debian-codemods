@@ -146,6 +146,23 @@ pub trait FixerWorkspace {
     /// executable) treat that the same as "not present" and skip.
     fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError>;
 
+    /// On-disk root for hosts that have one.
+    ///
+    /// Returns `Some` for the lintian-brush CLI ([`TreeFixerWorkspace`])
+    /// where the package has been materialised to disk. Returns `None`
+    /// for in-memory hosts (an LSP serving open buffers); detectors that
+    /// genuinely need to walk the source tree (e.g. an upstream-metadata
+    /// guesser, a license scanner) should treat `None` as "skip — we
+    /// can't help here".
+    ///
+    /// Prefer the typed accessors ([`read_file`](Self::read_file),
+    /// [`list_dir`](Self::list_dir), …) wherever possible. Reach for
+    /// this only when an external library insists on a `&Path` for the
+    /// whole tree.
+    fn base_path(&self) -> Option<&Path> {
+        None
+    }
+
     /// Whether the given lintian issue should be fixed in this workspace,
     /// after taking lintian-overrides into account.
     fn should_fix(&self, issue: &LintianIssue) -> bool;
@@ -369,6 +386,10 @@ impl FixerWorkspace for TreeFixerWorkspace {
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(FixerError::Io(e)),
         }
+    }
+
+    fn base_path(&self) -> Option<&Path> {
+        Some(&self.base_path)
     }
 
     fn should_fix(&self, issue: &LintianIssue) -> bool {
