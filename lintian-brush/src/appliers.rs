@@ -7,9 +7,10 @@
 //! on the source produces a single rewrite of `debian/control`.
 
 use crate::diagnostic::{
-    Action, ChangelogAction, Deb822Action, Dep3Action, DesktopIniAction, FilesystemAction,
-    LintianOverridesAction, MakefileAction, OverrideLineSelector, ParagraphSelector, SystemdAction,
-    WatchAction, YamlAction, YamlPathComponent,
+    Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
+    FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
+    OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
+    YamlAction, YamlPathComponent,
 };
 use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
@@ -127,7 +128,17 @@ fn action_file(action: &Action) -> &Path {
         },
         Action::LintianOverrides(a) => match a {
             LintianOverridesAction::DropLine { file, .. }
-            | LintianOverridesAction::RenameTag { file, .. } => file,
+            | LintianOverridesAction::RenameTag { file, .. }
+            | LintianOverridesAction::SetLineInfo { file, .. } => file,
+        },
+        Action::Maintscript(a) => match a {
+            MaintscriptAction::DropEntry { file, .. } => file,
+        },
+        Action::Debcargo(a) => match a {
+            DebcargoAction::SetSourceField { file, .. } => file,
+        },
+        Action::RunCommand(a) => match a {
+            RunCommandAction::Run { scope, .. } => scope,
         },
         Action::Filesystem(a) => match a {
             FilesystemAction::SetMode { file, .. }
@@ -166,6 +177,9 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
         Action::Makefile(_) => apply_makefile_group(base, rel, group),
         Action::Dep3(_) => apply_dep3_group(base, rel, group),
         Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
+        Action::Maintscript(_) => apply_maintscript_group(base, rel, group),
+        Action::Debcargo(_) => apply_debcargo_group(base, rel, group),
+        Action::RunCommand(_) => apply_run_command_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
 }
@@ -187,7 +201,11 @@ fn apply_deb822_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool
     }
     if matches!(
         first,
-        Some(ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. })
+        Some(
+            ParagraphSelector::CopyrightHeader
+                | ParagraphSelector::CopyrightFiles { .. }
+                | ParagraphSelector::CopyrightLicense { .. }
+        )
     ) {
         return apply_copyright_deb822_group(base, rel, group);
     }
@@ -430,7 +448,9 @@ fn apply_copyright_deb822_group(
         };
         !matches!(
             p,
-            ParagraphSelector::CopyrightHeader | ParagraphSelector::CopyrightFiles { .. }
+            ParagraphSelector::CopyrightHeader
+                | ParagraphSelector::CopyrightFiles { .. }
+                | ParagraphSelector::CopyrightLicense { .. }
         )
     }) {
         return apply_generic_deb822_group(base, rel, group);
@@ -443,6 +463,12 @@ fn apply_copyright_deb822_group(
         };
         match deb {
             Deb822Action::SetField {
+                paragraph,
+                field,
+                value,
+                ..
+            }
+            | Deb822Action::SetFieldWithIndent {
                 paragraph,
                 field,
                 value,
@@ -478,6 +504,23 @@ fn apply_copyright_deb822_group(
                     files_para.set_field(field, value);
                     any_change = true;
                 }
+                ParagraphSelector::CopyrightLicense { name } => {
+                    let Some(mut license_para) = copyright
+                        .iter_licenses()
+                        .find(|p| p.name().as_deref() == Some(name.as_str()))
+                    else {
+                        return Err(FixerError::Other(format!(
+                            "deb822 SetField on {}: no License paragraph named {:?}",
+                            rel.display(),
+                            name
+                        )));
+                    };
+                    if license_para.as_deb822().get(field).as_deref() == Some(value.as_str()) {
+                        continue;
+                    }
+                    license_para.set_field(field, value);
+                    any_change = true;
+                }
                 other => {
                     return Err(FixerError::Other(format!(
                         "Copyright SetField does not support paragraph selector {:?}",
@@ -504,6 +547,17 @@ fn apply_copyright_deb822_group(
                     {
                         if files_para.as_deb822().get(field).is_some() {
                             files_para.remove_field(field);
+                            any_change = true;
+                        }
+                    }
+                }
+                ParagraphSelector::CopyrightLicense { name } => {
+                    if let Some(mut license_para) = copyright
+                        .iter_licenses()
+                        .find(|p| p.name().as_deref() == Some(name.as_str()))
+                    {
+                        if license_para.as_deb822().get(field).is_some() {
+                            license_para.remove_field(field);
                             any_change = true;
                         }
                     }
@@ -824,6 +878,13 @@ fn find_generic_paragraph_index(
         ParagraphSelector::CopyrightFiles { glob } => Ok(deb822
             .paragraphs()
             .position(|p| p.get("Files").as_deref() == Some(glob.as_str()))),
+        ParagraphSelector::CopyrightLicense { name } => Ok(deb822.paragraphs().position(|p| {
+            p.get("Files").is_none()
+                && p.get("License")
+                    .and_then(|l| l.split_once('\n').map(|(s, _)| s.to_string()).or(Some(l)))
+                    .as_deref()
+                    == Some(name.as_str())
+        })),
         ParagraphSelector::Index { index } => Ok(if deb822.paragraphs().nth(*index).is_some() {
             Some(*index)
         } else {
@@ -854,6 +915,13 @@ fn pick_generic_paragraph(
         ParagraphSelector::CopyrightFiles { glob } => Ok(deb822
             .paragraphs()
             .find(|p| p.get("Files").as_deref() == Some(glob.as_str()))),
+        ParagraphSelector::CopyrightLicense { name } => Ok(deb822.paragraphs().find(|p| {
+            p.get("Files").is_none()
+                && p.get("License")
+                    .and_then(|l| l.split_once('\n').map(|(s, _)| s.to_string()).or(Some(l)))
+                    .as_deref()
+                    == Some(name.as_str())
+        })),
         ParagraphSelector::Index { index } => Ok(deb822.paragraphs().nth(*index)),
         ParagraphSelector::ByKey { field, value } => Ok(deb822
             .paragraphs()
@@ -2669,6 +2737,30 @@ fn apply_lintian_overrides_group(
                     }
                 });
             }
+            LintianOverridesAction::SetLineInfo {
+                selector, new_info, ..
+            } => {
+                let mut applied = false;
+                overrides = lintian_overrides::map_overrides(&overrides, |line| {
+                    if applied {
+                        return None;
+                    }
+                    if !override_line_matches(line, selector) {
+                        return None;
+                    }
+                    applied = true;
+                    let package_spec = line.package_spec();
+                    let package = package_spec.as_ref().and_then(|s| s.package_name());
+                    let package_type = package_spec.as_ref().and_then(|s| s.package_type());
+                    let tag = line.tag()?.text().to_string();
+                    let info = if new_info.is_empty() {
+                        None
+                    } else {
+                        Some(new_info.clone())
+                    };
+                    Some((package, package_type, tag, info))
+                });
+            }
         }
     }
 
@@ -2686,6 +2778,169 @@ fn apply_lintian_overrides_group(
         std::fs::write(&abs, new_content)?;
     }
     Ok(true)
+}
+
+fn apply_maintscript_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    use debian_analyzer::maintscripts::Maintscript;
+    use std::str::FromStr;
+
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "maintscript action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let original = std::fs::read_to_string(&abs)?;
+    let mut script = Maintscript::from_str(&original)
+        .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;
+    let trailing_newline = original.ends_with('\n');
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Maintscript(MaintscriptAction::DropEntry { entry: target, .. }) = action else {
+            unreachable!("apply_maintscript_group called with non-maintscript action");
+        };
+        let idx = script
+            .entries()
+            .iter()
+            .position(|e| e.to_string() == *target);
+        if let Some(idx) = idx {
+            script.remove(idx);
+            any_change = true;
+        }
+    }
+
+    if !any_change {
+        return Ok(false);
+    }
+
+    if script.is_empty() {
+        std::fs::remove_file(&abs)?;
+    } else {
+        let mut out = script.to_string();
+        if trailing_newline && !out.ends_with('\n') {
+            out.push('\n');
+        }
+        std::fs::write(&abs, out)?;
+    }
+    Ok(true)
+}
+
+fn snapshot_scope(
+    scope_abs: &Path,
+) -> std::io::Result<std::collections::BTreeMap<PathBuf, Vec<u8>>> {
+    let mut out = std::collections::BTreeMap::new();
+    if !scope_abs.exists() {
+        return Ok(out);
+    }
+    if scope_abs.is_file() {
+        out.insert(scope_abs.to_path_buf(), std::fs::read(scope_abs)?);
+        return Ok(out);
+    }
+    let mut stack = vec![scope_abs.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let ft = entry.file_type()?;
+            if ft.is_dir() {
+                stack.push(path);
+            } else if ft.is_file() {
+                let bytes = std::fs::read(&path)?;
+                out.insert(path, bytes);
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn apply_run_command_group(
+    base: &Path,
+    _rel: &Path,
+    group: &[&Action],
+) -> Result<bool, FixerError> {
+    let mut any_change = false;
+    for action in group {
+        let Action::RunCommand(rc) = action else {
+            unreachable!("apply_run_command_group called with non-run-command action");
+        };
+        let RunCommandAction::Run { argv, scope, env } = rc;
+        let scope_abs = base.join(scope);
+        let before = snapshot_scope(&scope_abs)?;
+
+        let mut cmd = std::process::Command::new(&argv[0]);
+        cmd.args(&argv[1..]);
+        cmd.current_dir(base);
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
+        let output = match cmd.output() {
+            Ok(o) => o,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Err(FixerError::MissingDependency(argv[0].clone()));
+            }
+            Err(e) => return Err(FixerError::from(e)),
+        };
+        if !output.status.success() {
+            return Err(FixerError::Other(format!(
+                "{} failed: {}",
+                argv[0],
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+
+        let after = snapshot_scope(&scope_abs)?;
+        if before != after {
+            any_change = true;
+        }
+    }
+    Ok(any_change)
+}
+
+fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "debcargo action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let content = std::fs::read_to_string(&abs)?;
+    let mut doc: toml_edit::DocumentMut = content
+        .parse()
+        .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Debcargo(deb) = action else {
+            unreachable!("apply_debcargo_group called with non-debcargo action");
+        };
+        match deb {
+            DebcargoAction::SetSourceField { field, value, .. } => {
+                use toml_edit::{table, value as toml_value};
+                let source = doc
+                    .entry("source")
+                    .or_insert_with(table)
+                    .as_table_mut()
+                    .ok_or_else(|| FixerError::Other("[source] is not a table".to_string()))?;
+                let new = toml_value(value.as_str());
+                let changed = match source.get(field.as_str()) {
+                    Some(existing) => existing.to_string() != new.to_string(),
+                    None => true,
+                };
+                if changed {
+                    source.insert(field.as_str(), new);
+                    any_change = true;
+                }
+            }
+        }
+    }
+
+    if any_change {
+        std::fs::write(&abs, doc.to_string())?;
+    }
+    Ok(any_change)
 }
 
 fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {

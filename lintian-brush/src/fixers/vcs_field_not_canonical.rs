@@ -1,285 +1,247 @@
-use crate::{FixerError, FixerResult, LintianIssue};
-use debian_analyzer::abstract_control::AbstractControlEditor;
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_analyzer::debcargo::DebcargoEditor;
+use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
+use crate::{FixerError, LintianIssue};
+use debian_control::lossless::Control;
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-/// Helper function to get the appropriate control editor for a package
-/// TODO: This should be provided by the fixer framework as part of a context object
-fn get_control_editor(base_path: &Path) -> Result<Box<dyn AbstractControlEditor>, FixerError> {
-    let control_path = base_path.join("debian/control");
-    let debcargo_path = base_path.join("debian/debcargo.toml");
+const VCS_TYPES: &[&str] = &[
+    "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
+];
 
-    if debcargo_path.exists() && !control_path.exists() {
-        // Use DebcargoEditor for debcargo packages
-        // DebcargoEditor::from_directory expects the base path, not the debian dir
-        Ok(Box::new(DebcargoEditor::from_directory(base_path)?))
-    } else {
-        // Use TemplatedControlEditor for regular packages
-        Ok(Box::new(TemplatedControlEditor::open(&control_path)?))
-    }
-}
-
-/// Canonicalize a VCS URL based on its type
 fn canonicalize_vcs_url(vcs_type: &str, url: &str) -> String {
     match vcs_type {
         "Browser" => debian_analyzer::vcs::canonicalize_vcs_browser_url(url),
-        "Git" => {
-            // Use upstream_ontologist::vcs::canonicalize_vcs_url if available
-            // For now, replicate the Python logic: split, canonicalize repo, unsplit
-            match url.parse::<debian_control::vcs::ParsedVcs>() {
-                Ok(mut parsed) => {
-                    // Use tokio runtime to call async canonical_git_repo_url function
-                    let rt = tokio::runtime::Runtime::new().unwrap();
-
-                    // Parse repo URL and canonicalize it
-                    if let Ok(repo_url) = url::Url::parse(&parsed.repo_url) {
-                        if let Some(canonical_url) = rt.block_on(
-                            upstream_ontologist::vcs::canonical_git_repo_url(&repo_url, None),
-                        ) {
-                            parsed.repo_url = canonical_url.to_string();
-                        }
+        "Git" => match url.parse::<debian_control::vcs::ParsedVcs>() {
+            Ok(mut parsed) => {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                if let Ok(repo_url) = url::Url::parse(&parsed.repo_url) {
+                    if let Some(canonical_url) = rt.block_on(
+                        upstream_ontologist::vcs::canonical_git_repo_url(&repo_url, None),
+                    ) {
+                        parsed.repo_url = canonical_url.to_string();
                     }
-
-                    parsed.to_string()
                 }
-                Err(_) => url.to_string(), // Return unchanged if parsing fails
+                parsed.to_string()
             }
-        }
-        _ => url.to_string(), // Return unchanged for other VCS types
+            Err(_) => url.to_string(),
+        },
+        _ => url.to_string(),
     }
 }
 
-pub fn run(base_path: &Path) -> Result<FixerResult, FixerError> {
-    let mut editor = get_control_editor(base_path)?;
-    let mut fields_changed = BTreeSet::new();
-    let mut fixed_issues = Vec::new();
-    let mut overridden_issues = Vec::new();
+/// Per-diagnostic message tag, threaded through to the describer.
+const SEP: char = '\t';
 
-    if let Some(mut source) = editor.source() {
-        // TODO: We shouldn't hardcode this list of VCS types.
-        // Ideally, Source should provide a way to iterate over all VCS fields present.
-        let vcs_types = vec![
-            "Git", "Browser", "Svn", "Bzr", "Hg", "Cvs", "Arch", "Darcs", "Mtn", "Svk",
-        ];
+pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+    let debcargo_rel = PathBuf::from("debian/debcargo.toml");
+    let control_rel = PathBuf::from("debian/control");
+    let debcargo_abs = base_path.join(&debcargo_rel);
+    let control_abs = base_path.join(&control_rel);
 
-        for vcs_type in vcs_types {
-            if let Some(url) = source.get_vcs_url(vcs_type) {
-                let new_value = canonicalize_vcs_url(vcs_type, &url);
-
-                if new_value != url {
-                    let field_name = format!("Vcs-{}", vcs_type);
-                    let issue = LintianIssue::source_with_info(
-                        "vcs-field-not-canonical",
-                        vec![format!("{} {} {}", vcs_type, url, new_value)],
-                    );
-
-                    if !issue.should_fix(base_path) {
-                        overridden_issues.push(issue);
-                    } else {
-                        source.set_vcs_url(vcs_type, &new_value);
-                        fields_changed.insert(field_name);
-                        fixed_issues.push(issue);
-                    }
+    if debcargo_abs.exists() && !control_abs.exists() {
+        // Debcargo branch — fields live in [source] under TOML keys
+        // vcs_git / vcs_browser. We canonicalize whichever is set.
+        let toml_text = std::fs::read_to_string(&debcargo_abs)?;
+        let doc: toml_edit::DocumentMut = toml_text
+            .parse()
+            .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+        let mut diagnostics: Vec<Diagnostic> = Vec::new();
+        let candidates: &[(&str, &str)] = &[("vcs_git", "Git"), ("vcs_browser", "Browser")];
+        if let Some(source) = doc.get("source").and_then(|s| s.as_table()) {
+            for (toml_key, vcs_type) in candidates {
+                let Some(url) = source.get(toml_key).and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                let new_value = canonicalize_vcs_url(vcs_type, url);
+                if new_value == url {
+                    continue;
                 }
+                let issue = LintianIssue::source_with_info(
+                    "vcs-field-not-canonical",
+                    vec![format!("{} {} {}", vcs_type, url, new_value)],
+                );
+                let field_name = format!("Vcs-{}", vcs_type);
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    format!("{}{}{}", "set", SEP, field_name),
+                    vec![Action::Debcargo(DebcargoAction::SetSourceField {
+                        file: debcargo_rel.clone(),
+                        field: (*toml_key).to_string(),
+                        value: new_value,
+                    })],
+                ));
+            }
+        }
+        return Ok(diagnostics);
+    }
+
+    if !control_abs.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = std::fs::read_to_string(&control_abs)?;
+    let Ok(control) = Control::from_str(&content) else {
+        return Ok(Vec::new());
+    };
+    let Some(source) = control.source() else {
+        return Ok(Vec::new());
+    };
+    let p = source.as_deb822();
+
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
+    for vcs_type in VCS_TYPES {
+        let field_name = format!("Vcs-{}", vcs_type);
+        let Some(url) = p.get(&field_name) else {
+            continue;
+        };
+        let new_value = canonicalize_vcs_url(vcs_type, &url);
+        if new_value == url {
+            continue;
+        }
+        let issue = LintianIssue::source_with_info(
+            "vcs-field-not-canonical",
+            vec![format!("{} {} {}", vcs_type, url, new_value)],
+        );
+        diagnostics.push(Diagnostic::with_actions(
+            issue,
+            format!("{}{}{}", "set", SEP, field_name),
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: field_name,
+                value: new_value,
+            })],
+        ));
+    }
+    Ok(diagnostics)
+}
+
+fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+    let mut fields = BTreeSet::new();
+    for d in fixed {
+        if let Some((tag, field)) = d.message.split_once(SEP) {
+            if tag == "set" {
+                fields.insert(field.to_string());
             }
         }
     }
-
-    if fixed_issues.is_empty() {
-        if !overridden_issues.is_empty() {
-            return Err(FixerError::NoChangesAfterOverrides(overridden_issues));
-        }
-        return Err(FixerError::NoChanges);
-    }
-
-    editor.commit();
-
-    let fields_list = fields_changed.into_iter().collect::<Vec<_>>().join(", ");
-    let description = format!("Use canonical URL in {}.", fields_list);
-
-    Ok(FixerResult::builder(description)
-        .fixed_issues(fixed_issues)
-        .overridden_issues(overridden_issues)
-        .build())
+    let list = fields.into_iter().collect::<Vec<_>>().join(", ");
+    format!("Use canonical URL in {}.", list)
 }
 
 declare_fixer! {
     name: "vcs-field-not-canonical",
     tags: ["vcs-field-not-canonical"],
-    // Must canonicalize URIs after fixing type mismatches and before securing them
     after: ["vcs-field-mismatch"],
     before: ["vcs-field-uses-insecure-uri"],
-    apply: |basedir, _package, _version, _preferences| {
-        run(basedir)
+    diagnose: |basedir, _package, _version, _preferences| {
+        detect(basedir)
+    },
+    describe: |fixed, actions| {
+        describe_aggregate(fixed, actions)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builtin_fixers::BuiltinFixer;
+    use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        let v: Version = "1.0".parse().unwrap();
+        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+    }
+
     #[test]
     fn test_canonicalize_browser_url() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-package\nVcs-Browser: https://bzr.debian.org/loggerhead/pkg-bazaar/bzr\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Browser: https://bzr.debian.org/loggerhead/pkg-bazaar/bzr
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(result.is_ok(), "Error: {:?}", result);
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Use canonical URL in Vcs-Browser.");
-        assert_eq!(result.certainty, None);
-
-        // Check that the file was updated correctly
-        let expected_content = r#"Source: test-package
-Vcs-Browser: https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(updated_content, expected_content);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nVcs-Browser: https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        );
     }
 
     #[test]
     fn test_no_change_git_url() {
-        // Test that git:// URLs that don't have canonical forms remain unchanged
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: git://github.com/user/repo.git
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(base_path);
-        // This should return NoChanges since canonical_git_repo_url doesn't modify this URL
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nVcs-Git: git://github.com/user/repo.git\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_no_change_when_canonical() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
-
-        let control_path = debian_dir.join("control");
-        // Use URLs that are already canonical (with .git suffix for Vcs-Git)
-        let control_content = r#"Source: test-package
-Vcs-Git: https://github.com/user/repo.git
-Vcs-Browser: https://github.com/user/repo
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(matches!(result, Err(FixerError::NoChanges)));
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: test-package\nVcs-Git: https://github.com/user/repo.git\nVcs-Browser: https://github.com/user/repo\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
     }
 
     #[test]
     fn test_multiple_vcs_fields() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-package\nVcs-Git: git://salsa.debian.org/team/package\nVcs-Browser: https://bzr.debian.org/loggerhead/pkg-bazaar/bzr\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: git://salsa.debian.org/team/package
-Vcs-Browser: https://bzr.debian.org/loggerhead/pkg-bazaar/bzr
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(result.is_ok(), "Error: {:?}", result);
-
-        let result = result.unwrap();
-        // Fields are sorted in BTreeSet, so they appear in alphabetical order
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(
             result.description,
             "Use canonical URL in Vcs-Browser, Vcs-Git."
         );
-        assert_eq!(result.certainty, None);
-
-        // Check that both fields were updated correctly
-        // Note: canonical_git_repo_url adds .git suffix but doesn't change git:// to https://
-        let expected_content = r#"Source: test-package
-Vcs-Git: git://salsa.debian.org/team/package.git
-Vcs-Browser: https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(updated_content, expected_content);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nVcs-Git: git://salsa.debian.org/team/package.git\nVcs-Browser: https://anonscm.debian.org/loggerhead/pkg-bazaar/bzr\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        );
     }
 
     #[test]
     fn test_salsa_git_url() {
-        let temp_dir = TempDir::new().unwrap();
-        let base_path = temp_dir.path();
-        let debian_dir = base_path.join("debian");
-        fs::create_dir(&debian_dir).unwrap();
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let control_path = debian.join("control");
+        fs::write(
+            &control_path,
+            "Source: test-package\nVcs-Git: https://salsa.debian.org/team/package\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        )
+        .unwrap();
 
-        let control_path = debian_dir.join("control");
-        let control_content = r#"Source: test-package
-Vcs-Git: https://salsa.debian.org/team/package
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        fs::write(&control_path, control_content).unwrap();
-
-        let result = run(base_path);
-        assert!(result.is_ok(), "Error: {:?}", result);
-
-        let result = result.unwrap();
+        let result = run_apply(tmp.path()).unwrap();
         assert_eq!(result.description, "Use canonical URL in Vcs-Git.");
-        assert_eq!(result.certainty, None);
-
-        // Check that .git was added
-        let expected_content = r#"Source: test-package
-Vcs-Git: https://salsa.debian.org/team/package.git
-
-Package: test-package
-Description: Test package
- This is a test package.
-"#;
-        let updated_content = fs::read_to_string(&control_path).unwrap();
-        assert_eq!(updated_content, expected_content);
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: test-package\nVcs-Git: https://salsa.debian.org/team/package.git\n\nPackage: test-package\nDescription: Test package\n This is a test package.\n",
+        );
     }
 }

@@ -148,6 +148,16 @@ pub enum Action {
     /// An edit to a lintian-overrides file (`debian/source/lintian-overrides`
     /// or `debian/<pkg>.lintian-overrides`).
     LintianOverrides(LintianOverridesAction),
+    /// An edit to a maintscript file (`debian/maintscript` or
+    /// `debian/<pkg>.maintscript`).
+    Maintscript(MaintscriptAction),
+    /// An edit to a `debian/debcargo.toml` file. Used for Rust crate
+    /// packages where the control file is generated.
+    Debcargo(DebcargoAction),
+    /// Invoke an external tool that mutates files in the working tree (e.g.
+    /// `debconf-updatepo`). Use this only when the operation can't be
+    /// expressed as one of the typed file actions above.
+    RunCommand(RunCommandAction),
     /// A filesystem-level edit (chmod, write, delete, byte-range replace).
     Filesystem(FilesystemAction),
 }
@@ -990,6 +1000,87 @@ pub enum LintianOverridesAction {
         /// New tag name.
         to_tag: String,
     },
+    /// Rewrite the info text on the first line that matches `selector`.
+    /// Only the info portion changes — the package spec, tag, and
+    /// surrounding whitespace are preserved.
+    SetLineInfo {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which override line to update.
+        selector: OverrideLineSelector,
+        /// New info text. Empty string removes the info entirely.
+        new_info: String,
+    },
+}
+
+/// Edits to a maintscript file.
+///
+/// Each line in a maintscript file is an independent dpkg-maintscript-helper
+/// invocation. We address entries by their exact text, mirroring how
+/// [`MakefileAction::ReplaceRecipe`] addresses recipe lines.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum MaintscriptAction {
+    /// Drop the first entry whose trimmed line text equals `entry`.
+    /// Comments immediately preceding the dropped line are also removed.
+    /// If the file ends up empty (no entries remain), it is removed
+    /// entirely. Each `DropEntry` consumes one matching line — to remove
+    /// N copies of the same entry, emit N actions.
+    DropEntry {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Entry text to drop, matched after trimming surrounding
+        /// whitespace.
+        entry: String,
+    },
+}
+
+/// Edits to a `debian/debcargo.toml` file.
+///
+/// Debcargo manages its own control file; we manipulate scalar fields under
+/// the `[source]` table directly. Only a small set of operations is needed
+/// in practice — the equivalent of typed setters on the generated control
+/// fields (Vcs-Git, Vcs-Browser, Standards-Version, Section).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum DebcargoAction {
+    /// Set a string field on the `[source]` table. Creates the table and/or
+    /// the field if absent. Overwrites any existing value.
+    SetSourceField {
+        /// File to edit, relative to the package root. Almost always
+        /// `debian/debcargo.toml`.
+        file: PathBuf,
+        /// Key inside `[source]` (e.g. `vcs_git`, `vcs_browser`,
+        /// `section`, `standards_version`).
+        field: String,
+        /// New string value.
+        value: String,
+    },
+}
+
+/// Run an external command that mutates the working tree.
+///
+/// Use sparingly: prefer typed actions whenever possible. The intended
+/// use is tools like `debconf-updatepo` that produce changes we can't
+/// describe declaratively.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum RunCommandAction {
+    /// Run `argv` in the package root. The applier snapshots `scope`
+    /// before and after the run, considering the action a change iff any
+    /// file under `scope` was added, removed, or had its bytes change.
+    /// A non-zero exit code is a fixer error. ENOENT on `argv[0]` is
+    /// reported as [`FixerError::MissingDependency`].
+    Run {
+        /// Argument vector. `argv[0]` is resolved via PATH.
+        argv: Vec<String>,
+        /// Subtree to monitor for changes, relative to the package root.
+        /// Use `.` to monitor the entire tree.
+        scope: PathBuf,
+        /// Environment overrides applied on top of the inherited env.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        env: Vec<(String, String)>,
+    },
 }
 
 /// Filesystem-level edits.
@@ -1080,6 +1171,13 @@ pub enum ParagraphSelector {
     CopyrightFiles {
         /// Files-glob string, matched literally against the field value.
         glob: String,
+    },
+    /// debian/copyright: a standalone License paragraph (no `Files:` field)
+    /// whose License synopsis equals `name`.
+    CopyrightLicense {
+        /// License short-name as it appears on the first line of the
+        /// `License:` field (e.g. `GPL-2+`).
+        name: String,
     },
     /// File-format-agnostic: the Nth paragraph (0-indexed). Use sparingly:
     /// indices shift as paragraphs are inserted or removed.
