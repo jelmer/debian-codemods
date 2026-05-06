@@ -1,7 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{Certainty, FixerError, LintianIssue};
-use debian_control::lossless::Control;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
 const URL_BASE: &str = "https://salsa.debian.org/perl-team/modules/packages";
@@ -15,14 +16,16 @@ fn extract_email(addr: &str) -> &str {
     addr
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let abs = base_path.join(&control_rel);
-    if !abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&abs)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
     };
@@ -118,25 +121,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "pkg-perl-vcs",
     tags: ["team/pkg-perl/vcs/no-team-url", "team/pkg-perl/vcs/no-git"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
     }
 
     #[test]
