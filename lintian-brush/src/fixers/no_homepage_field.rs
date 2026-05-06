@@ -100,7 +100,12 @@ pub fn detect(
     };
 
     let Some((homepage_url, upstream_certainty)) = guess_homepage(base_path, preferences) else {
-        return Ok(Vec::new());
+        return Ok(vec![Diagnostic::with_actions(
+            issue,
+            format!("{}{}", message_kind, SEP),
+            vec![],
+        )
+        .with_certainty(Certainty::Possible)]);
     };
 
     Ok(vec![Diagnostic::with_actions(
