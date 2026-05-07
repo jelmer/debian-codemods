@@ -23,6 +23,7 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Remove CRs from copyright file.".to_string(),
+        "Remove CRs from copyright file.".to_string(),
         vec![Action::Filesystem(FilesystemAction::Write {
             file: copyright_rel,
             content: new_content,

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use lazy_regex::{regex, Regex};
@@ -164,10 +164,18 @@ pub fn detect(
             });
 
             for (idx, (kind, matched_text, bug_certainty)) in to_emit.into_iter().enumerate() {
-                let (tag_name, tag_marker) = if kind == TAG_COLON {
-                    ("possible-missing-colon-in-closes", TAG_COLON)
+                let (tag_name, description, label) = if kind == TAG_COLON {
+                    (
+                        "possible-missing-colon-in-closes",
+                        "Closes line is missing a colon.",
+                        "Add missing colon in closes line.",
+                    )
                 } else {
-                    ("misspelled-closes-bug", TAG_TYPO)
+                    (
+                        "misspelled-closes-bug",
+                        "Closes line uses misspelled keyword.",
+                        "Fix misspelling of Close ⇒ Closes.",
+                    )
                 };
                 let info = format!(
                     "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
@@ -176,7 +184,8 @@ pub fn detect(
                 let issue = LintianIssue::source_with_info(tag_name, vec![info]);
                 let diag = Diagnostic::with_actions(
                     issue,
-                    format!("{}", tag_marker),
+                    description,
+                    label,
                     if idx == 0 {
                         vec![action.clone()]
                     } else {
@@ -192,9 +201,13 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let has_colon = fixed.iter().any(|d| d.message.starts_with(TAG_COLON));
-    let has_typo = fixed.iter().any(|d| d.message.starts_with(TAG_TYPO));
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let has_colon = fixed.iter().any(|(d, _)| {
+        d.issue.as_ref().and_then(|i| i.tag.as_deref()) == Some("possible-missing-colon-in-closes")
+    });
+    let has_typo = fixed.iter().any(|(d, _)| {
+        d.issue.as_ref().and_then(|i| i.tag.as_deref()) == Some("misspelled-closes-bug")
+    });
     if has_colon && !has_typo {
         "Add missing colon in closes line.".to_string()
     } else if has_typo && !has_colon {

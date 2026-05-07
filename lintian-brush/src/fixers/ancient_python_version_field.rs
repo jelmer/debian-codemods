@@ -80,6 +80,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Ancient X-Python{,3}-Version field in debian/control.",
             "Remove unnecessary X-Python{,3}-Version field in debian/control.",
             vec![Action::Deb822(Deb822Action::RemoveField {
                 file: control_rel.clone(),

@@ -31,6 +31,7 @@ pub fn detect(
             );
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                r#"debian/rules uses deprecated "dh_clean -k"."#,
                 r#"debian/rules: Use dh_prep rather than "dh_clean -k"."#,
                 vec![Action::Makefile(MakefileAction::ReplaceRecipe {
                     file: rules_rel.clone(),

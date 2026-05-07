@@ -87,6 +87,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Maintainer script passes -e on the shebang line.",
             "Use set -e rather than passing -e on the shebang-line.",
             vec![
                 // Insert `set -e` first (offsets in the ORIGINAL file

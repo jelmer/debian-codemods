@@ -4,7 +4,8 @@ use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
 
-const MESSAGE: &str = "Change priority extra to priority optional.";
+const DESCRIPTION: &str = "Change priority extra to priority optional.";
+const LABEL: &str = "Change priority extra to priority optional.";
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -26,7 +27,8 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
-                    MESSAGE,
+                    DESCRIPTION,
+                    LABEL,
                     vec![Action::Deb822(Deb822Action::SetField {
                         file: PathBuf::from("debian/control"),
                         paragraph: ParagraphSelector::Source,
@@ -54,7 +56,8 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
-                MESSAGE,
+                DESCRIPTION,
+                LABEL,
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: PathBuf::from("debian/control"),
                     paragraph: ParagraphSelector::Binary {
@@ -107,7 +110,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
         assert_eq!(result.certainty, Some(Certainty::Certain));
 
         assert_eq!(

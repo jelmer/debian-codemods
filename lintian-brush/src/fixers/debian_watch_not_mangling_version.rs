@@ -49,6 +49,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "debian/watch is not mangling repack version suffix.",
                 "Add dversionmangle for repack versioning in debian/watch.",
                 vec![Action::Watch(WatchAction::SetEntryOption {
                     file: watch_rel.clone(),

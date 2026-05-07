@@ -141,6 +141,7 @@ pub fn detect(
                 };
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
+                    "debian/rules uses unnecessary dh arguments.",
                     "Drop unnecessary dh arguments.",
                     actions,
                 ));
@@ -154,7 +155,9 @@ pub fn detect(
 
     let summary = format!("Drop unnecessary dh arguments: {}", removed_args.join(", "));
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

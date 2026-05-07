@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::textwrap::try_rewrap_changes;
@@ -114,6 +114,7 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 format!("wrapped\t{}", v),
+                format!("Wrap long lines in changelog entry {}.", v),
                 vec![action.clone()],
             ));
         }
@@ -122,10 +123,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut versions: Vec<&str> = fixed
         .iter()
-        .filter_map(|d| d.message.strip_prefix("wrapped\t"))
+        .filter_map(|(d, _)| d.message.strip_prefix("wrapped\t"))
         .collect();
     versions.sort();
     versions.dedup();

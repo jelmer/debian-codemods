@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
@@ -71,6 +71,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            format!("Library package {} has excessive priority.", package_name),
             format!(
                 "Set priority for library package {} to optional.",
                 package_name
@@ -86,7 +87,7 @@ pub fn detect(
 /// single line so multi-package fixes get
 /// "Set priority for library packages X, Y to optional." instead of one
 /// line per package.
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut packages: Vec<&str> = actions
         .iter()
         .filter_map(|a| match a {

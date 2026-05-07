@@ -138,6 +138,7 @@ pub fn detect(
         LintianIssue::source_with_info("homepage-field-uses-insecure-uri", vec![homepage.clone()]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Homepage field uses insecure URI.",
         "Use secure URI in Homepage field.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),

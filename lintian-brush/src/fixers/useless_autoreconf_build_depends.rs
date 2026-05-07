@@ -70,6 +70,7 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Build-Depends on dh-autoreconf but it is no longer needed.",
         "Drop unnecessary dependency on dh-autoreconf.",
         actions,
     )])

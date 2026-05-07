@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::collections::HashMap;
@@ -10,8 +10,6 @@ const PREREQUISITE_MAP: &[(&str, &str)] = &[
     ("flit_core.buildapi", "flit"),
     ("setuptools.build_meta", "python3-setuptools"),
 ];
-
-const SEP: char = '\t';
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -77,7 +75,14 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
-        format!("{}{}{}{}", prerequisite, SEP, build_backend, SEP),
+        format!(
+            "Build dependency for pyproject.toml backend {} is missing.",
+            build_backend
+        ),
+        format!(
+            "Add missing build-dependency on {} for build-backend {}.",
+            prerequisite, build_backend
+        ),
         vec![Action::Deb822(Deb822Action::EnsureRelation {
             file: control_rel,
             paragraph: ParagraphSelector::Source,
@@ -87,17 +92,24 @@ pub fn detect(
     )])
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let Some(first) = fixed.first() else {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let Some((first, _)) = fixed.first() else {
         return "Add missing build-dependency.".to_string();
     };
-    let parts: Vec<&str> = first.message.split(SEP).collect();
-    if parts.len() < 2 {
+    let Some(issue) = first.issue.as_ref() else {
         return "Add missing build-dependency.".to_string();
-    }
+    };
+    let Some(info) = issue.info.as_deref() else {
+        return "Add missing build-dependency.".to_string();
+    };
+    // info is formatted as `<build_backend> (does not satisfy <prerequisite>)`
+    let Some((build_backend, rest)) = info.split_once(" (does not satisfy ") else {
+        return "Add missing build-dependency.".to_string();
+    };
+    let prerequisite = rest.trim_end_matches(')');
     format!(
         "Add missing build-dependency on {}.\n\nThis is necessary for build-backend {} in pyproject.toml",
-        parts[0], parts[1]
+        prerequisite, build_backend
     )
 }
 

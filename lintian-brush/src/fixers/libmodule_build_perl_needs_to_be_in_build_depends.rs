@@ -31,6 +31,10 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(
         issue,
         format!(
+            "{} is in Build-Depends-Indep but needs Build-Depends.",
+            PACKAGE
+        ),
+        format!(
             "Move {} from Build-Depends-Indep to Build-Depends.",
             PACKAGE
         ),

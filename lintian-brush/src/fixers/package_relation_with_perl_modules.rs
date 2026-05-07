@@ -127,6 +127,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "Package relation references perl-modules.",
                 "Replace perl-modules dependency with perl.",
                 plan_actions,
             )

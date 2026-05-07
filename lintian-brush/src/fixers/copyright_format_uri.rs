@@ -55,12 +55,14 @@ pub fn detect(
     let mut diagnostics = Vec::new();
     diagnostics.push(Diagnostic::with_actions(
         LintianIssue::source_with_info("insecure-copyright-format-uri", vec![format.clone()]),
+        "Insecure copyright file specification URI.",
         "Use secure copyright file specification URI.",
         vec![make_action()],
     ));
     if is_wiki {
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source_with_info("wiki-copyright-format-uri", vec![format]),
+            "Wiki copyright file specification URI.",
             "Use secure copyright file specification URI.",
             vec![make_action()],
         ));

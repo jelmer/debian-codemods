@@ -42,6 +42,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "Source package depends on build-essential.",
                 "Drop unnecessary dependency on build-essential.",
                 vec![Action::Deb822(Deb822Action::DropRelation {
                     file: control_rel.clone(),

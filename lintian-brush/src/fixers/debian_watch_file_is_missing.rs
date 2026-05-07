@@ -540,6 +540,7 @@ pub fn detect(
     let issue = LintianIssue::source_with_info("debian-watch-file-is-missing", vec![]);
     let mut diag = Diagnostic::with_actions(
         issue,
+        "debian/watch file is missing.",
         format!("Add debian/watch file, using {}.", winner.site),
         vec![Action::Filesystem(FilesystemAction::Write {
             file: watch_rel,

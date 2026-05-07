@@ -43,6 +43,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Extended description starts with an empty paragraph.",
             "Remove empty leading paragraph in Description.",
             vec![Action::Deb822(Deb822Action::SetField {
                 file: control_rel.clone(),

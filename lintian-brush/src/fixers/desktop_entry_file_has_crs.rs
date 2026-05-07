@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
@@ -40,6 +40,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "Desktop entry file contains carriage returns.",
                     "Remove CRs from desktop files.",
                     vec![Action::Filesystem(FilesystemAction::Substitute {
                         file: rel.clone(),
@@ -55,7 +56,7 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     "Remove CRs from desktop files.".to_string()
 }
 

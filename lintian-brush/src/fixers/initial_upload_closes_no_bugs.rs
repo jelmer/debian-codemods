@@ -73,6 +73,7 @@ pub fn detect(
     let issue = LintianIssue::source("initial-upload-closes-no-bugs");
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Initial upload closes no bugs.",
         format!("Add {} bugs in {}.", bug_kinds.join(", "), version),
         vec![Action::Changelog(ChangelogAction::ReplaceBullet {
             file: PathBuf::from("debian/changelog"),

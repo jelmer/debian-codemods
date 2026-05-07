@@ -46,6 +46,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "systemd service file refers to obsolete BindTo key.",
             "Rename BindTo key to BindsTo in systemd files.",
             vec![Action::Systemd(SystemdAction::RenameField {
                 file: rel.clone(),

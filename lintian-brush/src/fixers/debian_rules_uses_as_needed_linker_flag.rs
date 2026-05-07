@@ -79,6 +79,7 @@ pub fn detect(
         };
         return Ok(vec![Diagnostic::with_actions(
             issue,
+            "debian/rules uses -Wl,--as-needed linker flag.",
             "Avoid explicitly specifying -Wl,--as-needed linker flag.",
             vec![action],
         )]);

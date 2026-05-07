@@ -156,14 +156,19 @@ pub fn detect(
         certainties.iter().map(|c| convert_certainty(*c)).collect();
     let certainty = min_certainty(&converted).unwrap_or(crate::Certainty::Possible);
 
-    let message = if fields.len() == 1 {
+    let label = if fields.len() == 1 {
         format!("Set field {} in debian/copyright.", fields[0])
     } else {
         format!("Set fields {} in debian/copyright.", fields.join(", "))
     };
+    let description = if fields.len() == 1 {
+        format!("debian/copyright is missing field {}.", fields[0])
+    } else {
+        format!("debian/copyright is missing fields {}.", fields.join(", "))
+    };
 
     Ok(vec![
-        Diagnostic::untagged(message, actions).with_certainty(certainty)
+        Diagnostic::untagged(description, label, actions).with_certainty(certainty)
     ])
 }
 

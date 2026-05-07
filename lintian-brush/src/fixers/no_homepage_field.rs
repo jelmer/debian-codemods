@@ -1,11 +1,9 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 use url::Url;
-
-const SEP: char = '\t';
 
 fn convert_certainty(upstream_certainty: upstream_ontologist::Certainty) -> Certainty {
     match upstream_certainty {
@@ -95,13 +93,24 @@ pub fn detect(
         }
     };
 
+    let description = match message_kind {
+        "pypi" => "Homepage field points at pypi.org.".to_string(),
+        "rubygem" => "Homepage field points at rubygems.org.".to_string(),
+        _ => "Homepage field is missing.".to_string(),
+    };
+    let label = match message_kind {
+        "pypi" => "Avoid pypi.org in Homepage field.".to_string(),
+        "rubygem" => "Avoid rubygems.org in Homepage field.".to_string(),
+        _ => "Fill in Homepage field.".to_string(),
+    };
     let homepage_guess = ws
         .base_path()
         .and_then(|base_path| guess_homepage(base_path, preferences));
     let Some((homepage_url, upstream_certainty)) = homepage_guess else {
         return Ok(vec![Diagnostic::with_actions(
             issue,
-            format!("{}{}", message_kind, SEP),
+            description,
+            label,
             vec![],
         )
         .with_certainty(Certainty::Possible)]);
@@ -109,7 +118,8 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
-        format!("{}{}{}", message_kind, SEP, homepage_url),
+        description,
+        label,
         vec![Action::Deb822(Deb822Action::SetField {
             file: control_rel,
             paragraph: ParagraphSelector::Source,
@@ -120,15 +130,14 @@ pub fn detect(
     .with_certainty(convert_certainty(upstream_certainty))])
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let Some(first) = fixed.first() else {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let Some((first, _)) = fixed.first() else {
         return "Fill in Homepage field.".to_string();
     };
-    match first.message.split_once(SEP).map(|(k, _)| k) {
-        Some("pypi") => "Avoid pypi.org in Homepage field.".to_string(),
-        Some("rubygem") => "Avoid rubygems.org in Homepage field.".to_string(),
-        _ => "Fill in Homepage field.".to_string(),
-    }
+    let Some(plan) = first.plans.first() else {
+        return "Fill in Homepage field.".to_string();
+    };
+    plan.label.clone()
 }
 
 declare_detector! {

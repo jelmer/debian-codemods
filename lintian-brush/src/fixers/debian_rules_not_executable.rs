@@ -25,6 +25,7 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Make debian/rules executable.".to_string(),
+        "Make debian/rules executable.".to_string(),
         vec![Action::Filesystem(FilesystemAction::SetMode {
             file: rules_rel,
             mode: 0o755,

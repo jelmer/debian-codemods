@@ -52,6 +52,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Debconf templates are newer than translations.".to_string(),
         "Run debconf-updatepo after template changes.".to_string(),
         vec![Action::RunCommand(RunCommandAction::Run {
             argv,

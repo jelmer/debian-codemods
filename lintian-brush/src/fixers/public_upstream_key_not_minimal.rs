@@ -216,15 +216,21 @@ pub fn detect(
             file: rel,
             content: outlines,
         });
-        let message = if signatures_removed_here {
-            "Re-export upstream signing key without extra signatures."
+        let (description, label) = if signatures_removed_here {
+            (
+                "Upstream signing key contains extra signatures.",
+                "Re-export upstream signing key without extra signatures.",
+            )
         } else if format_upgraded_here {
-            "Upgrade upstream signing key to new packet format."
+            (
+                "Upstream signing key uses an old packet format.",
+                "Upgrade upstream signing key to new packet format.",
+            )
         } else {
             continue;
         };
         if issues_here.is_empty() {
-            diagnostics.push(Diagnostic::untagged(message, vec![action]));
+            diagnostics.push(Diagnostic::untagged(description, label, vec![action]));
         } else {
             for (i, issue) in issues_here.into_iter().enumerate() {
                 let actions = if i == 0 {
@@ -232,7 +238,7 @@ pub fn detect(
                 } else {
                     Vec::new()
                 };
-                diagnostics.push(Diagnostic::with_actions(issue, message, actions));
+                diagnostics.push(Diagnostic::with_actions(issue, description, label, actions));
             }
         }
     }

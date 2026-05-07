@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
@@ -94,6 +94,10 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!(
+                "Transitional package {} is not in oldlibs/optional.",
+                package_name
+            ),
+            format!(
                 "Move transitional package {} to oldlibs/optional per policy 4.0.1.",
                 package_name
             ),
@@ -104,7 +108,7 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut packages: Vec<&str> = actions
         .iter()
         .filter_map(|a| match a {

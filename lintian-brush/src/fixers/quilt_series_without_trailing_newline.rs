@@ -27,6 +27,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/patches/series is missing a trailing newline.",
         "Add missing trailing newline in debian/patches/series.",
         vec![Action::Filesystem(FilesystemAction::ReplaceText {
             file: rel,

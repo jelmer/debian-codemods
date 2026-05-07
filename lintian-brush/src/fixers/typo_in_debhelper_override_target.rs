@@ -84,10 +84,12 @@ pub fn detect(
                     trimmed, best_match, line_number
                 )],
             );
+            let label = format!("Rename target {} to {}.", trimmed, best_match);
             renamed.push((trimmed.clone(), best_match.clone()));
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 String::new(),
+                label,
                 vec![Action::Makefile(MakefileAction::RenameRuleTarget {
                     file: rules_rel.clone(),
                     from_target: trimmed,
@@ -110,7 +112,9 @@ pub fn detect(
             .join(", ")
     );
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

@@ -32,6 +32,7 @@ pub fn detect(
         let new_pattern = pattern.replace("/archive/", "/archive/refs/tags/");
         diagnostics.push(
             Diagnostic::untagged(
+                "debian/watch uses old GitHub archive pattern.",
                 MESSAGE,
                 vec![Action::Watch(WatchAction::SetEntryMatchingPattern {
                     file: watch_rel.clone(),

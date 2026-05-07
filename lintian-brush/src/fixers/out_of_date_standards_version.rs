@@ -712,24 +712,25 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let mut description = format!(
+    let mut label = format!(
         "Update standards version to {}, no changes needed.",
         current
     );
 
     if !upgrade_reasons.is_empty() {
-        description.push_str("\n\nUpgrade checklist verified:");
+        label.push_str("\n\nUpgrade checklist verified:");
         for (from, to, reasons) in &upgrade_reasons {
-            description.push_str(&format!("\n {} → {}:", from, to));
+            label.push_str(&format!("\n {} → {}:", from, to));
             for reason in reasons {
-                description.push_str(&format!("\n  * {}", reason));
+                label.push_str(&format!("\n  * {}", reason));
             }
         }
     }
 
     Ok(vec![Diagnostic::with_actions(
         issue,
-        description,
+        "Standards-Version is out of date.",
+        label,
         vec![Action::Deb822(Deb822Action::SetField {
             file: control_rel,
             paragraph: ParagraphSelector::Source,

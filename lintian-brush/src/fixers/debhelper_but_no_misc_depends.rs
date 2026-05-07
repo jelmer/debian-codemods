@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::{compat_level, FixerWorkspace};
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
@@ -88,6 +88,10 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!("pkg{}{}", SEP, package_name),
+            format!(
+                "Add missing ${{misc:Depends}} to Depends for {}.",
+                package_name
+            ),
             vec![Action::Deb822(Deb822Action::EnsureSubstvar {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::Binary {
@@ -102,10 +106,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut packages: Vec<String> = fixed
         .iter()
-        .filter_map(|d| {
+        .filter_map(|(d, _)| {
             d.message
                 .split_once(SEP)
                 .filter(|(tag, _)| *tag == "pkg")

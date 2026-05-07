@@ -103,6 +103,7 @@ pub fn detect(
         let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "debian/rules invokes dpkg-parsechangelog directly.",
             "Avoid invoking dpkg-parsechangelog.",
             plan_actions,
         ));

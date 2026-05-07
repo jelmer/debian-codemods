@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use lazy_regex::Regex;
@@ -112,6 +112,7 @@ pub fn detect(
                     "Fix section for binary package {} ({} ⇒ {}).",
                     package_name, current_section, expected_section
                 ),
+                format!("Set Section for {} to {}.", package_name, expected_section),
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: PathBuf::from("debian/control"),
                     paragraph: ParagraphSelector::Binary {
@@ -131,14 +132,14 @@ pub fn detect(
 /// Aggregate per-binary section changes into one
 /// "Fix sections for binary package A (X ⇒ Y), binary package B ..." line,
 /// matching the historical wording.
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     // Each diagnostic's per-issue message is
     // "Fix section for binary package P (X ⇒ Y).". Reuse the substring
     // between "binary package " and the trailing period to assemble the
     // aggregate.
     let parts: Vec<&str> = fixed
         .iter()
-        .filter_map(|d| {
+        .filter_map(|(d, _)| {
             d.message
                 .strip_prefix("Fix section for ")
                 .and_then(|s| s.strip_suffix('.'))

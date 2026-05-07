@@ -159,6 +159,7 @@ pub fn detect(
         };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Obsolete debug package in debian/control.",
             summary.clone(),
             plan_actions,
         ));

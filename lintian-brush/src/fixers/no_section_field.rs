@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use lazy_regex::Regex;
@@ -158,6 +158,7 @@ pub fn detect(
                 diagnostics.push(
                     Diagnostic::with_actions(
                         issue,
+                        format!("Section field is missing for binary {}.", b.package),
                         format!("Set Section for binary {}.", b.package),
                         vec![Action::Deb822(Deb822Action::SetField {
                             file: control_rel.clone(),
@@ -201,6 +202,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "Section field is missing on source.",
                 format!("Set Section to {} on source.", section),
                 source_actions,
             )
@@ -222,6 +224,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    format!("Section field is missing for binary {}.", b.package),
                     format!("Set Section for binary {}.", b.package),
                     vec![Action::Deb822(Deb822Action::SetField {
                         file: control_rel.clone(),
@@ -249,7 +252,7 @@ pub fn detect(
 ///      already had matching explicit sections → just hoisted).
 ///   3. No source Section was set; binaries got individual Sections
 ///      (binaries had different name-based assignments).
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut source_section_set = false;
     let mut binaries_with_section_set: Vec<String> = Vec::new();
     for action in actions {

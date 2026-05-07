@@ -44,6 +44,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Build-depends on obsolete dh-systemd package.",
             "Depend on newer debhelper (>= 9.20160709) rather than dh-systemd.",
             Vec::new(),
         ));

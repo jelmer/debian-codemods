@@ -99,11 +99,12 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let message = "Avoid setting debhelper compat version in debian/rules and debian/compat.";
+    let description = "Avoid setting debhelper compat version in debian/rules and debian/compat.";
+    let label = "Avoid setting debhelper compat version in debian/rules and debian/compat.";
     let diagnostic = if let Some(issue) = issue {
-        Diagnostic::with_actions(issue, message, actions)
+        Diagnostic::with_actions(issue, description, label, actions)
     } else {
-        Diagnostic::untagged(message, actions)
+        Diagnostic::untagged(description, label, actions)
     };
     Ok(vec![diagnostic])
 }

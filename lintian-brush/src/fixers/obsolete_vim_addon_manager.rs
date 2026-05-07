@@ -34,6 +34,7 @@ pub fn detect(
         };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Package depends on obsolete vim-addon-manager.",
             "Migrate from vim-addon-manager to dh-vim-addon.",
             Vec::new(),
         ));

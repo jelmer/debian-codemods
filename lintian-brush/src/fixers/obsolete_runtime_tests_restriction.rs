@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
@@ -126,7 +126,11 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
-                    format!("dropped\t{}", restriction),
+                    format!(
+                        "Obsolete restriction {} in debian/tests/control.",
+                        restriction
+                    ),
+                    format!("Drop deprecated restriction {}.", restriction),
                     vec![action.clone()],
                 )
                 .with_certainty(certainty),
@@ -137,10 +141,15 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let dropped: Vec<&str> = fixed
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let dropped: Vec<String> = fixed
         .iter()
-        .filter_map(|d| d.message.strip_prefix("dropped\t"))
+        .filter_map(|(d, _)| {
+            let info = d.issue.as_ref()?.info.as_deref()?;
+            // info is formatted as "<restriction> [debian/tests/control:<line>]".
+            let restriction = info.split_once(" [").map(|(r, _)| r).unwrap_or(info);
+            Some(restriction.to_string())
+        })
         .collect();
     let plural = if dropped.len() > 1 { "s" } else { "" };
     format!(

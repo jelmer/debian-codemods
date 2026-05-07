@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
@@ -61,12 +61,14 @@ pub fn detect(
                 vec![target_format.to_string()],
             ),
             format!("{}{}", TAG_MISSING, target_format),
+            "Add missing debian/source/format.",
             Vec::new(),
         ));
     }
     diagnostics.push(Diagnostic::with_actions(
         LintianIssue::source_with_info("older-source-format", vec!["1.0".to_string()]),
         format!("{}{}", TAG_OLDER, target_format),
+        format!("Upgrade to newer source format {}.", target_format),
         Vec::new(),
     ));
 
@@ -80,11 +82,11 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     // Pull the target format from the first message that carries it.
     let target = fixed
         .iter()
-        .find_map(|d| {
+        .find_map(|(d, _)| {
             d.message
                 .strip_prefix(TAG_OLDER)
                 .or_else(|| d.message.strip_prefix(TAG_MISSING))

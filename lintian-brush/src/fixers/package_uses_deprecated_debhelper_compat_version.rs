@@ -940,7 +940,12 @@ pub fn detect(
         "old"
     };
 
-    let mut description = format!(
+    let description = format!(
+        "Package uses {} debhelper compat version {}.",
+        kind, current_debhelper_compat_version
+    );
+
+    let mut label = format!(
         "Bump debhelper from {} {} to {}.",
         kind, current_debhelper_compat_version, new_debhelper_compat_version
     );
@@ -948,8 +953,8 @@ pub fn detect(
         let mut sorted_transforms: Vec<_> = transforms.subitems.iter().collect();
         sorted_transforms.sort();
         for transform in sorted_transforms {
-            description.push_str("\n+ ");
-            description.push_str(transform);
+            label.push_str("\n+ ");
+            label.push_str(transform);
         }
     }
 
@@ -969,7 +974,12 @@ pub fn detect(
         }
     };
 
-    Ok(vec![Diagnostic::with_actions(issue, description, actions)])
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        description,
+        label,
+        actions,
+    )])
 }
 
 declare_detector! {

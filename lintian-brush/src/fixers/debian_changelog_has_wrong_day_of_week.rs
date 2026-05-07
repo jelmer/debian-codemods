@@ -74,14 +74,19 @@ pub fn detect(
             )],
         );
 
-        let message = match entry.version() {
+        let label = match entry.version() {
             Some(v) => format!("Fix day-of-week for changelog entry {}.", v),
             None => "Fix day-of-week for changelog entry.".to_string(),
+        };
+        let description = match entry.version() {
+            Some(v) => format!("Wrong day-of-week in changelog entry {}.", v),
+            None => "Wrong day-of-week in changelog entry.".to_string(),
         };
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            message,
+            description,
+            label,
             vec![Action::Filesystem(FilesystemAction::ReplaceText {
                 file: PathBuf::from(CHANGELOG_REL),
                 range: dow_range,
