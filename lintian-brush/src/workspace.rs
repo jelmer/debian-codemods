@@ -629,6 +629,32 @@ pub enum ChangelogAspect {
     Timestamp,
 }
 
+/// Rough indication of a detector's runtime cost.
+///
+/// Annotated on each detector via `cost:` in [`declare_detector!`]. The
+/// lintian-brush CLI ignores this — it always runs every selected
+/// detector. LSP hosts use it to schedule work: cheap detectors can run
+/// on every keystroke, expensive ones only on idle/save/explicit
+/// request.
+///
+/// The variants are ordered cheapest → most expensive; comparisons via
+/// the derived `PartialOrd` reflect that ordering.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DetectorCost {
+    /// Pure parse and in-memory check. Safe to run on every keystroke.
+    Cheap,
+    /// Walks the working tree, reads files outside the immediate trigger
+    /// (lintian data files, maintscripts, override globs). Local I/O
+    /// only — no network, no subprocess. Fine on a debounced idle tick.
+    Filesystem,
+    /// Forks a subprocess (e.g. `git ls-remote`, `gpg`, `dpkg-parsechangelog`).
+    /// Local but slow; avoid on every keystroke.
+    Subprocess,
+    /// Talks to the network. Should only run on explicit user action
+    /// (save / "scan now") in an LSP context.
+    Network,
+}
+
 /// What a [`Trigger::Watch`] detector reads from `debian/watch`.
 ///
 /// The aspects are framed in terms of the watch-file model — a list of
@@ -681,6 +707,12 @@ pub trait Detector: Send + Sync {
         &[]
     }
 
+    /// Rough cost class. See [`DetectorCost`] for the meaning of each
+    /// variant. Defaults to `Cheap`; expensive detectors should override.
+    fn cost(&self) -> DetectorCost {
+        DetectorCost::Cheap
+    }
+
     /// Detect issues in `ws` and return one [`Diagnostic`] per issue.
     ///
     /// `Ok(vec![])` means "nothing to fix, no error". `Err(NoChanges)` is
@@ -725,6 +757,8 @@ pub struct DetectorRegistration {
     pub before: &'static [&'static str],
     /// What workspace state this detector reads. See [`Detector::triggers`].
     pub triggers: &'static [Trigger],
+    /// Rough cost class. See [`DetectorCost`] and [`Detector::cost`].
+    pub cost: DetectorCost,
 }
 
 inventory::collect!(DetectorRegistration);
@@ -951,6 +985,7 @@ macro_rules! declare_detector {
         $(after: [$($after:expr),* $(,)?],)?
         $(before: [$($before:expr),* $(,)?],)?
         $(triggers: [$($trigger:expr),* $(,)?],)?
+        $(cost: $cost:expr,)?
         detect: $detect_fn:expr
         $(, describe: $describe_fn:expr)?
         $(,)?
@@ -964,6 +999,12 @@ macro_rules! declare_detector {
             fn triggers(&self) -> &'static [$crate::workspace::Trigger] {
                 &[$($($trigger),*)?]
             }
+
+            $(
+            fn cost(&self) -> $crate::workspace::DetectorCost {
+                $cost
+            }
+            )?
 
             fn detect(
                 &self,
@@ -998,6 +1039,15 @@ macro_rules! declare_detector {
             )?
         }
 
+        // The cost expression evaluates to either the user-supplied
+        // `$cost` or — when the clause is omitted — `DetectorCost::Cheap`.
+        const __COST: $crate::workspace::DetectorCost = {
+            #[allow(unused_mut, unused_assignments)]
+            let mut c = $crate::workspace::DetectorCost::Cheap;
+            $(c = $cost;)?
+            c
+        };
+
         $crate::inventory::submit! {
             $crate::workspace::DetectorRegistration {
                 name: $name,
@@ -1006,6 +1056,7 @@ macro_rules! declare_detector {
                 after: &[$($($after),*)?],
                 before: &[$($($before),*)?],
                 triggers: &[$($($trigger),*)?],
+                cost: __COST,
             }
         }
     };
@@ -1215,5 +1266,32 @@ mod tests {
             .find(|reg| reg.triggers.is_empty())
             .expect("at least one detector still has no trigger annotation");
         assert!(untriggered.triggers.is_empty());
+    }
+
+    #[test]
+    fn cost_reaches_registered_detector() {
+        // `upstream-metadata-file` opts in to the Network cost class.
+        let net = inventory::iter::<DetectorRegistration>
+            .into_iter()
+            .find(|reg| reg.name == "upstream-metadata-file")
+            .expect("upstream-metadata-file registered");
+        assert_eq!(net.cost, DetectorCost::Network);
+        assert_eq!((net.create)().cost(), DetectorCost::Network);
+
+        // A detector that omits `cost:` falls back to Cheap.
+        let cheap = inventory::iter::<DetectorRegistration>
+            .into_iter()
+            .find(|reg| reg.name == "empty-debian-patches-series")
+            .expect("empty-debian-patches-series registered");
+        assert_eq!(cheap.cost, DetectorCost::Cheap);
+        assert_eq!((cheap.create)().cost(), DetectorCost::Cheap);
+    }
+
+    #[test]
+    fn detector_cost_ordering_is_cheap_to_expensive() {
+        // LSP hosts rely on the `PartialOrd` derivation reflecting cost.
+        assert!(DetectorCost::Cheap < DetectorCost::Filesystem);
+        assert!(DetectorCost::Filesystem < DetectorCost::Subprocess);
+        assert!(DetectorCost::Subprocess < DetectorCost::Network);
     }
 }

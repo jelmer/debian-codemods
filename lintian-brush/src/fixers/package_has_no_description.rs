@@ -211,6 +211,7 @@ declare_detector! {
             field: "Description",
         },
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

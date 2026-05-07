@@ -107,6 +107,7 @@ declare_detector! {
         crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
         crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
