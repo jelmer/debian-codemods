@@ -1803,8 +1803,7 @@ fn run_debianize_fixers(
     log::info!("Running lintian fixers on debianized package");
 
     // Get available fixers
-    let fixers: Vec<Box<dyn lintian_brush::Fixer>> =
-        lintian_brush::available_lintian_fixers().collect();
+    let fixers: Vec<Box<dyn lintian_brush::Fixer>> = lintian_brush::all_lintian_fixers().collect();
 
     log::info!("Found {} lintian fixers", fixers.len());
 
