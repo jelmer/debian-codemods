@@ -39,7 +39,7 @@ pub fn detect(
     };
 
     let deprecated = read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
-    let content = String::from_utf8(bytes)
+    let content = std::str::from_utf8(&bytes)
         .map_err(|e| FixerError::Other(format!("debian/tests/control is not UTF-8: {}", e)))?;
     let parsed = Deb822::parse(&content);
     let deb822 = parsed.tree();

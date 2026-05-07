@@ -55,7 +55,7 @@ fn parse_changelog_dates(
         Some(b) => b,
         None => return Ok(vec![]),
     };
-    let changelog = ChangeLog::read_relaxed(bytes.as_slice())
+    let changelog = ChangeLog::read_relaxed(&bytes[..])
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {:?}", e)))?;
 
     let mut dates = Vec::new();
@@ -116,7 +116,7 @@ where
         Some(b) => b,
         None => return Ok(Vec::new()),
     };
-    let contents = String::from_utf8(bytes)
+    let contents = std::str::from_utf8(&bytes)
         .map_err(|e| FixerError::Other(format!("Failed to read maintscript: {}", e)))?;
     let script = Maintscript::from_str(&contents)
         .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;

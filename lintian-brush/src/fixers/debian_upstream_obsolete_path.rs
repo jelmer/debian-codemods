@@ -50,7 +50,7 @@ pub fn detect(
                 Action::Filesystem(FilesystemAction::Delete { file: rel.clone() }),
                 Action::Filesystem(FilesystemAction::Write {
                     file: target_rel.clone(),
-                    content,
+                    content: content.into_owned(),
                 }),
             ]
         } else {

@@ -15,7 +15,7 @@ pub fn detect(
         Some(b) => b,
         None => return Ok(Vec::new()),
     };
-    let series = Series::read(series_bytes.as_slice())
+    let series = Series::read(&series_bytes[..])
         .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
 
     let mut diagnostics = Vec::new();
@@ -27,7 +27,7 @@ pub fn detect(
         let Some(patch_bytes) = ws.read_file(&patch_rel_full)? else {
             continue;
         };
-        let Ok(content) = String::from_utf8(patch_bytes) else {
+        let Ok(content) = std::str::from_utf8(&patch_bytes) else {
             continue;
         };
 

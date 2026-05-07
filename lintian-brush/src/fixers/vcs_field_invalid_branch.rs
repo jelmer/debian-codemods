@@ -130,7 +130,8 @@ pub async fn detect_async(
 
     // Read the current Vcs-Git URL.
     let vcs_git: Option<String> = if is_debcargo {
-        let toml_text = String::from_utf8(debcargo_bytes.unwrap())
+        let bytes = debcargo_bytes.unwrap();
+        let toml_text = std::str::from_utf8(&bytes)
             .map_err(|e| FixerError::Other(format!("Failed to read debcargo.toml: {}", e)))?;
         let doc: toml_edit::DocumentMut = toml_text
             .parse()
