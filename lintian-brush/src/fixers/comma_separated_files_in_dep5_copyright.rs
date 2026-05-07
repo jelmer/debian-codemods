@@ -58,6 +58,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Files paragraph in debian/copyright uses comma-separated globs.",
             "debian/copyright: Replace commas with whitespace to separate items in Files paragraph.",
             vec![Action::Deb822(Deb822Action::SetField {
                 file: copyright_rel.clone(),

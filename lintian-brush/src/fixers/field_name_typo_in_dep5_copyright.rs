@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_copyright::lossless::Copyright;
@@ -83,18 +83,31 @@ pub fn detect(
                 ))
             };
 
-            // Stash the kind in the message so the describer can split
+            // Stash the kind in the plan label so the describer can split
             // case from typo without re-deriving it.
-            let message = format!(
+            let label = format!(
                 "{}\t{} ⇒ {}",
                 if rename.is_case { "case" } else { "typo" },
                 rename.old,
                 rename.new,
             );
+            let description = if rename.is_case {
+                format!(
+                    "Field name {} has wrong case (should be {}).",
+                    rename.old, rename.new
+                )
+            } else {
+                format!(
+                    "Field name {} appears to be a typo for {}.",
+                    rename.old, rename.new
+                )
+            };
 
             let diag = match issue {
-                Some(i) => Diagnostic::with_actions(i, message, actions.clone()),
-                None => crate::diagnostic::Diagnostic::untagged(message, actions.clone()),
+                Some(i) => Diagnostic::with_actions(i, description, label, actions.clone()),
+                None => {
+                    crate::diagnostic::Diagnostic::untagged(description, label, actions.clone())
+                }
             };
             diagnostics.push(diag);
             // Mute unused-let warning; `actions` was cloned just so it
@@ -169,11 +182,14 @@ fn infer_rename(
 /// The original wording: `Fix field name {kind} in debian/copyright (X ⇒ Y, ...).`
 /// where `{kind}` is "case", "cases", "typo", "typos", or "case and typo"
 /// (with appropriate plurals) depending on how many of each fired.
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut case_pairs: Vec<(String, String)> = Vec::new();
     let mut typo_pairs: Vec<(String, String)> = Vec::new();
-    for diag in fixed {
-        let Some((kind, rest)) = diag.message.split_once('\t') else {
+    for (diag, _) in fixed {
+        let Some(plan) = diag.plans.first() else {
+            continue;
+        };
+        let Some((kind, rest)) = plan.label.split_once('\t') else {
             continue;
         };
         let Some((old, new)) = rest.split_once(" ⇒ ") else {

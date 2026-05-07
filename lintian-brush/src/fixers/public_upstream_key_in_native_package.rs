@@ -30,7 +30,7 @@ pub fn detect(
         certainty: Some(Certainty::Certain),
         patch_name: None,
         plans: vec![ActionPlan {
-            label: None,
+            label: "Remove upstream signing key in native source package.".to_string(),
             opinionated: true,
             actions: vec![
                 Action::Filesystem(FilesystemAction::Delete { file: key_rel }),

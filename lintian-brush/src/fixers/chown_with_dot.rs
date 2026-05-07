@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use regex::Regex;
@@ -68,6 +68,10 @@ pub fn detect(
                     "Replace deprecated chown user.group with chown user:group in {} ({})",
                     package, script
                 ),
+                format!(
+                    "Deprecated chown user.group syntax in {} ({}).",
+                    package, script
+                ),
                 vec![Action::Filesystem(FilesystemAction::Write {
                     file: rel,
                     content: new_content.into_bytes(),
@@ -82,9 +86,9 @@ pub fn detect(
 
 /// Aggregate when more than one script is touched: keep the original
 /// "in N scripts" wording the historical fixer produced.
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     if fixed.len() == 1 {
-        fixed[0].message.clone()
+        fixed[0].0.message.clone()
     } else {
         format!(
             "Replace deprecated chown user.group with chown user:group in {} scripts",

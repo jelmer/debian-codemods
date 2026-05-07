@@ -52,6 +52,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "Patch header uses Origin where Author would be better.",
                 "Use Author instead of Origin in patch headers.",
                 vec![
                     Action::Dep3(Dep3Action::SetField {

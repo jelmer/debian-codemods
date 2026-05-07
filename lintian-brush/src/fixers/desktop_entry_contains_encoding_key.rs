@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, DesktopIniAction, Diagnostic};
+use crate::diagnostic::{Action, ActionPlan, DesktopIniAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use desktop_edit::Desktop;
@@ -59,6 +59,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            format!("Desktop file {} contains deprecated Encoding key.", rel_str),
             format!(
                 "Remove deprecated Encoding key from desktop file {}.",
                 rel_str
@@ -75,15 +76,24 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     if fixed.len() == 1 {
-        return fixed[0].message.clone();
+        return fixed[0]
+            .0
+            .plans
+            .first()
+            .map(|p| p.label.clone())
+            .unwrap_or_default();
     }
     let paths: Vec<String> = fixed
         .iter()
-        .filter_map(|d| {
-            d.message
-                .strip_prefix("Remove deprecated Encoding key from desktop file ")
+        .filter_map(|(d, _)| {
+            d.plans
+                .first()
+                .and_then(|p| {
+                    p.label
+                        .strip_prefix("Remove deprecated Encoding key from desktop file ")
+                })
                 .and_then(|s| s.strip_suffix('.'))
                 .map(|s| s.to_string())
         })

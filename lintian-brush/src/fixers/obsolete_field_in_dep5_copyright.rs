@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
@@ -51,7 +51,11 @@ pub fn detect(
             // user-visible message. Match the original behaviour by
             // emitting a remove-only action with no LintianIssue.
             diagnostics.push(crate::diagnostic::Diagnostic::untagged(
-                format!("drop\t{}", old_name),
+                format!("Empty obsolete field {} in debian/copyright.", old_name),
+                format!(
+                    "Drop empty obsolete field {} from debian/copyright.",
+                    old_name
+                ),
                 vec![Action::Deb822(Deb822Action::RemoveField {
                     file: copyright_rel.clone(),
                     paragraph: ParagraphSelector::CopyrightHeader,
@@ -100,7 +104,8 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            format!("rename\t{} ⇒ {}", old_name, new_name),
+            format!("Obsolete field {} in debian/copyright.", old_name),
+            format!("Rename {} to {} in debian/copyright.", old_name, new_name),
             actions,
         ));
     }
@@ -112,10 +117,16 @@ pub fn detect(
 /// "Update copyright file header to use current field names (X ⇒ Y, ...)"
 /// description. Drop-only diagnostics (empty-value removals) don't
 /// surface in the description.
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let pairs: Vec<&str> = fixed
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let pairs: Vec<String> = fixed
         .iter()
-        .filter_map(|d| d.message.strip_prefix("rename\t"))
+        .filter_map(|(d, _)| {
+            let info = d.issue.as_ref()?.info.as_deref()?;
+            // info is formatted as "{old} {new} [debian/copyright:{line}]".
+            let (names, _) = info.split_once(" [")?;
+            let (old, new) = names.split_once(' ')?;
+            Some(format!("{} ⇒ {}", old, new))
+        })
         .collect();
     format!(
         "Update copyright file header to use current field names ({})",

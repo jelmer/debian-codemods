@@ -1,11 +1,9 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::get_maintainer_from_env;
 use std::path::PathBuf;
-
-const SEP: char = '\t';
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -37,7 +35,8 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
-        format!("set{}{}", SEP, maintainer_value),
+        "Maintainer field is missing.",
+        format!("Set the maintainer field to: {}.", maintainer_value),
         vec![Action::Deb822(Deb822Action::SetField {
             file: control_rel,
             paragraph: ParagraphSelector::Source,
@@ -48,20 +47,14 @@ pub fn detect(
     .with_certainty(Certainty::Possible)])
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let Some(first) = fixed.first() else {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let Some((first, _)) = fixed.first() else {
         return "Set the maintainer field.".to_string();
     };
-    if let Some(maintainer) = first
-        .message
-        .split_once(SEP)
-        .filter(|(tag, _)| *tag == "set")
-        .map(|(_, v)| v)
-    {
-        format!("Set the maintainer field to: {}.", maintainer)
-    } else {
-        "Set the maintainer field.".to_string()
-    }
+    let Some(plan) = first.plans.first() else {
+        return "Set the maintainer field.".to_string();
+    };
+    plan.label.clone()
 }
 
 declare_detector! {

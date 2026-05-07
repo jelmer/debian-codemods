@@ -280,6 +280,7 @@ pub fn detect(
     let issue = LintianIssue::source_with_info("no-copyright-file", vec![]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/copyright file is missing.",
         "Create a debian/copyright file.",
         vec![Action::Filesystem(FilesystemAction::Write {
             file: copyright_rel,

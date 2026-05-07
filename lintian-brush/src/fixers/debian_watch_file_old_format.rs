@@ -48,6 +48,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        format!("debian/watch uses old format version {}.", version),
         format!(
             "Update watch file format version to {}.",
             WATCH_FILE_LATEST_VERSION

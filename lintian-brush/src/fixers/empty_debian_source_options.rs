@@ -22,6 +22,7 @@ pub fn detect(
     }
 
     Ok(vec![Diagnostic::untagged(
+        "debian/source/options is empty.",
         "Remove empty debian/source/options.",
         vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
     )

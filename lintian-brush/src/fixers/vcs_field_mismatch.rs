@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashMap;
@@ -69,6 +69,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!("rename{}{}{}{}", SEP, vcs_type, SEP, actual_vcs),
+            format!("Rename Vcs-{} to Vcs-{}.", vcs_type, actual_vcs),
             vec![Action::Deb822(Deb822Action::RenameField {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::ByKey {
@@ -84,8 +85,8 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let Some(first) = fixed.first() else {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let Some((first, _)) = fixed.first() else {
         return "Fix Vcs-* type mismatch.".to_string();
     };
     let parts: Vec<&str> = first.message.split(SEP).collect();

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::collections::BTreeSet;
@@ -55,6 +55,7 @@ pub fn detect(
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
                     format!("drop{}{}", SEP, label),
+                    format!("Drop {} from debian/source/options.", label),
                     Vec::new(),
                 ));
             }
@@ -84,10 +85,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut labels: Vec<String> = fixed
         .iter()
-        .filter_map(|d| {
+        .filter_map(|(d, _)| {
             d.message
                 .split_once(SEP)
                 .filter(|(tag, _)| *tag == "drop")

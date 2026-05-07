@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::BTreeSet;
@@ -93,6 +93,7 @@ pub fn detect(
                 SEP,
                 if lp_seen { "1" } else { "0" }
             ),
+            format!("Use secure URI in {}.", field),
             vec![Action::Deb822(Deb822Action::SetField {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::ByKey {
@@ -108,10 +109,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut fields: BTreeSet<String> = BTreeSet::new();
     let mut lp_note = false;
-    for d in fixed {
+    for (d, _) in fixed {
         let parts: Vec<&str> = d.message.split(SEP).collect();
         if parts.len() == 3 && parts[0] == "field" {
             fields.insert(parts[1].to_string());

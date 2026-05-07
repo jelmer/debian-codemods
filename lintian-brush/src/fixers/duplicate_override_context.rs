@@ -121,6 +121,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "Duplicate lintian override.",
                     "Remove duplicate lintian overrides.",
                     drop_actions,
                 )

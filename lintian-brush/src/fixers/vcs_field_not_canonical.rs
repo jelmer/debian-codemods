@@ -1,5 +1,7 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{
+    Action, ActionPlan, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector,
+};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::BTreeSet;
@@ -69,6 +71,7 @@ pub fn detect(
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
                     format!("{}{}{}", "set", SEP, field_name),
+                    format!("Use canonical URL in {}.", field_name),
                     vec![Action::Debcargo(DebcargoAction::SetSourceField {
                         file: debcargo_rel.clone(),
                         field: (*toml_key).to_string(),
@@ -111,6 +114,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!("{}{}{}", "set", SEP, field_name),
+            format!("Use canonical URL in {}.", field_name),
             vec![Action::Deb822(Deb822Action::SetField {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::Source,
@@ -122,9 +126,9 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut fields = BTreeSet::new();
-    for d in fixed {
+    for (d, _) in fixed {
         if let Some((tag, field)) = d.message.split_once(SEP) {
             if tag == "set" {
                 fields.insert(field.to_string());

@@ -147,6 +147,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    format!("Description is missing for binary package {}.", name),
                     format!("Cannot guess description for binary package {}.", name),
                     vec![],
                 )
@@ -166,6 +167,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             issue,
             String::new(),
+            format!("Set description for binary package {}.", name),
             vec![Action::Deb822(Deb822Action::SetFieldWithIndent {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::Binary { package: name },
@@ -186,7 +188,9 @@ pub fn detect(
         updated.join(", ")
     );
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
         d.certainty = Some(Certainty::Possible);
     }
     Ok(diagnostics)

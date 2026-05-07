@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
@@ -126,7 +126,8 @@ pub fn detect(
 
                 let mut diag = Diagnostic::with_actions(
                     issue,
-                    format!("{}\t{}", package, script),
+                    format!("Maintainer script {} ({}) is empty.", script, package),
+                    format!("Remove empty maintainer script {} ({}).", script, package),
                     vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
                 );
                 diag = diag.with_certainty(certainty);
@@ -139,12 +140,20 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut entries: Vec<(String, String)> = fixed
         .iter()
-        .filter_map(|d| {
-            let (pkg, script) = d.message.split_once('\t')?;
-            Some((pkg.to_string(), script.to_string()))
+        .filter_map(|(d, _)| {
+            let issue = d.issue.as_ref()?;
+            let info = issue
+                .info
+                .as_deref()?
+                .trim_matches(|c| c == '[' || c == ']');
+            let pkg = issue
+                .package
+                .clone()
+                .unwrap_or_else(|| "source".to_string());
+            Some((pkg, info.to_string()))
         })
         .collect();
     entries.sort();

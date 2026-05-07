@@ -85,6 +85,7 @@ pub fn detect(
             };
             return Ok(vec![Diagnostic::with_actions(
                 issue,
+                "Unnecessary Team Upload line in changelog.",
                 "Remove unnecessary Team Upload line in changelog.",
                 vec![Action::Changelog(ChangelogAction::RemoveBullet {
                     file: changelog_rel.clone(),

@@ -39,6 +39,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Maintainer field has trailing comma.",
         "Remove trailing comma from Maintainer field.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),

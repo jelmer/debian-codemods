@@ -28,6 +28,7 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Avoid using $(_) to discover source package directory.".to_string(),
+        "Avoid using $(_) to discover source package directory.".to_string(),
         vec![Action::Filesystem(FilesystemAction::Substitute {
             file: rules_rel,
             from: "$(dir $(_))".into(),

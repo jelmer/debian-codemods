@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::parseaddr;
@@ -88,6 +88,7 @@ pub fn detect(
                 "Update {} {}{}.",
                 field_name, MAINTAINER_PREFIX, maintainer_name
             ),
+            format!("Update {} for maintainer {}.", field_name, maintainer_name),
             vec![Action::Deb822(Deb822Action::SetField {
                 file: PathBuf::from("debian/control"),
                 paragraph: ParagraphSelector::Source,
@@ -102,7 +103,7 @@ pub fn detect(
 
 /// Custom describer: aggregate every fired diagnostic's field name into a
 /// single "Update fields A, B for maintainer NAME." line.
-fn describe_aggregate(fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     // Pull field names out of the actions (one Deb822Action::SetField per
     // diagnostic by construction).
     let mut fields: Vec<&str> = actions
@@ -118,7 +119,7 @@ fn describe_aggregate(fixed: &[Diagnostic], actions: &[Action]) -> String {
     // Recover the maintainer name from the first message's tail.
     let maintainer_name = fixed
         .first()
-        .and_then(|d| d.message.rsplit_once(MAINTAINER_PREFIX))
+        .and_then(|(d, _)| d.message.rsplit_once(MAINTAINER_PREFIX))
         .map(|(_, tail)| tail.trim_end_matches('.'))
         .unwrap_or("");
 

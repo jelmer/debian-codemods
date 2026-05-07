@@ -4,7 +4,8 @@ use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
 
-const MESSAGE: &str = "Remove unnecessary XS- prefix for Vcs- fields in debian/control.";
+const DESCRIPTION: &str = "Remove unnecessary XS- prefix for Vcs- fields in debian/control.";
+const LABEL: &str = "Remove unnecessary XS- prefix for Vcs- fields in debian/control.";
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -42,7 +43,8 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            MESSAGE,
+            DESCRIPTION,
+            LABEL,
             vec![Action::Deb822(Deb822Action::RenameField {
                 file: PathBuf::from("debian/control"),
                 paragraph: ParagraphSelector::Source,
@@ -86,7 +88,7 @@ mod tests {
         fs::write(&control_path, "Source: lintian-brush\nXS-Vcs-Git: https://github.com/jelmer/lintian-brush\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n").unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
         assert_eq!(result.certainty, None);
 
         assert_eq!(
@@ -106,7 +108,7 @@ mod tests {
         fs::write(&control_path, "Source: test\nXS-Vcs-Git: https://git.example.com/repo\nXS-Vcs-Browser: https://git.example.com/repo/browser\n\nPackage: test\nDescription: Test\n Test package\n").unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
         assert_eq!(result.fixed_lintian_issues.len(), 2);
 
         assert_eq!(

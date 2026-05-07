@@ -57,6 +57,7 @@ pub fn detect(
             );
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                "Lintian override uses renamed tag name.",
                 "Update renamed lintian tag names in lintian overrides.",
                 vec![Action::LintianOverrides(
                     LintianOverridesAction::RenameTag {

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use regex::bytes::Regex;
@@ -44,6 +44,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "Test script uses deprecated $ADTTMP.".to_string(),
                     "Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.".to_string(),
                     vec![Action::Filesystem(FilesystemAction::Substitute {
                         file: rel.clone(),
@@ -59,7 +60,7 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     "Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.".to_string()
 }
 

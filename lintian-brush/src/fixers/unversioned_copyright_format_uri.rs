@@ -68,6 +68,7 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Copyright format URI is unversioned.",
         "Use versioned copyright format URI.",
         actions,
     )])

@@ -502,15 +502,24 @@ pub fn detect(
         match paragraph_issues.get(&plan.original_synopsis) {
             Some(issues) if !issues.is_empty() => {
                 for issue in issues {
+                    let problem_description = describe_issue(issue);
                     diagnostics.push(Diagnostic::with_actions(
                         issue.clone(),
+                        problem_description,
                         description.clone(),
                         vec![action.clone()],
                     ));
                 }
             }
             _ => {
-                diagnostics.push(Diagnostic::untagged(description.clone(), vec![action]));
+                diagnostics.push(Diagnostic::untagged(
+                    format!(
+                        "License paragraph {} should reference a common license file.",
+                        plan.original_synopsis
+                    ),
+                    description.clone(),
+                    vec![action],
+                ));
             }
         }
     }
@@ -542,10 +551,44 @@ pub fn detect(
             value: new_value,
             indent: IndentPattern::Fixed { spaces: 1 },
         });
-        diagnostics.push(Diagnostic::untagged(description.clone(), vec![action]));
+        diagnostics.push(Diagnostic::untagged(
+            "License name in Files paragraph needs renaming.".to_string(),
+            description.clone(),
+            vec![action],
+        ));
     }
 
     Ok(diagnostics)
+}
+
+fn describe_issue(issue: &LintianIssue) -> String {
+    match issue.tag.as_deref() {
+        Some("copyright-file-contains-full-apache-2-license") => {
+            "debian/copyright contains full Apache-2 license text.".to_string()
+        }
+        Some("copyright-file-contains-full-gfdl-license") => {
+            "debian/copyright contains full GFDL license text.".to_string()
+        }
+        Some("copyright-file-contains-full-gpl-license") => {
+            "debian/copyright contains full GPL license text.".to_string()
+        }
+        Some("copyright-does-not-refer-to-common-license-file") => {
+            "debian/copyright does not refer to common license file.".to_string()
+        }
+        Some("copyright-not-using-common-license-for-apache2") => {
+            "debian/copyright does not use common license file for Apache-2.".to_string()
+        }
+        Some("copyright-not-using-common-license-for-gpl") => {
+            "debian/copyright does not use common license file for GPL.".to_string()
+        }
+        Some("copyright-not-using-common-license-for-lgpl") => {
+            "debian/copyright does not use common license file for LGPL.".to_string()
+        }
+        Some("copyright-not-using-common-license-for-gfdl") => {
+            "debian/copyright does not use common license file for GFDL.".to_string()
+        }
+        _ => "License paragraph should refer to a common license file.".to_string(),
+    }
 }
 
 fn build_description(

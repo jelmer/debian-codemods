@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
 use regex::Regex;
@@ -46,6 +46,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "License file is listed in debian/copyright.",
                     format!("dropped\t{}", file_pattern),
                     // Action set is shared across the per-glob diagnostics:
                     // applying one of them is enough; the rest are no-ops.
@@ -82,10 +83,14 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let dropped: Vec<&str> = fixed
         .iter()
-        .filter_map(|d| d.message.strip_prefix("dropped\t"))
+        .filter_map(|(d, _)| {
+            d.plans
+                .first()
+                .and_then(|p| p.label.strip_prefix("dropped\t"))
+        })
         .collect();
     format!(
         "Remove listed license files ({}) from copyright.",

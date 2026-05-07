@@ -40,17 +40,27 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    /// Build a diagnostic with a single default plan and no label.
+    /// Build a diagnostic with a single default plan.
+    ///
+    /// * `description` — human-readable summary of *what's wrong*. Used
+    ///   in the per-issue commit-message line and shown to the user.
+    /// * `label` — imperative description of *what the plan would do*.
+    ///   Shown in `lintian-brush --interactive` and the LSP code-action
+    ///   menu. Should be written from the actor's perspective ("Set
+    ///   Priority to optional.", "Trim trailing whitespace.").
+    ///
+    /// The two are different intents and must be written distinctly.
     pub fn with_actions(
         issue: LintianIssue,
-        message: impl Into<String>,
+        description: impl Into<String>,
+        label: impl Into<String>,
         actions: Vec<Action>,
     ) -> Self {
         Self::with_plans(
             issue,
-            message,
+            description,
             vec![ActionPlan {
-                label: None,
+                label: label.into(),
                 opinionated: false,
                 actions,
             }],
@@ -79,14 +89,23 @@ impl Diagnostic {
     /// Used by fixers that aren't tied to a lintian tag (their `tags: []`
     /// declaration). The driver still applies the actions but skips
     /// override / tag bookkeeping.
-    pub fn untagged(message: impl Into<String>, actions: Vec<Action>) -> Self {
+    /// Build a diagnostic with no associated lintian issue.
+    ///
+    /// `description` describes *what's wrong*; `label` is the imperative
+    /// description of *what the plan would do*. See [`with_actions`] for
+    /// the distinction.
+    pub fn untagged(
+        description: impl Into<String>,
+        label: impl Into<String>,
+        actions: Vec<Action>,
+    ) -> Self {
         Self {
             issue: None,
-            message: message.into(),
+            message: description.into(),
             certainty: None,
             patch_name: None,
             plans: vec![ActionPlan {
-                label: None,
+                label: label.into(),
                 opinionated: false,
                 actions,
             }],
@@ -110,9 +129,11 @@ impl Diagnostic {
 /// One self-consistent set of actions that fixes a [`Diagnostic`].
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ActionPlan {
-    /// Label shown in an LSP code-action menu. `None` for the default plan.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub label: Option<String>,
+    /// Imperative description of what this plan would do, shown to the
+    /// user (LSP code-action menu, `lintian-brush --interactive`). Every
+    /// plan must have one — a diagnostic with multiple plans needs each
+    /// titled distinctly so the user can pick.
+    pub label: String,
     /// If true, this plan only applies when the user has opted into
     /// opinionated fixes (`--opinionated` / `preferences.opinionated`).
     /// The driver skips opinionated plans otherwise.
@@ -1254,7 +1275,8 @@ mod tests {
     fn diagnostic_with_actions_builds_single_default_plan() {
         let diag = Diagnostic::with_actions(
             LintianIssue::source("recommended-field"),
-            "Priority missing",
+            "Priority field is missing.",
+            "Set Priority to optional.",
             vec![Action::Deb822(Deb822Action::SetField {
                 file: PathBuf::from("debian/control"),
                 paragraph: ParagraphSelector::Source,
@@ -1263,7 +1285,10 @@ mod tests {
             })],
         );
         assert_eq!(diag.plans.len(), 1);
-        assert!(diag.plans[0].label.is_none());
+        // The description is in the message field; the label is the
+        // imperative title of the plan.
+        assert_eq!(diag.message, "Priority field is missing.");
+        assert_eq!(diag.plans[0].label, "Set Priority to optional.");
         assert_eq!(diag.plans[0].actions.len(), 1);
     }
 }

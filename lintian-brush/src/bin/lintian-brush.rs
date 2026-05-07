@@ -984,7 +984,7 @@ fn run_interactive(
             // Numbered choices: 0 always means "skip"; 1..N pick a plan.
             println!("  0: skip");
             for (i, plan) in diag.plans.iter().enumerate() {
-                let label = plan.label.as_deref().unwrap_or("apply");
+                let label = plan.label.as_str();
                 let suffix = if plan.opinionated {
                     " (opinionated)"
                 } else {

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use deb822_lossless::Deb822;
@@ -49,12 +49,23 @@ pub fn detect(
             };
             let is_case = target.eq_ignore_ascii_case(&field_name);
 
-            let message = format!(
+            let label = format!(
                 "{}\t{} ⇒ {}",
                 if is_case { "case" } else { "typo" },
                 field_name,
                 target,
             );
+            let description = if is_case {
+                format!(
+                    "Field name {} has wrong case (should be {}).",
+                    field_name, target
+                )
+            } else {
+                format!(
+                    "Field name {} appears to be a typo for {}.",
+                    field_name, target
+                )
+            };
             let actions = vec![Action::Deb822(Deb822Action::RenameField {
                 file: rel.clone(),
                 paragraph: ParagraphSelector::Index { index },
@@ -65,18 +76,25 @@ pub fn detect(
             // Untagged: this fixer's lintian tag isn't tracked per-issue
             // by the original either (its FixerResult.fixed_lintian_issues
             // was empty).
-            diagnostics.push(crate::diagnostic::Diagnostic::untagged(message, actions));
+            diagnostics.push(crate::diagnostic::Diagnostic::untagged(
+                description,
+                label,
+                actions,
+            ));
         }
     }
 
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut case_pairs: Vec<(String, String)> = Vec::new();
     let mut typo_pairs: Vec<(String, String)> = Vec::new();
-    for diag in fixed {
-        let Some((kind, rest)) = diag.message.split_once('\t') else {
+    for (diag, _) in fixed {
+        let Some(plan) = diag.plans.first() else {
+            continue;
+        };
+        let Some((kind, rest)) = plan.label.split_once('\t') else {
             continue;
         };
         let Some((old, new)) = rest.split_once(" ⇒ ") else {

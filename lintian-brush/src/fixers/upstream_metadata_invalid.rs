@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashMap;
@@ -244,7 +244,7 @@ pub fn detect(
 
     let mut yaml_invalid_count = 0usize;
     let mut yaml_not_mapping_count = 0usize;
-    let mut empty_docs_descs: Vec<&'static str> = Vec::new();
+    let mut empty_docs_descs: Vec<(&'static str, &'static str)> = Vec::new();
     let mut dedup_fields: Vec<String> = Vec::new();
 
     // 1. Deduplicate keys.
@@ -266,12 +266,17 @@ pub fn detect(
         EmptyDocsOutcome::NoChange => {}
         EmptyDocsOutcome::DeleteFile => {
             delete_file = true;
-            empty_docs_descs.push("Remove empty debian/upstream/metadata file.");
+            empty_docs_descs.push((
+                "debian/upstream/metadata is empty.",
+                "Remove empty debian/upstream/metadata file.",
+            ));
         }
         EmptyDocsOutcome::Rewrite(new_content) => {
             current = new_content;
-            empty_docs_descs
-                .push("Discard extra empty YAML documents in debian/upstream/metadata.");
+            empty_docs_descs.push((
+                "debian/upstream/metadata has extra empty YAML documents.",
+                "Discard extra empty YAML documents in debian/upstream/metadata.",
+            ));
         }
     }
 
@@ -301,30 +306,41 @@ pub fn detect(
         let mut sorted_fields = dedup_fields;
         sorted_fields.sort();
         let desc = format!(
+            "debian/upstream/metadata has duplicate values for fields {}.",
+            sorted_fields.join(", ")
+        );
+        let label = format!(
             "Remove duplicate values for fields {} in debian/upstream/metadata.",
             sorted_fields.join(", ")
         );
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source("upstream-metadata-yaml-invalid"),
             desc,
+            label,
             vec![action.clone()],
         ));
     }
     for _ in 0..yaml_not_mapping_count {
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source("upstream-metadata-not-yaml-mapping"),
+            "debian/upstream/metadata is not a YAML mapping.",
             "Use YAML mapping in debian/upstream/metadata.",
             vec![action.clone()],
         ));
     }
-    for desc in empty_docs_descs {
-        diagnostics.push(Diagnostic::untagged(desc.to_string(), vec![action.clone()]));
+    for (desc, label) in empty_docs_descs {
+        diagnostics.push(Diagnostic::untagged(
+            desc.to_string(),
+            label.to_string(),
+            vec![action.clone()],
+        ));
     }
 
     if diagnostics.is_empty() {
         // The change isn't motivated by a specific lintian issue — emit
         // a generic untagged diagnostic so the action still runs.
         diagnostics.push(Diagnostic::untagged(
+            "debian/upstream/metadata is invalid.".to_string(),
             "Fix invalid debian/upstream/metadata.".to_string(),
             vec![action],
         ));
@@ -333,12 +349,12 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut seen = std::collections::HashSet::new();
     let mut parts: Vec<String> = Vec::new();
-    for d in fixed {
-        if seen.insert(d.message.clone()) {
-            parts.push(d.message.clone());
+    for (_, plan) in fixed {
+        if seen.insert(plan.label.clone()) {
+            parts.push(plan.label.clone());
         }
     }
     parts.join(" ")

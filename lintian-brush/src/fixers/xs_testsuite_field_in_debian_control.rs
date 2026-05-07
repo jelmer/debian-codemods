@@ -50,6 +50,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "XS-Testsuite field has been adopted as Testsuite.",
         "Remove unnecessary XS-Testsuite field in debian/control.",
         vec![action],
     )

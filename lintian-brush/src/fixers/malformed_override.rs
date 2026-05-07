@@ -88,6 +88,7 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 String::new(),
+                format!("Remove override for removed tag {}.", tag_string),
                 vec![Action::LintianOverrides(LintianOverridesAction::DropLine {
                     file: rel.clone(),
                     selector: OverrideLineSelector {
@@ -109,7 +110,9 @@ pub fn detect(
         all_removed_tags.join(", ")
     );
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

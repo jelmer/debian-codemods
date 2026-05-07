@@ -162,17 +162,26 @@ pub fn detect(
 
     let new_content: Vec<u8> = new_lines.into_iter().flatten().collect();
 
-    let mut description = "debian/copyright: ".to_string();
+    let mut label = "debian/copyright: ".to_string();
     if !tab_issues.is_empty() {
-        description.push_str("use spaces rather than tabs to start continuation lines");
+        label.push_str("use spaces rather than tabs to start continuation lines");
         if unicode_linebreaks_replaced {
-            description.push_str(", ");
+            label.push_str(", ");
         }
     }
     if unicode_linebreaks_replaced {
-        description.push_str("replace unicode linebreaks with regular linebreaks");
+        label.push_str("replace unicode linebreaks with regular linebreaks");
     }
-    description.push('.');
+    label.push('.');
+
+    let mut problem_parts: Vec<&str> = Vec::new();
+    if !tab_issues.is_empty() {
+        problem_parts.push("contains tab-indented continuation lines");
+    }
+    if unicode_linebreaks_replaced {
+        problem_parts.push("contains unicode line breaks");
+    }
+    let description = format!("debian/copyright {}.", problem_parts.join(" and "));
 
     let action = Action::Filesystem(FilesystemAction::Write {
         file: copyright_rel,
@@ -181,7 +190,11 @@ pub fn detect(
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     if tab_issues.is_empty() {
-        diagnostics.push(Diagnostic::untagged(description.clone(), vec![action]));
+        diagnostics.push(Diagnostic::untagged(
+            description.clone(),
+            label.clone(),
+            vec![action],
+        ));
     } else {
         for (i, issue) in tab_issues.into_iter().enumerate() {
             let actions = if i == 0 {
@@ -192,6 +205,7 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 description.clone(),
+                label.clone(),
                 actions,
             ));
         }

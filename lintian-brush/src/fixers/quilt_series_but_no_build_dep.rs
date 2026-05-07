@@ -55,6 +55,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/patches/series exists but quilt is not a build-dependency.",
         "Add missing dependency on quilt.",
         vec![Action::Deb822(Deb822Action::EnsureRelation {
             file: control_rel,

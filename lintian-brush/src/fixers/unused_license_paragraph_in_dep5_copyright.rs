@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
@@ -189,6 +189,7 @@ pub fn detect(
             Diagnostic::with_actions(
                 issue,
                 format!("name\t{}", name),
+                format!("Remove unused license paragraph for {}.", name),
                 vec![Action::Deb822(Deb822Action::RemoveParagraph {
                     file: copyright_rel.clone(),
                     paragraph: ParagraphSelector::ByKey {
@@ -204,10 +205,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let names: Vec<&str> = fixed
         .iter()
-        .filter_map(|d| d.message.strip_prefix("name\t"))
+        .filter_map(|(d, _)| d.message.strip_prefix("name\t"))
         .collect();
     format!(
         "Remove unused license definitions for {}.",
