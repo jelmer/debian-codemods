@@ -1,9 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_changelog::ChangeLog;
 use lazy_regex::{regex, Regex};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 lazy_static::lazy_static! {
@@ -49,18 +50,15 @@ const TAG_COLON: char = 'C';
 const TAG_TYPO: char = 'T';
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let changelog_rel = PathBuf::from("debian/changelog");
-    let changelog_abs = base_path.join(&changelog_rel);
-    if !changelog_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&changelog_abs)?;
-    let changelog = ChangeLog::read_relaxed(content.as_bytes())
-        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
+    let changelog = match ws.parsed_changelog() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     let net_access = preferences.net_access.unwrap_or(false);
 
@@ -206,23 +204,21 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "possible-missing-colon-in-closes",
     tags: ["possible-missing-colon-in-closes", "misspelled-closes-bug"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(
@@ -230,7 +226,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, preferences)
     }
 
     #[test]

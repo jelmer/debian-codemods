@@ -1,16 +1,22 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
-    let content = std::fs::read_to_string(&rules_abs)?;
+    let content = String::from_utf8(bytes)
+        .map_err(|e| FixerError::Other(format!("debian/rules is not valid UTF-8: {}", e)))?;
     let parsed = Makefile::parse(&content);
     let makefile = parsed.tree();
 
@@ -81,25 +87,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(Vec::new())
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-uses-as-needed-linker-flag",
     tags: ["debian-rules-uses-as-needed-linker-flag"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

@@ -1,8 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 fn textwrap_description(text: &str) -> Vec<String> {
     let mut ret = Vec::new();
@@ -97,17 +97,14 @@ fn guess_description(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
     let binaries: Vec<_> = control.binaries().collect();
     let binary_count = binaries.len();
@@ -138,6 +135,11 @@ pub fn detect(
         };
 
         let summary_ref = summary.as_deref();
+        let Some(base_path) = ws.base_path() else {
+            // upstream-ontologist needs to walk the source tree, which only
+            // the tree-mode host can provide. LSP-style hosts have to skip.
+            continue;
+        };
         let Some(new_description) =
             guess_description(base_path, binary_count, summary_ref, preferences)
         else {
@@ -190,18 +192,17 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "package-has-no-description",
     tags: ["required-field", "extended-description-is-empty"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -211,7 +212,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &v, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &v, preferences)
     }
 
     #[test]

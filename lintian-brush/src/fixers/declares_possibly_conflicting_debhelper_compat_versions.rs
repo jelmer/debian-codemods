@@ -1,16 +1,19 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, MakefileAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
-fn read_compat(path: &Path) -> Result<Option<u32>, std::io::Error> {
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(content.trim().parse::<u32>().ok()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(e),
-    }
+fn read_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
+    let Some(bytes) = ws.read_file(Path::new("debian/compat"))? else {
+        return Ok(None);
+    };
+    let Ok(content) = std::str::from_utf8(&bytes) else {
+        return Ok(None);
+    };
+    Ok(content.trim().parse::<u32>().ok())
 }
 
 fn control_compat_level(control: &Control) -> Option<u32> {
@@ -31,12 +34,11 @@ fn control_compat_level(control: &Control) -> Option<u32> {
     None
 }
 
-fn rules_dh_compat(rules_abs: &Path) -> Result<Option<u32>, FixerError> {
-    if !rules_abs.exists() {
+fn rules_dh_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
+    let Some(bytes) = ws.read_file(Path::new("debian/rules"))? else {
         return Ok(None);
-    }
-    let content = std::fs::read_to_string(rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    };
+    let makefile = Makefile::read_relaxed(bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
     let result = makefile
         .find_variable("DH_COMPAT")
@@ -46,22 +48,22 @@ fn rules_dh_compat(rules_abs: &Path) -> Result<Option<u32>, FixerError> {
     Ok(result)
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let _control_rel = PathBuf::from("debian/control");
     let compat_rel = PathBuf::from("debian/compat");
     let rules_rel = PathBuf::from("debian/rules");
 
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     let control_compat = control_compat_level(&control);
-    let file_compat = read_compat(&base_path.join(&compat_rel))?;
+    let file_compat = read_compat(ws)?;
 
     let mut actions: Vec<Action> = Vec::new();
     let (compat_version, compat_source) = match (control_compat, file_compat) {
@@ -76,8 +78,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         (None, None) => return Ok(Vec::new()),
     };
 
-    let rules_abs = base_path.join(&rules_rel);
-    let rules_compat = rules_dh_compat(&rules_abs)?;
+    let rules_compat = rules_dh_compat(ws)?;
     let mut issue: Option<LintianIssue> = None;
     if let (Some(rules_v), Some(target)) = (rules_compat, compat_version) {
         if rules_v != target {
@@ -108,25 +109,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(vec![diagnostic])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "declares-possibly-conflicting-debhelper-compat-versions",
     tags: ["declares-possibly-conflicting-debhelper-compat-versions"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

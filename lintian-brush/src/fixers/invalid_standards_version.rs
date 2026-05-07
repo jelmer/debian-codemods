@@ -1,13 +1,16 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue, PackageType};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_analyzer::lintian::StandardsVersion;
-use debian_control::lossless::Control;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
 const SEP: char = '\t';
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let standards_versions_iter = match debian_analyzer::lintian::iter_standards_versions_opt() {
         Some(iter) => iter,
         None => return Ok(Vec::new()),
@@ -20,12 +23,10 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     }
 
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    let Ok(control_content) = std::fs::read_to_string(&control_abs) else {
-        return Ok(Vec::new());
-    };
-    let Ok(control) = Control::from_str(&control_content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -114,28 +115,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "invalid-standards-version",
     tags: ["invalid-standards-version"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

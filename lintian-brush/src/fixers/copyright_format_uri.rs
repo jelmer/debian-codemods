@@ -1,19 +1,25 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 const CORRECT_FORMAT_URI: &str =
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let abs = base_path.join(&copyright_rel);
-    if !abs.exists() {
+    let bytes = match ws.read_file(&copyright_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let Ok(content) = String::from_utf8(bytes) else {
         return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&abs)?;
+    };
     let deb822 = match deb822_lossless::Deb822::from_str(&content) {
         Ok(d) => d,
         Err(_) => return Ok(Vec::new()),
@@ -63,27 +69,28 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "copyright-format-uri",
     tags: ["insecure-copyright-format-uri", "wiki-copyright-format-uri"],
     // Must convert http to https before adding version (unversioned-copyright-format-uri).
     before: ["unversioned-copyright-format-uri"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

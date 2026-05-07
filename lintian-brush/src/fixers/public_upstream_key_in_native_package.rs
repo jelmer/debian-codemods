@@ -1,15 +1,22 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue, Version};
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let Some(current_version) = ws.current_version() else {
+        return Ok(Vec::new());
+    };
     if !current_version.is_native() {
         return Ok(Vec::new());
     }
 
     let key_rel = PathBuf::from("debian/upstream/signing-key.asc");
-    let key_abs = base_path.join(&key_rel);
-    if !key_abs.exists() {
+    if ws.read_file(&key_rel)?.is_none() {
         return Ok(Vec::new());
     }
 
@@ -35,20 +42,20 @@ pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnos
     }])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "public-upstream-key-in-native-package",
     tags: ["public-upstream-key-in-native-package"],
-    diagnose: |basedir, _package, version, _preferences| {
-        detect(basedir, version)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
-    use crate::FixerPreferences;
+    use crate::workspace::DetectorAdapter;
+    use crate::Version;
     use std::fs;
+    use std::path::Path;
     use std::str::FromStr;
     use tempfile::TempDir;
 
@@ -58,7 +65,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let v = Version::from_str(version).unwrap();
-        FixerImpl.apply(base, "test", &v, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, preferences)
     }
 
     #[test]

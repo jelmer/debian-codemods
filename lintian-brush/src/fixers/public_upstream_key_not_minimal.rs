@@ -1,4 +1,6 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
@@ -124,7 +126,7 @@ fn minimize_key_block(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let opinionated = preferences.opinionated.unwrap_or(false);
@@ -137,11 +139,10 @@ pub fn detect(
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     for path_str in &paths {
-        let abs = base_path.join(path_str);
-        if !abs.exists() {
-            continue;
-        }
-        let contents = std::fs::read(&abs)?;
+        let contents = match ws.read_file(Path::new(path_str))? {
+            Some(c) => c,
+            None => continue,
+        };
         let mut outlines: Vec<u8> = Vec::new();
         let mut key_block: Vec<u8> = Vec::new();
         let mut in_key_block = false;
@@ -239,18 +240,17 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "public-upstream-key-not-minimal",
     tags: ["public-upstream-key-not-minimal"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -261,7 +261,8 @@ mod tests {
             opinionated: Some(opinionated),
             ..Default::default()
         };
-        FixerImpl.apply(base, "test", &v, &prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &prefs)
     }
 
     #[test]

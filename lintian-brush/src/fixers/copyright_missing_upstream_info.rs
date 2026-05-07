@@ -1,6 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{certainty_sufficient, min_certainty, FixerError, FixerPreferences};
-use debian_copyright::lossless::Copyright;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamDatum;
 
@@ -38,18 +39,14 @@ fn guess_upstream_metadata(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let copyright_abs = base_path.join(&copyright_rel);
-    if !copyright_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&copyright_abs)?;
-    let Ok(copyright) = content.parse::<Copyright>() else {
-        return Ok(Vec::new());
+    let copyright = match ws.parsed_copyright() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
     let Some(header) = copyright.header() else {
         return Ok(Vec::new());
@@ -59,15 +56,20 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
+    // upstream-ontologist needs to walk the source tree, which only the
+    // tree-mode host can provide. LSP-style hosts have to skip.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
+
     let Some(mut upstream_metadata) = guess_upstream_metadata(base_path, preferences) else {
         return Ok(Vec::new());
     };
 
     // Fold in debian/upstream/metadata, marking anything found there as
     // Certain (it's authoritative for this package).
-    let upstream_metadata_path = base_path.join("debian/upstream/metadata");
-    if upstream_metadata_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(&upstream_metadata_path) {
+    if let Some(content_bytes) = ws.read_file(Path::new("debian/upstream/metadata"))? {
+        if let Ok(content) = String::from_utf8(content_bytes) {
             if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
                 if let Some(mapping) = yaml.as_mapping() {
                     for (key, value) in mapping {
@@ -166,18 +168,17 @@ pub fn detect(
     ])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "copyright-missing-upstream-info",
     tags: [],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -187,7 +188,8 @@ mod tests {
         preferences: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &v, preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &v, preferences)
     }
 
     #[test]

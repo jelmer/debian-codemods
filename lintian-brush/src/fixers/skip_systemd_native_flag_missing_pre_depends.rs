@@ -1,9 +1,9 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::{compat_level, FixerWorkspace};
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_control::lossless::relations::Relations;
-use debian_control::lossless::Control;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
 const SEP: char = '\t';
 
@@ -13,40 +13,34 @@ fn has_misc_pre_depends(field_value: &str) -> bool {
     found
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let compat_version = debian_analyzer::debhelper::get_debhelper_compat_level(base_path)?;
-    if let Some(version) = compat_version {
-        if version <= 11 {
-            return Ok(Vec::new());
-        }
-    } else {
-        return Ok(Vec::new());
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    match compat_level(ws)? {
+        Some(version) if version > 11 => {}
+        _ => return Ok(Vec::new()),
     }
 
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
-    let debian_dir = base_path.join("debian");
     let mut diagnostics = Vec::new();
     for binary in control.binaries() {
         let Some(package_name) = binary.as_deb822().get("Package") else {
             continue;
         };
-        let init_path = debian_dir.join(format!("{}.init", package_name));
-        let service_path = debian_dir.join(format!("{}.service", package_name));
-        let upstart_path = debian_dir.join(format!("{}.upstart", package_name));
-        if !init_path.exists() {
+        let init_rel = PathBuf::from("debian").join(format!("{}.init", package_name));
+        let service_rel = PathBuf::from("debian").join(format!("{}.service", package_name));
+        let upstart_rel = PathBuf::from("debian").join(format!("{}.upstart", package_name));
+        if ws.read_file(&init_rel)?.is_none() {
             continue;
         }
-        if !service_path.exists() && !upstart_path.exists() {
+        if ws.read_file(&service_rel)?.is_none() && ws.read_file(&upstart_rel)?.is_none() {
             continue;
         }
 
@@ -99,28 +93,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     )
 }
 
-declare_fixer! {
+declare_detector! {
     name: "skip-systemd-native-flag-missing-pre-depends",
     tags: ["skip-systemd-native-flag-missing-pre-depends"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

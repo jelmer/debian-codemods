@@ -1,27 +1,25 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use makefile_lossless::Makefile;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let format_path = base_path.join("debian/source/format");
-    if !format_path.exists() {
-        return Ok(Vec::new());
-    }
-    let format = std::fs::read_to_string(&format_path)?.trim().to_string();
-    if format != "3.0 (quilt)" {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    if ws.source_format()?.as_deref() != Some("3.0 (quilt)") {
         return Ok(Vec::new());
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(content.as_bytes())
+    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     // Skip when QUILT_PATCH_DIR points somewhere other than the default;
@@ -110,25 +108,25 @@ fn dh_invoke_drop_with(line: &[u8], with_argument: &[u8]) -> Vec<u8> {
     result
 }
 
-declare_fixer! {
+declare_detector! {
     name: "dh-quilt-addon-but-quilt-source-format",
     tags: ["dh-quilt-addon-but-quilt-source-format"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

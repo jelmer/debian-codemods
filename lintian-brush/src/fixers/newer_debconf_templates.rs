@@ -1,16 +1,20 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, RunCommandAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let po_dir_rel = PathBuf::from("debian/po");
-    let po_dir_abs = base_path.join(&po_dir_rel);
-    if !po_dir_abs.is_dir() {
-        return Ok(Vec::new());
-    }
+    let entries = match ws.list_dir(&po_dir_rel)? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
 
-    let templates_pot = po_dir_abs.join("templates.pot");
-    let info = if templates_pot.exists() {
+    let info = if entries.iter().any(|n| n == "templates.pot") {
         vec!["[debian/po/templates.pot]".to_string()]
     } else {
         vec![]
@@ -57,25 +61,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "newer-debconf-templates",
     tags: ["newer-debconf-templates"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

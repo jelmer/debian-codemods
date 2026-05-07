@@ -1,5 +1,7 @@
 use crate::debhelper::detect_debhelper_buildsystem;
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
@@ -766,9 +768,19 @@ fn remove_nocheck_wrapper(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    // The internal helpers (check_cdbs, autoreconf_disabled, the
+    // upgrade_to_debhelper_* family) walk debian/ directly. Fall back
+    // to the filesystem escape hatch — LSP hosts won't supply one and
+    // skip.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
+    let base_path = base_path.to_path_buf();
+    let base_path = base_path.as_path();
+
     let compat_release = preferences.compat_release.as_deref().unwrap_or("sid");
     let mut new_debhelper_compat_version = maximum_debhelper_compat_version(compat_release);
 
@@ -970,25 +982,25 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(issue, description, actions)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "package-uses-deprecated-debhelper-compat-version",
     tags: ["package-uses-deprecated-debhelper-compat-version", "package-uses-old-debhelper-compat-version"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version as DebVersion;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, prefs: &FixerPreferences) -> Result<crate::FixerResult, FixerError> {
         let v: DebVersion = "1.0-1".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &v, prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &v, prefs)
     }
 
     #[test]

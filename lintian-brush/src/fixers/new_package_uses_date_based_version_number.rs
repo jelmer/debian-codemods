@@ -1,18 +1,18 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use crate::{FixerError, LintianIssue, PackageType};
-use debian_changelog::ChangeLog;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let changelog_rel = PathBuf::from("debian/changelog");
-    let changelog_abs = base_path.join(&changelog_rel);
-    if !changelog_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&changelog_abs)?;
-    let changelog = ChangeLog::read_relaxed(content.as_bytes())
-        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {}", e)))?;
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let changelog = match ws.parsed_changelog() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     // Only act on new packages (single changelog entry).
     if changelog.iter().count() != 1 {
@@ -49,32 +49,33 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         issue,
         "Use version prefix for date-based versionioning.",
         vec![Action::Changelog(ChangelogAction::SetEntryVersion {
-            file: changelog_rel,
+            file: PathBuf::from("debian/changelog"),
             version: old_version,
             new_version,
         })],
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "new-package-uses-date-based-version-number",
     tags: ["new-package-uses-date-based-version-number"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "foo", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "foo", &version, &FixerPreferences::default())
     }
 
     #[test]

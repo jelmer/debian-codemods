@@ -1,32 +1,33 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{Certainty, FixerError, LintianIssue, PackageType};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_changelog::parseaddr;
-use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
 const TESTSUITE_VALUE: &str = "autopkgtest-pkg-perl";
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
-    let control_path = base_path.join(&control_rel);
-    if !control_path.exists() {
-        return Ok(Vec::new());
-    }
-
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     // If debian/tests/control exists, the Testsuite header is redundant.
     // See https://bugs.debian.org/982871
-    if base_path.join("debian/tests/control").exists() {
+    if ws.read_file(Path::new("debian/tests/control"))?.is_some() {
         return Ok(Vec::new());
     }
 
-    let content = std::fs::read_to_string(&control_path)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
     };
 
-    let Some(maintainer) = source.as_deb822().get("Maintainer") else {
+    let Some(maintainer) = source.get("Maintainer") else {
         return Ok(Vec::new());
     };
     let (_name, email) = parseaddr(&maintainer);
@@ -34,13 +35,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         return Ok(Vec::new());
     }
 
-    if source
-        .as_deb822()
-        .get("Testsuite")
-        .as_deref()
-        .map(str::trim)
-        == Some(TESTSUITE_VALUE)
-    {
+    if source.get("Testsuite").as_deref().map(str::trim) == Some(TESTSUITE_VALUE) {
         return Ok(Vec::new());
     }
 
@@ -55,7 +50,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         issue,
         "Set Testsuite header for perl package.",
         vec![Action::Deb822(Deb822Action::SetField {
-            file: control_rel,
+            file: PathBuf::from("debian/control"),
             paragraph: ParagraphSelector::Source,
             field: "Testsuite".into(),
             value: TESTSUITE_VALUE.into(),
@@ -64,25 +59,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "pkg-perl-testsuite",
     tags: ["team/pkg-perl/testsuite/no-testsuite-header"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "libfoo-perl", &version, &FixerPreferences::default())
     }
 
     #[test]

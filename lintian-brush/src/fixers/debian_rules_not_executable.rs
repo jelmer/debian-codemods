@@ -1,24 +1,18 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
-use std::os::unix::fs::PermissionsExt;
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let abs = base_path.join(&rules_rel);
-
-    let metadata = match std::fs::metadata(&abs) {
-        Ok(m) => m,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(e) => {
-            return Err(FixerError::Other(format!(
-                "Failed to stat debian/rules: {}",
-                e
-            )));
-        }
+    let mode = match ws.file_mode(Path::new("debian/rules"))? {
+        Some(m) => m,
+        None => return Ok(Vec::new()),
     };
-
-    let mode = metadata.permissions().mode();
     if (mode & 0o111) != 0 {
         return Ok(Vec::new());
     }
@@ -39,18 +33,17 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-rules-not-executable",
     tags: ["debian-rules-not-executable"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
@@ -58,7 +51,8 @@ mod tests {
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

@@ -28,6 +28,7 @@ use std::path::{Path, PathBuf};
 
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
+use debian_copyright::lossless::Copyright;
 
 use crate::{FixerError, LintianIssue, Version};
 
@@ -83,6 +84,27 @@ pub trait FixerWorkspace {
     /// Returns `Err(FixerError::NoChanges)` if the file is missing.
     fn parsed_changelog(&self) -> Result<ChangeLog, FixerError>;
 
+    /// Read `debian/copyright` and return a parsed value.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing.
+    /// Returns the lossless `Copyright` even when the file isn't a
+    /// machine-readable DEP-5 document — callers that care should check
+    /// for a header paragraph.
+    fn parsed_copyright(&self) -> Result<Copyright, FixerError>;
+
+    /// Read `debian/upstream/metadata` and return its parsed YAML.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing or
+    /// unparseable.
+    fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError>;
+
+    /// Read the trimmed contents of `debian/source/format`.
+    ///
+    /// Returns `Ok(None)` if the file is missing. The default format
+    /// (`1.0`) is *not* substituted — callers see exactly what is on
+    /// disk so they can distinguish "no file" from "explicit 1.0".
+    fn source_format(&self) -> Result<Option<String>, FixerError>;
+
     /// Open `debian/control` for editing.
     ///
     /// Takes `&self` so that fixers can hold an editor and still call
@@ -106,6 +128,40 @@ pub trait FixerWorkspace {
     ///
     /// Creates the file if it does not exist.
     fn write_file(&self, rel: &Path, content: &[u8]) -> Result<(), FixerError>;
+
+    /// List the entries of a directory relative to the package root.
+    ///
+    /// Returns the file (and subdirectory) names within `rel`, without any
+    /// path prefix. Returns `Ok(None)` if the directory does not exist.
+    ///
+    /// The order of returned entries is unspecified — a non-`Tree` host
+    /// (an LSP) may not have a meaningful directory ordering.
+    fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError>;
+
+    /// Read the Unix file mode of `rel`, or `None` if the file is missing.
+    ///
+    /// Hosts that don't track a meaningful mode (e.g. an LSP serving an
+    /// in-memory buffer) may return `Ok(None)` even when the file exists.
+    /// Detectors that key off mode (e.g. checking that `debian/rules` is
+    /// executable) treat that the same as "not present" and skip.
+    fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError>;
+
+    /// On-disk root for hosts that have one.
+    ///
+    /// Returns `Some` for the lintian-brush CLI ([`TreeFixerWorkspace`])
+    /// where the package has been materialised to disk. Returns `None`
+    /// for in-memory hosts (an LSP serving open buffers); detectors that
+    /// genuinely need to walk the source tree (e.g. an upstream-metadata
+    /// guesser, a license scanner) should treat `None` as "skip — we
+    /// can't help here".
+    ///
+    /// Prefer the typed accessors ([`read_file`](Self::read_file),
+    /// [`list_dir`](Self::list_dir), …) wherever possible. Reach for
+    /// this only when an external library insists on a `&Path` for the
+    /// whole tree.
+    fn base_path(&self) -> Option<&Path> {
+        None
+    }
 
     /// Whether the given lintian issue should be fixed in this workspace,
     /// after taking lintian-overrides into account.
@@ -240,6 +296,31 @@ impl FixerWorkspace for TreeFixerWorkspace {
             .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
     }
 
+    fn parsed_copyright(&self) -> Result<Copyright, FixerError> {
+        let path = self.full_path(Path::new("debian/copyright"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        text.parse()
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e)))
+    }
+
+    fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError> {
+        use std::str::FromStr;
+        let path = self.full_path(Path::new("debian/upstream/metadata"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        yaml_edit::YamlFile::from_str(&text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
+    }
+
+    fn source_format(&self) -> Result<Option<String>, FixerError> {
+        match self.read_file(Path::new("debian/source/format"))? {
+            Some(b) => Ok(String::from_utf8(b)
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())),
+            None => Ok(None),
+        }
+    }
+
     fn control(&self) -> Result<Box<dyn Editor<Control> + '_>, FixerError> {
         let path = self.full_path(Path::new("debian/control"));
         let original = fs::read_to_string(&path).map_err(map_open_error)?;
@@ -282,9 +363,90 @@ impl FixerWorkspace for TreeFixerWorkspace {
         Ok(())
     }
 
+    fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError> {
+        let path = self.full_path(rel);
+        let read_dir = match fs::read_dir(&path) {
+            Ok(it) => it,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(FixerError::Io(e)),
+        };
+        let mut names = Vec::new();
+        for entry in read_dir {
+            let entry = entry?;
+            names.push(entry.file_name().to_string_lossy().into_owned());
+        }
+        Ok(Some(names))
+    }
+
+    fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError> {
+        use std::os::unix::fs::PermissionsExt;
+        let path = self.full_path(rel);
+        match fs::metadata(&path) {
+            Ok(m) => Ok(Some(m.permissions().mode())),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(FixerError::Io(e)),
+        }
+    }
+
+    fn base_path(&self) -> Option<&Path> {
+        Some(&self.base_path)
+    }
+
     fn should_fix(&self, issue: &LintianIssue) -> bool {
         issue.should_fix(&self.base_path)
     }
+}
+
+/// Read the debhelper compat level from a workspace.
+///
+/// Looks at `debian/compat` first, then falls back to the `X-DH-Compat`
+/// field or a `debhelper-compat` build dependency in `debian/control`.
+/// Returns `Ok(None)` when neither source is present or parseable.
+pub fn compat_level(ws: &dyn FixerWorkspace) -> Result<Option<u8>, FixerError> {
+    if let Some(bytes) = ws.read_file(Path::new("debian/compat"))? {
+        if let Ok(text) = std::str::from_utf8(&bytes) {
+            let trimmed = text
+                .split_once('#')
+                .map_or(text, |(before, _)| before)
+                .trim();
+            if let Ok(level) = trimmed.parse::<u8>() {
+                return Ok(Some(level));
+            }
+        }
+    }
+
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    let Some(source) = control.source() else {
+        return Ok(None);
+    };
+
+    if let Some(dh_compat) = source.as_deb822().get("X-DH-Compat") {
+        let trimmed = dh_compat
+            .split_once('#')
+            .map_or(dh_compat.as_str(), |(before, _)| before)
+            .trim();
+        if let Ok(level) = trimmed.parse::<u8>() {
+            return Ok(Some(level));
+        }
+    }
+
+    let Some(build_depends) = source.build_depends() else {
+        return Ok(None);
+    };
+    let Some(rel) = build_depends
+        .entries()
+        .flat_map(|entry| entry.relations().collect::<Vec<_>>())
+        .find(|r| r.try_name().as_deref() == Some("debhelper-compat"))
+    else {
+        return Ok(None);
+    };
+    Ok(rel
+        .version()
+        .and_then(|(_op, v)| v.to_string().parse::<u8>().ok()))
 }
 
 /// A detector reads a Debian source package and emits

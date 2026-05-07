@@ -1,6 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, LintianIssue};
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
 const EXPECTED_HEADER: &[u8] =
     b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0";
@@ -61,14 +63,15 @@ fn join_bytes(parts: Vec<Vec<u8>>, separator: &[u8]) -> Vec<u8> {
     result
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let copyright_abs = base_path.join(&copyright_rel);
-    if !copyright_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read(&copyright_abs)?;
+    let content = match ws.read_file(&copyright_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
     let mut lines = content.split_inclusive(|&b| b == b'\n').peekable();
     let Some(first_line) = lines.peek().copied() else {
         return Ok(Vec::new());
@@ -197,25 +200,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "copyright-continued-lines-with-space",
     tags: ["tab-in-license-text"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

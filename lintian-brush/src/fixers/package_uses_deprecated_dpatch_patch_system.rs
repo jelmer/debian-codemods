@@ -1,29 +1,29 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use crate::{Certainty, FixerError, LintianIssue};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
 
     // The fixer is conditional on a debian/patches directory: dpatch
     // implies a patch list, so we don't migrate when the package isn't
     // actually carrying patches.
-    let patches_dir = base_path.join("debian/patches");
-    if !patches_dir.exists() {
-        return Ok(Vec::new());
-    }
+    let patches_entries = match ws.list_dir(Path::new("debian/patches"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
 
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -73,9 +73,9 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
 
     // If 00list exists and series doesn't, rename. Otherwise leave the
     // existing series alone.
-    let list_file = patches_dir.join("00list");
-    let series_file = patches_dir.join("series");
-    let renamed_list = list_file.exists() && !series_file.exists();
+    let has_list = patches_entries.iter().any(|n| n == "00list");
+    let has_series = patches_entries.iter().any(|n| n == "series");
+    let renamed_list = has_list && !has_series;
     if renamed_list {
         actions.push(Action::Filesystem(FilesystemAction::Rename {
             file: PathBuf::from("debian/patches/00list"),
@@ -94,25 +94,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     ])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "package-uses-deprecated-dpatch-patch-system",
     tags: ["package-uses-deprecated-dpatch-patch-system"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]

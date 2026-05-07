@@ -1,5 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -8,26 +10,30 @@ fn list_contains(value: &str, item: &str) -> bool {
     value.split_whitespace().any(|v| v == item)
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_path = base_path.join("debian");
-    if !debian_path.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
-    for entry in std::fs::read_dir(&debian_path)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.extension().is_none_or(|ext| ext != "service") {
+    for filename in entries {
+        if !filename.ends_with(".service") {
             continue;
         }
-        if path.is_symlink() {
+        let rel = PathBuf::from("debian").join(&filename);
+        let Some(bytes) = ws.read_file(&rel)? else {
             continue;
-        }
-
-        let content = std::fs::read_to_string(&path)?;
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
+            continue;
+        };
         let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
-            FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e))
+            FixerError::Other(format!("Failed to parse {}: {:?}", rel.display(), e))
         })?;
         let Some(unit_section) = unit.get_section("Unit") else {
             continue;
@@ -49,7 +55,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             continue;
         }
 
-        let rel: PathBuf = path.strip_prefix(base_path).unwrap_or(&path).to_path_buf();
         let rel_str = rel.to_string_lossy().to_string();
         let issue =
             LintianIssue::source_with_info("systemd-service-file-shutdown-problems", vec![rel_str]);
@@ -58,7 +63,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             issue,
             "Add Before=shutdown.target to Unit section.",
             vec![Action::Systemd(SystemdAction::Add {
-                file: rel,
+                file: rel.clone(),
                 section: "Unit".into(),
                 field: "Before".into(),
                 value: "shutdown.target".into(),
@@ -69,25 +74,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "systemd-service-file-shutdown-problems",
     tags: ["systemd-service-file-shutdown-problems"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

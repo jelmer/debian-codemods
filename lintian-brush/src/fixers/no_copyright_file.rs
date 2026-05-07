@@ -1,4 +1,6 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
@@ -225,12 +227,11 @@ mod decopy {
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let copyright_abs = base_path.join(&copyright_rel);
-    if copyright_abs.exists() {
+    if ws.read_file(&copyright_rel)?.is_some() {
         return Ok(Vec::new());
     }
 
@@ -240,6 +241,12 @@ pub fn detect(
     if !crate::certainty_sufficient(certainty, preferences.minimum_certainty) {
         return Ok(Vec::new());
     }
+
+    // decopy walks the source tree directly; fall back to the
+    // filesystem escape hatch.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
 
     use debian_copyright::lossless::Copyright;
     use debian_copyright::License;
@@ -282,12 +289,10 @@ pub fn detect(
     .with_certainty(certainty)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "no-copyright-file",
     tags: ["no-copyright-file"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
