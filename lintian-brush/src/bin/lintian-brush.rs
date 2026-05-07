@@ -120,6 +120,20 @@ struct OutputArgs {
     #[arg(long, default_value_t = false)]
     dry_run: bool,
 
+    /// Report detected lintian issues without applying any fixes.
+    ///
+    /// Skips the apply / commit / changelog pipeline entirely: each
+    /// registered detector is run against the working directory and
+    /// the diagnostics it would have fired are printed to stdout.
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "list_fixers",
+        conflicts_with = "list_tags",
+        conflicts_with = "identity"
+    )]
+    detect_only: bool,
+
     /// Print user identity that would be used when committing
     #[arg(
         long,
@@ -310,25 +324,55 @@ fn main() -> Result<(), i32> {
         tracing::warn!("--fixers-dir is deprecated and has no effect; all fixers are now built-in");
     }
 
-    let fixers_iter = lintian_brush::available_lintian_fixers();
-
-    let mut fixers: Vec<_> = fixers_iter.collect();
+    // Build the detector list once, filtered by --fixers/--exclude. The
+    // CLI driver then wraps each surviving detector in a DetectorAdapter.
+    let detectors: Vec<Box<dyn lintian_brush::workspace::Detector>> = {
+        let all: Vec<_> = lintian_brush::workspace::iter_detectors().collect();
+        if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
+            let include = args
+                .fixers
+                .fixers
+                .as_ref()
+                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
+            let exclude = args
+                .fixers
+                .exclude
+                .as_ref()
+                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
+            match lintian_brush::workspace::select_detectors(
+                all,
+                include.as_deref(),
+                exclude.as_deref(),
+            ) {
+                Ok(d) => d,
+                Err(lintian_brush::workspace::UnknownDetector(f)) => {
+                    tracing::error!("Unknown fixer specified: {}", f);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            all
+        }
+    };
 
     if args.output.list_fixers {
-        fixers.sort_by_key(|a| a.name());
-        for fixer in fixers {
-            println!("{}", fixer.name());
+        let mut names: Vec<_> = detectors.iter().map(|d| d.name()).collect();
+        names.sort();
+        for name in names {
+            println!("{}", name);
         }
     } else if args.output.list_tags {
-        let tags = fixers
+        let tags = detectors
             .iter()
-            .flat_map(|f| f.lintian_tags())
+            .flat_map(|d| d.lintian_tags())
             .collect::<std::collections::HashSet<_>>();
         let mut tags: Vec<_> = tags.into_iter().collect();
         tags.sort();
         for tag in tags {
             println!("{}", tag);
         }
+    } else if args.output.detect_only {
+        return run_detect_only(&args, detectors);
     } else {
         let mut update_changelog: Option<bool> = if args.output.update_changelog {
             Some(true)
@@ -427,26 +471,15 @@ fn main() -> Result<(), i32> {
         let svp = svp_client::Reporter::new(versions_dict());
 
         let since_revid = wt.last_revision().unwrap();
-        if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
-            let include = args
-                .fixers
-                .fixers
-                .as_ref()
-                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
-            let exclude = args
-                .fixers
-                .exclude
-                .as_ref()
-                .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
-            fixers =
-                match lintian_brush::select_fixers(fixers, include.as_deref(), exclude.as_deref()) {
-                    Ok(fixers) => fixers,
-                    Err(lintian_brush::UnknownFixer(f)) => {
-                        tracing::error!("Unknown fixer specified: {}", f);
-                        std::process::exit(1);
-                    }
-                }
-        }
+        // Wrap the (already-filtered) detectors as Fixers for the runner.
+        let fixers: Vec<Box<dyn lintian_brush::Fixer>> = detectors
+            .into_iter()
+            .map(|d| {
+                Box::new(lintian_brush::workspace::DetectorAdapter::new(d))
+                    as Box<dyn lintian_brush::Fixer>
+            })
+            .collect();
+
         let debian_info = distro_info::DebianDistroInfo::new().unwrap();
         let mut compat_release = if args.fixers.modern {
             Some(
@@ -780,6 +813,81 @@ fn main() -> Result<(), i32> {
                 changelog_behaviour.map(|b| b.into()),
             )
         }
+    }
+    Ok(())
+}
+
+/// Drive every supplied detector against `args.output.directory` and print
+/// the diagnostics they emit. No fixes are applied.
+fn run_detect_only(
+    args: &Args,
+    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
+) -> Result<(), i32> {
+    use debian_changelog::ChangeLog;
+    use lintian_brush::workspace::TreeFixerWorkspace;
+    use lintian_brush::FixerPreferences;
+
+    let base_path = args.output.directory.clone();
+    let changelog_path = base_path.join("debian/changelog");
+    // Detectors that genuinely need a package name / version pull them
+    // from the workspace, so it's fine to fall back to a placeholder
+    // when the changelog is missing or unreadable — the alternative
+    // (refusing to run) makes --detect-only useless against a partial
+    // tree.
+    let (package, version) = match std::fs::read(&changelog_path) {
+        Ok(bytes) => match ChangeLog::read_relaxed(bytes.as_slice()) {
+            Ok(cl) => match cl.iter().next() {
+                Some(first) => (
+                    first.package().unwrap_or_else(|| "unknown".to_string()),
+                    first.version().unwrap_or_else(|| "0".parse().unwrap()),
+                ),
+                None => ("unknown".to_string(), "0".parse().unwrap()),
+            },
+            Err(e) => {
+                tracing::warn!("Unable to parse {}: {}", changelog_path.display(), e);
+                ("unknown".to_string(), "0".parse().unwrap())
+            }
+        },
+        Err(_) => ("unknown".to_string(), "0".parse().unwrap()),
+    };
+
+    let preferences = FixerPreferences {
+        compat_release: args.fixers.compat_release.clone(),
+        minimum_certainty: args.fixers.minimum_certainty,
+        net_access: Some(!args.output.disable_net_access),
+        opinionated: Some(args.fixers.opinionated),
+        diligence: Some(args.fixers.diligent),
+        trust_package: Some(args.packages.trust),
+        upgrade_release: args.fixers.upgrade_release.clone(),
+        ..Default::default()
+    };
+
+    let ws = TreeFixerWorkspace::new(base_path, package, version);
+
+    let mut total = 0usize;
+    for detector in detectors {
+        let diagnostics = match detector.detect(&ws, &preferences) {
+            Ok(d) => d,
+            Err(lintian_brush::FixerError::NoChanges) => continue,
+            Err(e) => {
+                tracing::warn!("{}: {}", detector.name(), e);
+                continue;
+            }
+        };
+        for diag in diagnostics {
+            // Print the lintian-issue line for each diagnostic that has
+            // one, then the fixer's message. Untagged diagnostics still
+            // get the message.
+            if let Some(issue) = &diag.issue {
+                println!("{}: {}", issue, diag.message);
+            } else {
+                println!("({}): {}", detector.name(), diag.message);
+            }
+            total += 1;
+        }
+    }
+    if args.output.verbose {
+        eprintln!("{} issue(s) detected.", total);
     }
     Ok(())
 }
