@@ -1,6 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::FixerError;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences};
+use std::path::PathBuf;
 
 fn convert_key_to_armor(binary_key: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
     use sequoia_openpgp::armor::{Kind, Writer};
@@ -18,15 +20,17 @@ fn convert_key_to_armor(binary_key: &[u8]) -> Result<String, Box<dyn std::error:
     Ok(String::from_utf8(armored)?)
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let pgp_rel = PathBuf::from("debian/upstream/signing-key.pgp");
     let asc_rel = PathBuf::from("debian/upstream/signing-key.asc");
-    let pgp_abs = base_path.join(&pgp_rel);
-    if !pgp_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let binary_key = match ws.read_file(&pgp_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
-    let binary_key = std::fs::read(&pgp_abs)?;
     let armored = convert_key_to_armor(&binary_key)
         .map_err(|e| FixerError::Other(format!("Failed to convert key to armor: {}", e)))?;
 
@@ -42,25 +46,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "public-upstream-key-binary",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

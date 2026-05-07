@@ -1,27 +1,49 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction};
-use crate::lintian_overrides::{find_override_files, LintianOverrides};
-use crate::{FixerError, LintianIssue};
-use std::path::Path;
+use crate::lintian_overrides::LintianOverrides;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/renamed_tags.rs"));
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+fn find_override_files(ws: &dyn FixerWorkspace) -> Result<Vec<PathBuf>, FixerError> {
+    let mut paths = Vec::new();
+    let source_rel = PathBuf::from("debian/source/lintian-overrides");
+    if ws.read_file(&source_rel)?.is_some() {
+        paths.push(source_rel);
+    }
+    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
+        entries.sort();
+        for name in entries {
+            if name.ends_with(".lintian-overrides") {
+                paths.push(PathBuf::from("debian").join(name));
+            }
+        }
+    }
+    Ok(paths)
+}
+
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let renames = get_renamed_tags();
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    for path in find_override_files(base_path) {
-        let content = std::fs::read_to_string(&path)
-            .map_err(|e| FixerError::Other(format!("Failed to read {}: {}", path.display(), e)))?;
+    for rel in find_override_files(ws)? {
+        let Some(bytes) = ws.read_file(&rel)? else {
+            continue;
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
+            continue;
+        };
         let parsed = LintianOverrides::parse(&content);
         if !parsed.errors().is_empty() {
             continue;
         }
         let overrides = parsed.ok().unwrap();
 
-        let rel = path
-            .strip_prefix(base_path)
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|_| path.clone());
         for line in overrides.lines() {
             let Some(tag_token) = line.tag() else {
                 continue;
@@ -50,25 +72,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "renamed-tag",
     tags: ["renamed-tag"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

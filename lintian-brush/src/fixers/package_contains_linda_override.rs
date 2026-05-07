@@ -1,26 +1,23 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
 const SEP: char = '\t';
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.is_dir() {
-        return Ok(Vec::new());
-    }
-
-    let mut entries: Vec<_> = std::fs::read_dir(&debian_dir)?
-        .filter_map(|e| e.ok())
-        .collect();
-    entries.sort_by_key(|e| e.file_name());
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
-    for entry in entries {
-        let file_name_os = entry.file_name();
-        let Some(file_name) = file_name_os.to_str() else {
-            continue;
-        };
+    for file_name in entries {
         let Some(package_name) = file_name.strip_suffix(".linda-overrides") else {
             continue;
         };
@@ -31,7 +28,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             vec![format!("usr/share/linda/overrides/{}", package_name)],
         );
 
-        let rel = PathBuf::from("debian").join(file_name);
+        let rel = PathBuf::from("debian").join(&file_name);
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!("file{}{}", SEP, file_name),
@@ -57,28 +54,26 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     format!("Remove obsolete linda overrides: {}", files.join(", "))
 }
 
-declare_fixer! {
+declare_detector! {
     name: "package-contains-linda-override",
     tags: ["package-contains-linda-override"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

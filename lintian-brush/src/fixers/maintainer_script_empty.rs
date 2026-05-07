@@ -1,5 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq)]
@@ -11,8 +13,7 @@ enum ScriptStatus {
 
 const MAINTAINER_SCRIPTS: &[&str] = &["prerm", "postinst", "preinst", "postrm"];
 
-fn is_empty(path: &Path) -> Result<ScriptStatus, std::io::Error> {
-    let content = std::fs::read(path)?;
+fn classify(content: &[u8]) -> ScriptStatus {
     let mut status = ScriptStatus::Empty;
 
     for (line_no, line_bytes) in content.split(|&b| b == b'\n').enumerate() {
@@ -56,10 +57,10 @@ fn is_empty(path: &Path) -> Result<ScriptStatus, std::io::Error> {
             continue;
         }
 
-        return Ok(ScriptStatus::NotEmpty);
+        return ScriptStatus::NotEmpty;
     }
 
-    Ok(status)
+    status
 }
 
 fn parse_maintainer_script_name(filename: &str) -> Option<(String, String)> {
@@ -79,27 +80,29 @@ fn parse_maintainer_script_name(filename: &str) -> Option<(String, String)> {
     None
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut entries: Vec<_> = std::fs::read_dir(&debian_dir)?
-        .filter_map(|e| e.ok())
-        .collect();
-    entries.sort_by_key(|e| e.file_name());
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
 
-    for entry in entries {
-        let filename = entry.file_name().to_string_lossy().to_string();
+    for filename in entries {
         let Some((package, script)) = parse_maintainer_script_name(&filename) else {
             continue;
         };
 
-        let script_path = entry.path();
-        let status = is_empty(&script_path)?;
+        let rel = PathBuf::from("debian").join(&filename);
+        let bytes = match ws.read_file(&rel)? {
+            Some(b) => b,
+            None => continue,
+        };
+        let status = classify(&bytes);
         match status {
             ScriptStatus::Empty | ScriptStatus::SomeComments => {
                 let issue = if package == "source" {
@@ -115,7 +118,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
                     )
                 };
 
-                let rel = PathBuf::from("debian").join(&filename);
                 let certainty = if status == ScriptStatus::SomeComments {
                     Certainty::Likely
                 } else {
@@ -154,60 +156,52 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     format!("Remove empty maintainer scripts: {}", parts.join(", "))
 }
 
-declare_fixer! {
+declare_detector! {
     name: "maintainer-script-empty",
     tags: ["maintainer-script-empty"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
-    fn test_is_empty_truly_empty() {
-        let tmp = TempDir::new().unwrap();
-        let p = tmp.path().join("s");
-        fs::write(&p, "").unwrap();
-        assert_eq!(is_empty(&p).unwrap(), ScriptStatus::Empty);
+    fn test_classify_truly_empty() {
+        assert_eq!(classify(b""), ScriptStatus::Empty);
     }
 
     #[test]
-    fn test_is_empty_shebang_only() {
-        let tmp = TempDir::new().unwrap();
-        let p = tmp.path().join("s");
-        fs::write(&p, "#!/bin/sh\n").unwrap();
-        assert_eq!(is_empty(&p).unwrap(), ScriptStatus::Empty);
+    fn test_classify_shebang_only() {
+        assert_eq!(classify(b"#!/bin/sh\n"), ScriptStatus::Empty);
     }
 
     #[test]
-    fn test_is_empty_comments_only() {
-        let tmp = TempDir::new().unwrap();
-        let p = tmp.path().join("s");
-        fs::write(&p, "#!/bin/sh\n# This is a comment\nset -e\n#DEBHELPER#\n").unwrap();
-        assert_eq!(is_empty(&p).unwrap(), ScriptStatus::SomeComments);
+    fn test_classify_comments_only() {
+        assert_eq!(
+            classify(b"#!/bin/sh\n# This is a comment\nset -e\n#DEBHELPER#\n"),
+            ScriptStatus::SomeComments
+        );
     }
 
     #[test]
-    fn test_is_empty_has_content() {
-        let tmp = TempDir::new().unwrap();
-        let p = tmp.path().join("s");
-        fs::write(&p, "#!/bin/sh\necho 'Hello world'\n").unwrap();
-        assert_eq!(is_empty(&p).unwrap(), ScriptStatus::NotEmpty);
+    fn test_classify_has_content() {
+        assert_eq!(
+            classify(b"#!/bin/sh\necho 'Hello world'\n"),
+            ScriptStatus::NotEmpty
+        );
     }
 
     #[test]

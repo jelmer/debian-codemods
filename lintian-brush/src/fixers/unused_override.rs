@@ -1,8 +1,9 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
-use crate::lintian_overrides::{find_override_files, LintianOverrides};
+use crate::lintian_overrides::LintianOverrides;
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_control::Control;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const INTERMITTENT_LINTIAN_TAGS: &[&str] = &["rc-version-greater-than-expected-version"];
 
@@ -76,30 +77,45 @@ async fn get_unused_overrides(
     Err("UDD support not compiled in. Rebuild with --features udd".into())
 }
 
+fn find_override_files(ws: &dyn FixerWorkspace) -> Result<Vec<PathBuf>, FixerError> {
+    let mut paths = Vec::new();
+    let source_rel = PathBuf::from("debian/source/lintian-overrides");
+    if ws.read_file(&source_rel)?.is_some() {
+        paths.push(source_rel);
+    }
+    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
+        entries.sort();
+        for name in entries {
+            if name.ends_with(".lintian-overrides") {
+                paths.push(PathBuf::from("debian").join(name));
+            }
+        }
+    }
+    Ok(paths)
+}
+
 /// Build diagnostics that remove every override line matching one of the
 /// `unused_overrides` records. Public so tests can drive the fixer
 /// without UDD connectivity.
 pub fn detect_with_unused_overrides(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     unused_overrides: &[UnusedOverride],
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     let mut tags_collected: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let mut pending: Vec<(LintianIssue, OverrideLineSelector, std::path::PathBuf)> = Vec::new();
+    let mut pending: Vec<(LintianIssue, OverrideLineSelector, PathBuf)> = Vec::new();
 
-    for path in find_override_files(base_path) {
-        let Ok(content) = std::fs::read_to_string(&path) else {
+    for rel in find_override_files(ws)? {
+        let Some(bytes) = ws.read_file(&rel)? else {
+            continue;
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
             continue;
         };
         let parsed = LintianOverrides::parse(&content);
         let Ok(overrides) = parsed.ok() else {
             continue;
         };
-
-        let rel = path
-            .strip_prefix(base_path)
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|_| path.clone());
 
         for (lineno, line) in overrides.lines().enumerate() {
             if line.is_comment() || line.is_empty() {
@@ -139,7 +155,7 @@ pub fn detect_with_unused_overrides(
                 }
 
                 let override_text = actual_info.clone();
-                let file_location = format!("[{}:{}]", path.display(), lineno + 1);
+                let file_location = format!("[{}:{}]", rel.display(), lineno + 1);
                 let issue = LintianIssue::source_with_info(
                     "unused-override",
                     vec![format!("{} {}", override_text, file_location)],
@@ -189,7 +205,7 @@ pub fn detect_with_unused_overrides(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if preferences.diligence.unwrap_or(0) < 1 {
@@ -199,9 +215,11 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let control_path = base_path.join("debian/control");
-    let control = Control::from_file(&control_path)
-        .map_err(|e| FixerError::Io(std::io::Error::other(e.to_string())))?;
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     let mut packages = Vec::new();
     if let Some(source) = control.source() {
@@ -228,21 +246,21 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    detect_with_unused_overrides(base_path, &unused_overrides)
+    detect_with_unused_overrides(ws, &unused_overrides)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "unused-override",
     tags: ["unused-override"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::apply_diagnostics;
+    use crate::workspace::TreeFixerWorkspace;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
@@ -250,7 +268,9 @@ mod tests {
         base: &Path,
         unused_overrides: &[UnusedOverride],
     ) -> Result<crate::FixerResult, FixerError> {
-        let diagnostics = detect_with_unused_overrides(base, unused_overrides)?;
+        let version: Version = "1.0".parse().unwrap();
+        let ws = TreeFixerWorkspace::new(base.to_path_buf(), "test", version);
+        let diagnostics = detect_with_unused_overrides(&ws, unused_overrides)?;
         apply_diagnostics(base, &diagnostics, &FixerPreferences::default())
     }
 

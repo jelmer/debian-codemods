@@ -1,22 +1,20 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use crate::{Certainty, FixerError, LintianIssue, PackageType};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_analyzer::debhelper::get_sequences;
-use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const CERTAINTY: Certainty = Certainty::Possible;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -27,16 +25,14 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         return Ok(Vec::new());
     }
 
-    let test_node_path = base_path.join("test/node.js");
-    let test_js_path = base_path.join("test.js");
-
-    let (test_runner, build_dep): (&str, &str) = if test_node_path.exists() {
-        ("mocha test/node.js\n", "mocha <!nocheck>")
-    } else if test_js_path.exists() {
-        ("tape test.js\n", "node-tape <!nocheck>")
-    } else {
-        return Ok(Vec::new());
-    };
+    let (test_runner, build_dep): (&str, &str) =
+        if ws.read_file(Path::new("test/node.js"))?.is_some() {
+            ("mocha test/node.js\n", "mocha <!nocheck>")
+        } else if ws.read_file(Path::new("test.js"))?.is_some() {
+            ("tape test.js\n", "node-tape <!nocheck>")
+        } else {
+            return Ok(Vec::new());
+        };
 
     let issue = LintianIssue {
         package: source.as_deb822().get("Source").map(|s| s.to_string()),
@@ -51,7 +47,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             content: test_runner.as_bytes().to_vec(),
         }),
         Action::Deb822(Deb822Action::EnsureRelation {
-            file: control_rel,
+            file: PathBuf::from("debian/control"),
             paragraph: ParagraphSelector::Source,
             field: "Build-Depends".into(),
             entry: build_dep.to_string(),
@@ -66,25 +62,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(CERTAINTY)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "pkg-js-tools-test-is-missing",
     tags: ["pkg-js-tools-test-is-missing"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

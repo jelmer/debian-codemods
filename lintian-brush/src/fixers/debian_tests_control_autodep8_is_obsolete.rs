@@ -1,6 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::{FixerError, LintianIssue, PackageType};
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use std::path::PathBuf;
 
 const OLD_REL: &str = "debian/tests/control.autodep8";
 const NEW_REL: &str = "debian/tests/control";
@@ -8,13 +10,16 @@ const NEW_REL: &str = "debian/tests/control";
 const RENAME_TAG: char = 'R';
 const MERGE_TAG: char = 'M';
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let old_rel = PathBuf::from(OLD_REL);
     let new_rel = PathBuf::from(NEW_REL);
-    let old_abs = base_path.join(&old_rel);
-    if !old_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let old_bytes = match ws.read_file(&old_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
 
     let issue_obsolete = LintianIssue {
         package: None,
@@ -23,25 +28,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         info: Some(OLD_REL.to_string()),
     };
 
-    let new_abs = base_path.join(&new_rel);
-    if !new_abs.exists() {
-        // Simple rename.
-        return Ok(vec![Diagnostic::with_actions(
-            issue_obsolete,
-            format!("{}", RENAME_TAG),
-            vec![Action::Filesystem(FilesystemAction::Rename {
-                file: old_rel,
-                to: new_rel,
-            })],
-        )]);
-    }
+    let new_bytes = match ws.read_file(&new_rel)? {
+        Some(b) => b,
+        None => {
+            // Simple rename.
+            return Ok(vec![Diagnostic::with_actions(
+                issue_obsolete,
+                format!("{}", RENAME_TAG),
+                vec![Action::Filesystem(FilesystemAction::Rename {
+                    file: old_rel,
+                    to: new_rel,
+                })],
+            )]);
+        }
+    };
 
     // Both files exist: append the autodep8 contents to the existing
     // control file (with a separating newline) and delete the autodep8
     // file. The detector reads the source bytes; the actions express the
     // resulting edits without re-reading.
-    let old_bytes = std::fs::read(&old_abs)?;
-    let new_bytes = std::fs::read(&new_abs)?;
 
     let mut suffix = Vec::with_capacity(1 + old_bytes.len());
     suffix.push(b'\n');
@@ -93,28 +98,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-tests-control-autodep8-is-obsolete",
     tags: ["debian-tests-control-autodep8-is-obsolete", "debian-tests-control-and-control-autodep8"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

@@ -1,36 +1,28 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MaintscriptAction};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
 use debian_analyzer::maintscripts::{Entry, Maintscript};
 use debian_changelog::ChangeLog;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // If there is no information from the upgrade release, default to 5 years.
 const DEFAULT_AGE_THRESHOLD_DAYS: i64 = 5 * 365;
 
-fn find_maintscript_files(base_path: &Path) -> Result<Vec<String>, FixerError> {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.exists() {
-        return Ok(vec![]);
-    }
-
-    let mut maintscripts = Vec::new();
-
-    for entry in fs::read_dir(&debian_dir)? {
-        let entry = entry?;
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-
-        if name_str == "maintscript" || name_str.ends_with(".maintscript") {
-            maintscripts.push(name_str.to_string());
-        }
-    }
-
-    Ok(maintscripts)
+fn find_maintscript_files(ws: &dyn FixerWorkspace) -> Result<Vec<String>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(vec![]),
+    };
+    entries.sort();
+    Ok(entries
+        .into_iter()
+        .filter(|name| name == "maintscript" || name.ends_with(".maintscript"))
+        .collect())
 }
 
 fn get_date_threshold(upgrade_release: Option<&str>) -> Result<NaiveDate, FixerError> {
@@ -56,14 +48,14 @@ fn get_date_threshold(upgrade_release: Option<&str>) -> Result<NaiveDate, FixerE
     Ok(threshold)
 }
 
-fn parse_changelog_dates(base_path: &Path) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
-    let changelog_path = base_path.join("debian/changelog");
-    if !changelog_path.exists() {
-        return Ok(vec![]);
-    }
-
-    let contents = fs::read_to_string(&changelog_path)?;
-    let changelog = ChangeLog::read_relaxed(&mut contents.as_bytes())
+fn parse_changelog_dates(
+    ws: &dyn FixerWorkspace,
+) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
+    let bytes = match ws.read_file(Path::new("debian/changelog"))? {
+        Some(b) => b,
+        None => return Ok(vec![]),
+    };
+    let changelog = ChangeLog::read_relaxed(bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {:?}", e)))?;
 
     let mut dates = Vec::new();
@@ -113,13 +105,19 @@ struct RemovedEntry {
 
 /// Parse a maintscript file and return the entries that should be removed.
 fn obsolete_maintscript_entries<F>(
-    maintscript_path: &Path,
+    ws: &dyn FixerWorkspace,
+    rel: &Path,
     should_remove: F,
 ) -> Result<Vec<RemovedEntry>, FixerError>
 where
     F: Fn(Option<&str>, &Version) -> bool,
 {
-    let contents = fs::read_to_string(maintscript_path)?;
+    let bytes = match ws.read_file(rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let contents = String::from_utf8(bytes)
+        .map_err(|e| FixerError::Other(format!("Failed to read maintscript: {}", e)))?;
     let script = Maintscript::from_str(&contents)
         .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;
     let mut removed = Vec::new();
@@ -162,23 +160,22 @@ fn format_removed_entry_detail(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let maintscripts = find_maintscript_files(base_path)?;
+    let maintscripts = find_maintscript_files(ws)?;
     if maintscripts.is_empty() {
         return Ok(Vec::new());
     }
 
     let date_threshold = get_date_threshold(preferences.upgrade_release.as_deref())?;
-    let cl_dates = parse_changelog_dates(base_path)?;
+    let cl_dates = parse_changelog_dates(ws)?;
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     for name in maintscripts {
         let rel = PathBuf::from("debian").join(&name);
-        let abs = base_path.join(&rel);
-        let removed = obsolete_maintscript_entries(&abs, |_package, version| {
+        let removed = obsolete_maintscript_entries(ws, &rel, |_package, version| {
             is_well_past(version, &cl_dates, &date_threshold)
         })?;
         for r in removed {
@@ -206,15 +203,11 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     format!("{}\n\n{}", summary, details.join("\n"))
 }
 
-declare_fixer! {
+declare_detector! {
     name: "ancient-maintscript-entry",
     tags: [],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]

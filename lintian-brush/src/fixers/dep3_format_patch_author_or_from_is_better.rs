@@ -1,21 +1,21 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Dep3Action, Diagnostic};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let patches_rel = PathBuf::from("debian/patches");
-    let patches_abs = base_path.join(&patches_rel);
-    if !patches_abs.is_dir() {
-        return Ok(Vec::new());
-    }
-    let series_path = patches_abs.join("series");
-    if !series_path.exists() {
-        return Ok(Vec::new());
-    }
-    let series_file = std::fs::File::open(&series_path)?;
-    let series = Series::read(series_file)
+    let series_bytes = match ws.read_file(&patches_rel.join("series"))? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let series = Series::read(series_bytes.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
 
     let mut diagnostics = Vec::new();
@@ -23,8 +23,11 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         let SeriesEntry::Patch { name, .. } = entry else {
             continue;
         };
-        let patch_abs = patches_abs.join(name);
-        let Ok(content) = std::fs::read_to_string(&patch_abs) else {
+        let patch_rel_full = patches_rel.join(name);
+        let Some(patch_bytes) = ws.read_file(&patch_rel_full)? else {
+            continue;
+        };
+        let Ok(content) = String::from_utf8(patch_bytes) else {
             continue;
         };
 
@@ -84,25 +87,25 @@ fn find_header_end(content: &str) -> usize {
     content.len()
 }
 
-declare_fixer! {
+declare_detector! {
     name: "dep3-format-patch-author-or-from-is-better",
     tags: ["dep3-format-patch-author-or-from-is-better"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

@@ -1,11 +1,11 @@
+use crate::declare_detector;
 use crate::diagnostic::{
     Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector, TextRange,
 };
-use crate::{FixerError, LintianIssue};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 struct ConfigureMatch {
     range: TextRange,
@@ -51,17 +51,19 @@ fn collect_matches(content: &[u8]) -> Vec<ConfigureMatch> {
     matches
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     // Try both configure.ac and configure.in.
     let candidates = ["configure.ac", "configure.in"];
     let mut hit_file: Option<&str> = None;
     let mut matches: Vec<ConfigureMatch> = Vec::new();
     for name in &candidates {
-        let abs = base_path.join(name);
-        if !abs.exists() {
-            continue;
-        }
-        let content = std::fs::read(&abs)?;
+        let content = match ws.read_file(Path::new(name))? {
+            Some(c) => c,
+            None => continue,
+        };
         let m = collect_matches(&content);
         if !m.is_empty() {
             hit_file = Some(name);
@@ -118,23 +120,19 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     // Build-Depends.
     if any_pkg_prog {
         let control_rel = PathBuf::from("debian/control");
-        let control_abs = base_path.join(&control_rel);
-        if control_abs.exists() {
-            let content = std::fs::read_to_string(&control_abs)?;
-            if let Ok(control) = Control::from_str(&content) {
-                if let Some(source) = control.source() {
-                    let bd = source.as_deb822().get("Build-Depends").unwrap_or_default();
-                    if !bd
-                        .split(',')
-                        .any(|e| e.trim().split_whitespace().next() == Some("pkg-config"))
-                    {
-                        actions.push(Action::Deb822(Deb822Action::EnsureRelation {
-                            file: control_rel,
-                            paragraph: ParagraphSelector::Source,
-                            field: "Build-Depends".into(),
-                            entry: "pkg-config".into(),
-                        }));
-                    }
+        if let Ok(control) = ws.parsed_control() {
+            if let Some(source) = control.source() {
+                let bd = source.as_deb822().get("Build-Depends").unwrap_or_default();
+                if !bd
+                    .split(',')
+                    .any(|e| e.trim().split_whitespace().next() == Some("pkg-config"))
+                {
+                    actions.push(Action::Deb822(Deb822Action::EnsureRelation {
+                        file: control_rel,
+                        paragraph: ParagraphSelector::Source,
+                        field: "Build-Depends".into(),
+                        entry: "pkg-config".into(),
+                    }));
                 }
             }
         }
@@ -145,25 +143,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     ])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "autotools-pkg-config-macro-not-cross-compilation-safe",
     tags: ["autotools-pkg-config-macro-not-cross-compilation-safe"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

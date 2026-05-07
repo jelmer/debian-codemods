@@ -1,20 +1,20 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use crate::{FixerError, LintianIssue, PackageType};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_analyzer::rules::dh_invoke_add_with;
-use debian_control::lossless::Control;
 use makefile_lossless::Makefile;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     let mut drop_actions: Vec<Action> = Vec::new();
@@ -60,10 +60,8 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
 
     // Update debian/rules: add `--with=vim_addon` to every `dh ...` recipe.
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if rules_abs.exists() {
-        let rules_content = std::fs::read_to_string(&rules_abs)?;
-        let makefile = Makefile::read_relaxed(rules_content.as_bytes())
+    if let Some(rules_bytes) = ws.read_file(&rules_rel)? {
+        let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
             .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
         for rule in makefile.rules() {
             let Some(target) = rule.targets().next() else {
@@ -95,25 +93,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "obsolete-vim-addon-manager",
     tags: ["obsolete-vim-addon-manager"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

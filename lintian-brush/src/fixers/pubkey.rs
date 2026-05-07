@@ -1,10 +1,11 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, WatchAction};
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use debian_watch::{mangle, Release};
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 const NUM_KEYS_TO_CHECK: usize = 5;
@@ -295,19 +296,20 @@ fn export_cert_armored(cert: &openpgp::Cert) -> Result<Vec<u8>, String> {
 }
 
 pub fn detect(
-    base_path: &Path,
-    package: &str,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    let package = ws.package().unwrap_or("").to_string();
     tracing::debug!("Running pubkey detect for package {}", package);
 
     let watch_rel = PathBuf::from("debian/watch");
-    let watch_path = base_path.join(&watch_rel);
-
-    if !watch_path.exists() {
-        tracing::debug!("No debian/watch file found");
-        return Ok(Vec::new());
-    }
+    let watch_bytes = match ws.read_file(Path::new("debian/watch"))? {
+        Some(b) => b,
+        None => {
+            tracing::debug!("No debian/watch file found");
+            return Ok(Vec::new());
+        }
+    };
 
     // Network is required for both signature probing and key fetching.
     if !preferences.net_access.unwrap_or(false) {
@@ -315,20 +317,27 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    // Check if signing keys already exist.
-    let mut has_keys = false;
-    for path in &[
-        "debian/upstream/signing-key.asc",
-        "debian/upstream/signing-key.pgp",
-    ] {
-        if base_path.join(path).exists() {
-            tracing::debug!("Found existing signing key at {}", path);
-            has_keys = true;
-            break;
+    // Load existing keyring if available; the first present file wins.
+    let (has_keys, keyring_data): (bool, Vec<u8>) = {
+        let mut found = None;
+        for path in &[
+            "debian/upstream/signing-key.asc",
+            "debian/upstream/signing-key.pgp",
+        ] {
+            if let Some(data) = ws.read_file(Path::new(path))? {
+                tracing::debug!("Loaded existing keyring from {}", path);
+                found = Some(data);
+                break;
+            }
         }
-    }
+        match found {
+            Some(d) => (true, d),
+            None => (false, Vec::new()),
+        }
+    };
 
-    let content = fs::read_to_string(&watch_path)?;
+    let content = String::from_utf8(watch_bytes)
+        .map_err(|e| FixerError::Other(format!("debian/watch is not valid UTF-8: {}", e)))?;
     let watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
@@ -338,32 +347,6 @@ pub fn detect(
     // Watch file edits produced during entry analysis. We collect them per
     // diagnostic so override gating works correctly.
     let mut watch_actions: Vec<Action> = Vec::new();
-
-    // Load existing keyring if available
-    let keyring_data = if has_keys {
-        let mut data = vec![];
-        for path in &[
-            "debian/upstream/signing-key.asc",
-            "debian/upstream/signing-key.pgp",
-        ] {
-            let full_path = base_path.join(path);
-            if full_path.exists() {
-                match fs::read(&full_path) {
-                    Ok(loaded_data) => {
-                        tracing::debug!("Loaded existing keyring from {}", path);
-                        data = loaded_data;
-                        break;
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to read keyring from {}: {}", path, e);
-                    }
-                }
-            }
-        }
-        data
-    } else {
-        vec![]
-    };
 
     for entry in watch_file.entries() {
         let pgpsigurlmangle = entry.get_option("pgpsigurlmangle");
@@ -607,15 +590,13 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "pubkey",
     tags: [
         "debian-watch-does-not-check-openpgp-signature",
         "debian-watch-file-pubkey-file-is-missing"
     ],
-    diagnose: |basedir, package, _version, preferences| {
-        detect(basedir, package, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]

@@ -1,36 +1,36 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{is_debcargo_package, FixerError, LintianIssue};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    if is_debcargo_package(base_path) {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    if ws.read_file(Path::new("debian/debcargo.toml"))?.is_some() {
         return Ok(Vec::new());
     }
 
-    let format_path = base_path.join("debian/source/format");
-    let format = if format_path.exists() {
-        std::fs::read_to_string(&format_path)?.trim().to_string()
-    } else {
-        String::new()
+    let format = match ws.read_file(Path::new("debian/source/format"))? {
+        Some(b) => String::from_utf8(b)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default(),
+        None => String::new(),
     };
     if format == "3.0 (quilt)" {
         return Ok(Vec::new());
     }
 
-    if !base_path.join("debian/patches/series").exists() {
+    if ws.read_file(Path::new("debian/patches/series"))?.is_none() {
         return Ok(Vec::new());
     }
 
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -65,25 +65,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     )])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "quilt-series-but-no-build-dep",
     tags: ["quilt-series-but-no-build-dep"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

@@ -1,29 +1,35 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_path = base_path.join("debian");
-    if !debian_path.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
 
-    for entry in std::fs::read_dir(&debian_path)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("service") {
+    for filename in entries {
+        if !filename.ends_with(".service") {
             continue;
         }
-        if path.is_symlink() {
+        let rel = PathBuf::from("debian").join(&filename);
+        let Some(bytes) = ws.read_file(&rel)? else {
             continue;
-        }
-
-        let content = std::fs::read_to_string(&path)?;
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
+            continue;
+        };
         let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
-            FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e))
+            FixerError::Other(format!("Failed to parse {}: {:?}", rel.display(), e))
         })?;
         let Some(service_section) = unit.get_section("Service") else {
             continue;
@@ -36,7 +42,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         }
         let new_pidfile = old_pidfile.replace("/var/run/", "/run/");
 
-        let rel: PathBuf = path.strip_prefix(base_path).unwrap_or(&path).to_path_buf();
         let rel_str = rel.to_string_lossy().to_string();
 
         let issue = LintianIssue::source_with_info(
@@ -81,25 +86,25 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "systemd-service-file-pidfile-refers-to-var-run",
     tags: ["systemd-service-file-refers-to-var-run"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

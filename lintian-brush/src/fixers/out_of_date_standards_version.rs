@@ -1,5 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{is_debcargo_package, Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
@@ -617,20 +619,28 @@ fn get_check_fn(version: &str) -> Option<fn(&Path) -> UpgradeCheckResult> {
     }
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     // Debcargo packages manage their own control file — skip.
-    if is_debcargo_package(base_path) {
+    if ws.read_file(Path::new("debian/debcargo.toml"))?.is_some() {
         return Ok(Vec::new());
     }
 
+    // Upgrade-checklist callbacks (check_4_*) walk the package tree
+    // directly, so we need a real on-disk base. LSP hosts won't supply
+    // one and skip.
+    let Some(base_path) = ws.base_path() else {
+        return Ok(Vec::new());
+    };
+    let base_path = base_path.to_path_buf();
+
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let control_content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&control_content) else {
-        return Ok(Vec::new());
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     let Some(source) = control.source() else {
@@ -736,7 +746,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
 
     while let Some(&target) = path.get(current.as_str()) {
         if let Some(check_fn) = get_check_fn(target) {
-            match check_fn(base_path) {
+            match check_fn(&base_path) {
                 UpgradeCheckResult::Success(reasons) => {
                     if !reasons.is_empty() {
                         upgrade_reasons.push((current.clone(), target.to_string(), reasons));
@@ -803,7 +813,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "out-of-date-standards-version",
     tags: ["out-of-date-standards-version", "ancient-standards-version"],
     // Standards version should only be bumped after all other fixes are applied
@@ -812,7 +822,5 @@ declare_fixer! {
         "out-of-date-copyright-format-uri",
         "missing-vcs-browser-field"
     ],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }

@@ -1,7 +1,8 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use regex::Regex;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 const MAINTAINER_SCRIPTS: &[&str] = &["prerm", "postinst", "preinst", "postrm"];
@@ -20,26 +21,30 @@ fn parse_maintainer_script_name(filename: &str) -> Option<(String, String)> {
     None
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let debian_dir = base_path.join("debian");
-    if !debian_dir.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let entries = match ws.list_dir(Path::new("debian"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
 
     let chown_regex = Regex::new(r"\bchown\s+([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\b").unwrap();
     let mut diagnostics = Vec::new();
 
-    for entry in fs::read_dir(&debian_dir)? {
-        let entry = entry?;
-        let filename = entry.file_name().to_string_lossy().to_string();
+    for filename in entries {
         let Some((package, script)) = parse_maintainer_script_name(&filename) else {
             continue;
         };
-        let abs = entry.path();
-        if !abs.is_file() {
+        let rel = PathBuf::from("debian").join(&filename);
+        let bytes = match ws.read_file(&rel)? {
+            Some(b) => b,
+            None => continue,
+        };
+        let Ok(content) = String::from_utf8(bytes) else {
             continue;
-        }
-        let content = fs::read_to_string(&abs)?;
+        };
         if !chown_regex.is_match(&content) {
             continue;
         }
@@ -55,7 +60,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         };
 
         let new_content = chown_regex.replace_all(&content, "chown $1:$2").to_string();
-        let rel = PathBuf::from("debian").join(&filename);
 
         diagnostics.push(
             Diagnostic::with_actions(
@@ -89,27 +93,26 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "chown-with-dot",
     tags: ["chown-with-dot"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test-package", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test-package", &version, &FixerPreferences::default())
     }
 
     #[test]

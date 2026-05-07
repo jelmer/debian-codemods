@@ -1,7 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 const SEP: char = '\t';
@@ -19,48 +22,44 @@ fn mentioned_in_comments(series: &Series) -> HashSet<String> {
     mentioned
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let series_abs = base_path.join("debian/patches/series");
-    let patches_dir = base_path.join("debian/patches");
-
-    let series = match std::fs::File::open(&series_abs) {
-        Ok(file) => Series::read(file)
-            .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(e) => return Err(e.into()),
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let series_rel = PathBuf::from("debian/patches/series");
+    let series_bytes = match ws.read_file(&series_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
     };
+    let series = Series::read(Cursor::new(series_bytes))
+        .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
 
     let commented_out = mentioned_in_comments(&series);
 
-    if !patches_dir.is_dir() {
-        return Ok(Vec::new());
-    }
-
-    let mut entries: Vec<_> = std::fs::read_dir(&patches_dir)?
-        .filter_map(|e| e.ok())
-        .collect();
-    entries.sort_by_key(|e| e.file_name());
+    let mut entries = match ws.list_dir(Path::new("debian/patches"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let mut diagnostics = Vec::new();
-    for entry in entries {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let file_name_os = entry.file_name();
-        let Some(name) = file_name_os.to_str() else {
-            continue;
-        };
+    for name in entries {
         if name == "series" || name == "00list" {
             continue;
         }
         if name.starts_with("README") {
             continue;
         }
-        if series.contains(name) {
+        // Skip directories (and any other non-readable entries) — only
+        // proper patch files are candidates for removal.
+        let rel = PathBuf::from("debian/patches").join(&name);
+        if !matches!(ws.read_file(&rel), Ok(Some(_))) {
             continue;
         }
-        if commented_out.contains(name) {
+        if series.contains(&name) {
+            continue;
+        }
+        if commented_out.contains(&name) {
             continue;
         }
 
@@ -68,7 +67,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             "patch-file-present-but-not-mentioned-in-series",
             vec![format!("[debian/patches/{}]", name)],
         );
-        let rel = PathBuf::from("debian/patches").join(name);
         // Removing the file is destructive — in plenty of packages the
         // unreferenced patch is intentional (kept around for reference).
         // Only fire under --opinionated.
@@ -111,21 +109,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "patch-file-present-but-not-mentioned-in-series",
     tags: ["patch-file-present-but-not-mentioned-in-series"],
-    diagnose: |basedir, _package, _version, _preferences: &FixerPreferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -136,7 +131,8 @@ mod tests {
             opinionated: Some(opinionated),
             ..Default::default()
         };
-        FixerImpl.apply(base, "test", &version, &preferences)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &preferences)
     }
 
     #[test]

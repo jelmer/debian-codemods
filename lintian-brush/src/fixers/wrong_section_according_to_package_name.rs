@@ -1,6 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use debian_control::lossless::Control;
 use lazy_regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -62,14 +63,14 @@ fn find_expected_section<'a>(regexes: &'a [(Regex, String)], name: &str) -> Opti
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
-    let control_path = base_path.join(&control_rel);
-    if !control_path.exists() {
-        return Ok(Vec::new());
-    }
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
     let regexes = match get_name_section_mappings(preferences.lintian_data_path.as_deref()) {
         Ok(r) => r,
@@ -79,12 +80,7 @@ pub fn detect(
         }
     };
 
-    let content = std::fs::read_to_string(&control_path)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
-    let default_section = control
-        .source()
-        .as_ref()
-        .and_then(|s| s.as_deb822().get("Section"));
+    let default_section = control.source().as_ref().and_then(|s| s.get("Section"));
 
     let mut diagnostics = Vec::new();
 
@@ -96,7 +92,6 @@ pub fn detect(
             continue;
         };
         let current_section = binary
-            .as_deb822()
             .get("Section")
             .or_else(|| default_section.clone())
             .unwrap_or_default();
@@ -118,7 +113,7 @@ pub fn detect(
                     package_name, current_section, expected_section
                 ),
                 vec![Action::Deb822(Deb822Action::SetField {
-                    file: control_rel.clone(),
+                    file: PathBuf::from("debian/control"),
                     paragraph: ParagraphSelector::Binary {
                         package: package_name,
                     },
@@ -152,21 +147,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     format!("Fix sections for {}.", parts.join(", "))
 }
 
-declare_fixer! {
+declare_detector! {
     name: "wrong-section-according-to-package-name",
     tags: ["wrong-section-according-to-package-name"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use tempfile::TempDir;
 
@@ -175,7 +167,8 @@ mod tests {
         prefs: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, prefs)
     }
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

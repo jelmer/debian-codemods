@@ -1,23 +1,26 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue, PackageType};
-use debian_analyzer::control::TemplatedControlEditor;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use std::path::PathBuf;
 
 /// Per-diagnostic message tag separator. The describer parses these back out
 /// to assemble the aggregate description.
 const SEP: char = '\t';
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let editor = TemplatedControlEditor::open(&control_abs)?;
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
     let mut diagnostics = Vec::new();
 
-    if let Some(source) = editor.source() {
+    if let Some(source) = control.source() {
         let paragraph = source.as_deb822();
         for entry in paragraph.entries() {
             if !entry.value().trim().is_empty() {
@@ -46,7 +49,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         }
     }
 
-    for binary in editor.binaries() {
+    for binary in control.binaries() {
         let paragraph = binary.as_deb822();
         let Some(package_name) = paragraph.get("Package") else {
             continue;
@@ -116,28 +119,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     )
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-control-has-empty-field",
     tags: ["debian-control-has-empty-field"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

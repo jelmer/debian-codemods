@@ -1,9 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_changelog::parseaddr;
-use debian_control::lossless::Control;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use url::Url;
 
 const OBSOLETE_HOSTS: &[&str] = &[
@@ -359,16 +360,15 @@ async fn find_new_urls(
 }
 
 pub fn detect(
-    base_path: &Path,
+    ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let abs = base_path.join(&control_rel);
-    if !abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&abs)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
+    };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
     };
@@ -497,21 +497,21 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "vcs-field-bitrotted",
     tags: ["vcs-obsolete-in-debian-infrastructure", "vcs-field-bitrotted"],
     before: ["vcs-broken-uri"],
-    diagnose: |basedir, _package, _version, preferences| {
-        detect(basedir, preferences)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply_with(
@@ -519,7 +519,8 @@ mod tests {
         prefs: &FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, prefs)
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, prefs)
     }
 
     #[test]

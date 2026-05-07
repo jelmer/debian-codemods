@@ -1,33 +1,32 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{FixerError, LintianIssue};
-use debian_control::lossless::Control;
-use std::path::{Path, PathBuf};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
+use std::path::PathBuf;
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let control_rel = PathBuf::from("debian/control");
-    let control_path = base_path.join(&control_rel);
-    if !control_path.exists() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
 
-    let content = std::fs::read_to_string(&control_path)?;
-    let control: Control = content.parse().map_err(|_| FixerError::NoChanges)?;
-
-    let source_paragraph = control.source().map(|s| s.as_deb822().clone());
-    let default_priority = source_paragraph.as_ref().and_then(|p| p.get("Priority"));
-    let default_section = source_paragraph.as_ref().and_then(|p| p.get("Section"));
+    let source = control.source();
+    let default_priority = source.as_ref().and_then(|s| s.get("Priority"));
+    let default_section = source.as_ref().and_then(|s| s.get("Section"));
 
     let mut diagnostics = Vec::new();
 
     for binary in control.binaries() {
-        let paragraph = binary.as_deb822();
-
         // Skip udebs
-        if paragraph.get("Package-Type").as_deref().map(str::trim) == Some("udeb") {
+        if binary.get("Package-Type").as_deref().map(str::trim) == Some("udeb") {
             continue;
         }
 
-        let description = paragraph.get("Description").unwrap_or_default();
+        let description = binary.get("Description").unwrap_or_default();
         if !description.to_lowercase().contains("transitional package") {
             continue;
         }
@@ -36,8 +35,8 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             continue;
         };
 
-        let old_section = paragraph.get("Section").or_else(|| default_section.clone());
-        let old_priority = paragraph
+        let old_section = binary.get("Section").or_else(|| default_section.clone());
+        let old_priority = binary
             .get("Priority")
             .or_else(|| default_priority.clone())
             .unwrap_or_else(|| "optional".to_string());
@@ -63,7 +62,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         };
 
         let mut actions = vec![Action::Deb822(Deb822Action::SetField {
-            file: control_rel.clone(),
+            file: PathBuf::from("debian/control"),
             paragraph: ParagraphSelector::Binary {
                 package: package_name.clone(),
             },
@@ -75,7 +74,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             // Source already declares Priority: optional; drop the binary's
             // override so it inherits.
             actions.push(Action::Deb822(Deb822Action::RemoveField {
-                file: control_rel.clone(),
+                file: PathBuf::from("debian/control"),
                 paragraph: ParagraphSelector::Binary {
                     package: package_name.clone(),
                 },
@@ -83,7 +82,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             }));
         } else {
             actions.push(Action::Deb822(Deb822Action::SetField {
-                file: control_rel.clone(),
+                file: PathBuf::from("debian/control"),
                 paragraph: ParagraphSelector::Binary {
                     package: package_name.clone(),
                 },
@@ -133,28 +132,27 @@ fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
     }
 }
 
-declare_fixer! {
+declare_detector! {
     name: "transitional-package-should-be-oldlibs-optional",
     tags: ["transitional-package-not-oldlibs-optional"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

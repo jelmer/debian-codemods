@@ -1,6 +1,7 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::{FixerError, LintianIssue};
-use debian_analyzer::editor::check_generated_file;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
 /// Length of trailing whitespace (excluding the newline) on a line ending
@@ -29,16 +30,16 @@ struct Edit {
 }
 
 fn collect_edits(
-    abs_path: &Path,
+    ws: &dyn FixerWorkspace,
+    rel_path: &Path,
     relative_path: &str,
     strip_tabs: bool,
     strip_trailing_empty_lines: bool,
     delete_new_empty_line: bool,
 ) -> Result<(Vec<Edit>, bool), FixerError> {
-    let content = match std::fs::read(abs_path) {
-        Ok(c) => c,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok((Vec::new(), false)),
-        Err(e) => return Err(FixerError::from(e)),
+    let content = match ws.read_file(rel_path)? {
+        Some(c) => c,
+        None => return Ok((Vec::new(), false)),
     };
 
     let mut edits: Vec<Edit> = Vec::new();
@@ -105,158 +106,128 @@ fn collect_edits(
     Ok((edits, had_trailing_empty))
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    let mut emit_for_file = |rel: PathBuf,
-                             abs: &Path,
-                             strip_tabs,
-                             strip_eof,
-                             delete_new_empty|
-     -> Result<bool, FixerError> {
-        let (edits, _) = collect_edits(
-            abs,
-            &rel.to_string_lossy(),
-            strip_tabs,
-            strip_eof,
-            delete_new_empty,
-        )?;
-        if edits.is_empty() {
-            return Ok(false);
-        }
-        // Diagnostics are emitted in source order (so the
-        // Fixed-Lintian-Issues block reads top-down). Actions need
-        // reverse-offset order though — the applier re-reads the file
-        // for each ReplaceText, so applying the latest-offset edit
-        // first keeps earlier-offset byte positions stable. Achieve
-        // both by attaching all the actions to the first diagnostic.
-        let mut sorted_edits = edits;
-        let issues: Vec<LintianIssue> = sorted_edits.iter().map(|e| e.issue.clone()).collect();
-        sorted_edits.sort_by(|a, b| b.range.start.cmp(&a.range.start));
-        let mut actions: Vec<Action> = Vec::with_capacity(sorted_edits.len());
-        for edit in sorted_edits {
-            // ReplaceText carries a String; every replacement here is
-            // empty or "\n", so UTF-8 conversion is always safe.
-            let replacement = String::from_utf8(edit.replacement).map_err(|e| {
-                FixerError::Other(format!("non-UTF-8 replacement in {}: {}", rel.display(), e))
-            })?;
-            actions.push(Action::Filesystem(FilesystemAction::ReplaceText {
-                file: rel.clone(),
-                range: edit.range,
-                replacement,
-            }));
-        }
-        for (i, issue) in issues.into_iter().enumerate() {
-            let plan_actions = if i == 0 {
-                std::mem::take(&mut actions)
-            } else {
-                Vec::new()
-            };
-            diagnostics.push(Diagnostic::with_actions(
-                issue,
-                "Trim trailing whitespace.",
-                plan_actions,
-            ));
-        }
-        Ok(true)
-    };
+    let mut emit_for_file =
+        |rel: PathBuf, strip_tabs, strip_eof, delete_new_empty| -> Result<bool, FixerError> {
+            let (edits, _) = collect_edits(
+                ws,
+                &rel,
+                &rel.to_string_lossy(),
+                strip_tabs,
+                strip_eof,
+                delete_new_empty,
+            )?;
+            if edits.is_empty() {
+                return Ok(false);
+            }
+            // Diagnostics are emitted in source order (so the
+            // Fixed-Lintian-Issues block reads top-down). Actions need
+            // reverse-offset order though — the applier re-reads the file
+            // for each ReplaceText, so applying the latest-offset edit
+            // first keeps earlier-offset byte positions stable. Achieve
+            // both by attaching all the actions to the first diagnostic.
+            let mut sorted_edits = edits;
+            let issues: Vec<LintianIssue> = sorted_edits.iter().map(|e| e.issue.clone()).collect();
+            sorted_edits.sort_by(|a, b| b.range.start.cmp(&a.range.start));
+            let mut actions: Vec<Action> = Vec::with_capacity(sorted_edits.len());
+            for edit in sorted_edits {
+                // ReplaceText carries a String; every replacement here is
+                // empty or "\n", so UTF-8 conversion is always safe.
+                let replacement = String::from_utf8(edit.replacement).map_err(|e| {
+                    FixerError::Other(format!("non-UTF-8 replacement in {}: {}", rel.display(), e))
+                })?;
+                actions.push(Action::Filesystem(FilesystemAction::ReplaceText {
+                    file: rel.clone(),
+                    range: edit.range,
+                    replacement,
+                }));
+            }
+            for (i, issue) in issues.into_iter().enumerate() {
+                let plan_actions = if i == 0 {
+                    std::mem::take(&mut actions)
+                } else {
+                    Vec::new()
+                };
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    "Trim trailing whitespace.",
+                    plan_actions,
+                ));
+            }
+            Ok(true)
+        };
 
-    let changelog_abs = base_path.join("debian/changelog");
-    if changelog_abs.exists() {
-        emit_for_file(
-            PathBuf::from("debian/changelog"),
-            &changelog_abs,
-            true,
-            true,
-            false,
-        )?;
+    let changelog_rel = PathBuf::from("debian/changelog");
+    if ws.read_file(&changelog_rel)?.is_some() {
+        emit_for_file(changelog_rel, true, true, false)?;
     }
 
-    let rules_abs = base_path.join("debian/rules");
-    if rules_abs.exists() {
+    let rules_rel = PathBuf::from("debian/rules");
+    if ws.read_file(&rules_rel)?.is_some() {
         // For debian/rules, leave tabs alone — they're load-bearing.
-        emit_for_file(
-            PathBuf::from("debian/rules"),
-            &rules_abs,
-            false,
-            true,
-            false,
-        )?;
+        emit_for_file(rules_rel, false, true, false)?;
     }
 
-    let control_abs = base_path.join("debian/control");
-    if control_abs.exists() {
-        match check_generated_file(&control_abs) {
-            Err(_) => {
-                let debian_dir = base_path.join("debian");
-                if let Ok(entries) = std::fs::read_dir(&debian_dir) {
-                    let mut sorted: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-                    sorted.sort_by_key(|e| e.file_name());
-                    let mut control_changed = false;
-                    for entry in sorted {
-                        let file_name = entry.file_name();
-                        let name = file_name.to_string_lossy();
-                        if !name.starts_with("control.")
-                            || name.ends_with('~')
-                            || name.ends_with(".m4")
-                        {
-                            continue;
-                        }
-                        if emit_for_file(
-                            PathBuf::from(format!("debian/{}", name)),
-                            &entry.path(),
-                            true,
-                            true,
-                            true,
-                        )? {
-                            control_changed = true;
-                        }
+    let control_rel = PathBuf::from("debian/control");
+    if ws.read_file(&control_rel)?.is_some() {
+        // check_generated_file is filesystem-based; fall back to
+        // base_path() (LSP hosts won't supply one and skip).
+        let is_generated = ws
+            .base_path()
+            .map(|bp| {
+                debian_analyzer::editor::check_generated_file(&bp.join("debian/control")).is_err()
+            })
+            .unwrap_or(false);
+        if is_generated {
+            if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
+                entries.sort();
+                let mut control_changed = false;
+                for name in entries {
+                    if !name.starts_with("control.") || name.ends_with('~') || name.ends_with(".m4")
+                    {
+                        continue;
                     }
-                    if control_changed {
-                        emit_for_file(
-                            PathBuf::from("debian/control"),
-                            &control_abs,
-                            true,
-                            true,
-                            true,
-                        )?;
+                    let rel = PathBuf::from(format!("debian/{}", name));
+                    if emit_for_file(rel, true, true, true)? {
+                        control_changed = true;
                     }
                 }
+                if control_changed {
+                    emit_for_file(control_rel, true, true, true)?;
+                }
             }
-            Ok(()) => {
-                emit_for_file(
-                    PathBuf::from("debian/control"),
-                    &control_abs,
-                    true,
-                    true,
-                    true,
-                )?;
-            }
+        } else {
+            emit_for_file(control_rel, true, true, true)?;
         }
     }
 
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "file-contains-trailing-whitespace",
     tags: ["trailing-whitespace"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

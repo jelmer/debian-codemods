@@ -1,10 +1,10 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, YamlAction};
-use crate::FixerError;
-use debian_copyright::lossless::Copyright;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Fields that are only used by addons/tools and shouldn't be in
 /// debian/upstream/metadata. If everything else gets dropped, the file
@@ -12,12 +12,9 @@ use std::path::{Path, PathBuf};
 const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];
 
 /// Extract upstream fields from debian/copyright (Name, Contact).
-fn upstream_fields_in_copyright(copyright_path: &Path) -> HashMap<String, String> {
+fn upstream_fields_in_copyright(ws: &dyn FixerWorkspace) -> HashMap<String, String> {
     let mut result = HashMap::new();
-    let Ok(content) = fs::read_to_string(copyright_path) else {
-        return result;
-    };
-    let Ok(copyright) = content.parse::<Copyright>() else {
+    let Ok(copyright) = ws.parsed_copyright() else {
         return result;
     };
     let Some(header) = copyright.header() else {
@@ -42,15 +39,16 @@ fn split_sep_chars(value: &str) -> Vec<String> {
         .collect()
 }
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let metadata_rel = PathBuf::from("debian/upstream/metadata");
-    let metadata_abs = base_path.join(&metadata_rel);
-    if !metadata_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let yaml_file = yaml_edit::YamlFile::from_path(&metadata_abs)
-        .map_err(|e| FixerError::Other(format!("Failed to open YAML: {}", e)))?;
+    let yaml_file = match ws.parsed_upstream_metadata() {
+        Ok(y) => y,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
+    };
     let Some(doc) = yaml_file.document() else {
         return Ok(Vec::new());
     };
@@ -84,8 +82,7 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     // the machine-readable debian/copyright header.
     let has_name_or_contact = mapping.keys().any(|k| k == "Name" || k == "Contact");
     if has_name_or_contact {
-        let copyright_path = base_path.join("debian/copyright");
-        let copyright_fields = upstream_fields_in_copyright(&copyright_path);
+        let copyright_fields = upstream_fields_in_copyright(ws);
         for (field, copyright_value) in &copyright_fields {
             if to_remove.contains(field) {
                 continue;
@@ -165,24 +162,26 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(vec![Diagnostic::untagged(description, actions)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "upstream-metadata-has-obsolete-field",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]

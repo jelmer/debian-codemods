@@ -1,7 +1,9 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 const SEQUENCE_FIELDS: &[&str] = &["Reference", "Screenshots"];
@@ -222,14 +224,21 @@ fn drop_empty_documents(original: &str) -> Result<EmptyDocsOutcome, FixerError> 
 /// to carry an action plan, but multiple diagnostics here describe the
 /// same single rewrite. We therefore route them all to the same action,
 /// which is just the file write.
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let metadata_rel = PathBuf::from("debian/upstream/metadata");
-    let metadata_abs = base_path.join(&metadata_rel);
-    if !metadata_abs.exists() {
-        return Ok(Vec::new());
-    }
-
-    let original = std::fs::read_to_string(&metadata_abs)?;
+    let bytes = match ws.read_file(&metadata_rel)? {
+        Some(b) => b,
+        None => return Ok(Vec::new()),
+    };
+    let original = String::from_utf8(bytes).map_err(|e| {
+        FixerError::Other(format!(
+            "debian/upstream/metadata is not valid UTF-8: {}",
+            e
+        ))
+    })?;
     let mut current = original.clone();
     let mut delete_file = false;
 
@@ -335,28 +344,27 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
     parts.join(" ")
 }
 
-declare_fixer! {
+declare_detector! {
     name: "upstream-metadata-invalid",
     tags: [],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

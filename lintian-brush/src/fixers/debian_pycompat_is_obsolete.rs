@@ -1,10 +1,15 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let pycompat = PathBuf::from("debian/pycompat");
-    if !base_path.join(&pycompat).exists() {
+    if ws.read_file(Path::new("debian/pycompat"))?.is_none() {
         return Ok(Vec::new());
     }
 
@@ -23,25 +28,31 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
     .with_certainty(Certainty::Certain)])
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-pycompat-is-obsolete",
     tags: ["debian-pycompat-is-obsolete"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
+    }
+
+    fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
+        let ws = TreeFixerWorkspace::new(base, "test", "1.0".parse().unwrap());
+        detect(&ws, &FixerPreferences::default())
     }
 
     #[test]
@@ -69,7 +80,7 @@ mod tests {
         fs::create_dir(&debian_dir).unwrap();
 
         assert!(matches!(run_apply(base_path), Err(FixerError::NoChanges)));
-        assert!(detect(base_path).unwrap().is_empty());
+        assert!(detect_in(base_path).unwrap().is_empty());
     }
 
     #[test]

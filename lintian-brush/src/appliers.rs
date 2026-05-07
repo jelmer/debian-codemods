@@ -147,7 +147,8 @@ fn action_file(action: &Action) -> &Path {
             | FilesystemAction::RemoveDirIfEmpty { file }
             | FilesystemAction::Write { file, .. }
             | FilesystemAction::ReplaceText { file, .. }
-            | FilesystemAction::Substitute { file, .. } => file,
+            | FilesystemAction::Substitute { file, .. }
+            | FilesystemAction::NormalizeLineEndings { file } => file,
         },
     }
 }
@@ -3057,9 +3058,40 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                 std::fs::write(&abs, new_content)?;
                 any_change = true;
             }
+            FilesystemAction::NormalizeLineEndings { .. } => {
+                let bytes = match std::fs::read(&abs) {
+                    Ok(b) => b,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                    Err(e) => return Err(FixerError::Io(e)),
+                };
+                let converted = normalize_crlf(&bytes);
+                if converted == bytes {
+                    continue;
+                }
+                std::fs::write(&abs, converted)?;
+                any_change = true;
+            }
         }
     }
     Ok(any_change)
+}
+
+/// Replace every `\r\n` pair with `\n`, leaving lone `\r` bytes alone.
+/// Operates on raw bytes so that an embedded non-UTF-8 byte (rare but
+/// possible in Debian control files in the wild) doesn't mask a CRLF.
+pub(crate) fn normalize_crlf(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if i + 1 < bytes.len() && bytes[i] == b'\r' && bytes[i + 1] == b'\n' {
+            out.push(b'\n');
+            i += 2;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    out
 }
 
 #[cfg(test)]

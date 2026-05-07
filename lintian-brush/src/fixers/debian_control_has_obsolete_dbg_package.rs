@@ -1,31 +1,33 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use crate::{FixerError, LintianIssue, PackageType, Version};
-use debian_control::lossless::Control;
+use crate::workspace::FixerWorkspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use makefile_lossless::Makefile;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const MINIMUM_DEBHELPER_VERSION: &str = "9.20160114";
 
-fn check_cdbs(base_path: &Path) -> bool {
-    let rules_path = base_path.join("debian/rules");
-    if !rules_path.exists() {
+fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
+    let Ok(Some(content)) = ws.read_file(Path::new("debian/rules")) else {
         return false;
-    }
-    std::fs::read_to_string(&rules_path)
-        .map(|c| c.contains("/usr/share/cdbs/"))
-        .unwrap_or(false)
+    };
+    content
+        .windows(b"/usr/share/cdbs/".len())
+        .any(|w| w == b"/usr/share/cdbs/")
 }
 
-pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnostic>, FixerError> {
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
-    let control_abs = base_path.join(&control_rel);
-    if !control_abs.exists() {
-        return Ok(Vec::new());
-    }
-    let content = std::fs::read_to_string(&control_abs)?;
-    let Ok(control) = Control::from_str(&content) else {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let Some(current_version) = ws.current_version() else {
         return Ok(Vec::new());
     };
 
@@ -59,10 +61,10 @@ pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnos
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_abs = base_path.join(&rules_rel);
-    if !rules_abs.exists() {
-        return Ok(Vec::new());
-    }
+    let rules_content = match ws.read_file(Path::new("debian/rules"))? {
+        Some(c) => c,
+        None => return Ok(Vec::new()),
+    };
 
     let current_version_str = current_version.to_string();
     let migrate_version = if current_version_str.ends_with('~') {
@@ -71,8 +73,7 @@ pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnos
         format!("<< {}~", current_version_str)
     };
 
-    let rules_content = std::fs::read_to_string(&rules_abs)?;
-    let makefile = Makefile::read_relaxed(rules_content.as_bytes())
+    let makefile = Makefile::read_relaxed(rules_content.as_slice())
         .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut recipe_actions: Vec<Action> = Vec::new();
@@ -114,7 +115,7 @@ pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnos
 
     let needed: HashSet<String> = dbg_packages.iter().cloned().collect();
     if needed != migrated {
-        if check_cdbs(base_path) {
+        if check_cdbs(ws) {
             return Ok(Vec::new()); // CDBS uses different mechanisms
         }
         if rules_uses_variables {
@@ -168,25 +169,25 @@ pub fn detect(base_path: &Path, current_version: &Version) -> Result<Vec<Diagnos
     Ok(diagnostics)
 }
 
-declare_fixer! {
+declare_detector! {
     name: "debian-control-has-obsolete-dbg-package",
     tags: ["debian-control-has-obsolete-dbg-package"],
-    diagnose: |basedir, _package, version, _preferences| {
-        detect(basedir, version)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
-    use crate::FixerPreferences;
+    use crate::workspace::DetectorAdapter;
+    use crate::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, version: &str) -> Result<crate::FixerResult, FixerError> {
         let v: Version = version.parse().unwrap();
-        FixerImpl.apply(base, "test", &v, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &v, &FixerPreferences::default())
     }
 
     #[test]

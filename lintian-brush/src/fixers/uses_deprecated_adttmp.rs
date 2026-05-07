@@ -1,29 +1,29 @@
+use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::workspace::FixerWorkspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use regex::bytes::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-    let tests_dir = base_path.join("debian/tests");
-    if !tests_dir.is_dir() {
-        return Ok(Vec::new());
-    }
+pub fn detect(
+    ws: &dyn FixerWorkspace,
+    _preferences: &FixerPreferences,
+) -> Result<Vec<Diagnostic>, FixerError> {
+    let mut entries = match ws.list_dir(Path::new("debian/tests"))? {
+        Some(e) => e,
+        None => return Ok(Vec::new()),
+    };
+    entries.sort();
 
     let pattern = Regex::new(r"\bADTTMP\b").unwrap();
     let mut diagnostics = Vec::new();
 
-    let mut entries: Vec<_> = std::fs::read_dir(&tests_dir)?
-        .filter_map(|e| e.ok())
-        .collect();
-    entries.sort_by_key(|e| e.file_name());
-
-    for entry in entries {
-        let path = entry.path();
-        if !path.is_file() {
+    for name in entries {
+        let rel = PathBuf::from("debian/tests").join(&name);
+        let Some(content) = ws.read_file(&rel)? else {
             continue;
-        }
+        };
 
-        let content = std::fs::read(&path)?;
         let mut line_numbers = Vec::new();
         for (line_num, line) in content.split(|&b| b == b'\n').enumerate() {
             if pattern.is_match(line) {
@@ -34,7 +34,6 @@ pub fn detect(base_path: &Path) -> Result<Vec<Diagnostic>, FixerError> {
             continue;
         }
 
-        let rel = path.strip_prefix(base_path).unwrap_or(&path).to_path_buf();
         let rel_str = rel.to_string_lossy().to_string();
 
         for line_num in line_numbers {
@@ -64,28 +63,26 @@ fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
     "Replace use of deprecated $ADTTMP with $AUTOPKGTEST_TMP.".to_string()
 }
 
-declare_fixer! {
+declare_detector! {
     name: "uses-deprecated-adttmp",
     tags: ["uses-deprecated-adttmp"],
-    diagnose: |basedir, _package, _version, _preferences| {
-        detect(basedir)
-    },
-    describe: |fixed, actions| {
-        describe_aggregate(fixed, actions)
-    }
+    detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::builtin_fixers::BuiltinFixer;
+    use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        FixerImpl.apply(base, "test", &version, &FixerPreferences::default())
+        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        adapter.apply(base, "test", &version, &FixerPreferences::default())
     }
 
     #[test]
