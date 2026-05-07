@@ -947,7 +947,7 @@ pub fn data_file_path(
 /// One `Fixes:` line is emitted per issue (carrying package, type and info via
 /// [`LintianIssue`]'s `Display` impl). One `See-also:` line is emitted per unique
 /// tag, in the order the tag is first encountered.
-fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
+pub fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
     let mut out = String::new();
     for issue in issues {
         out.push_str(&format!("Fixes: lintian: {}\n", issue));
