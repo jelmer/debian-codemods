@@ -233,13 +233,17 @@ pub fn detect(
         Some(b) => b,
         None => return Ok(Vec::new()),
     };
-    let original = String::from_utf8(bytes).map_err(|e| {
+    // Validate UTF-8 once; from there on we operate on the owned
+    // `String` because the rewrite helpers below produce new strings
+    // we need to take ownership of.
+    let original_str = std::str::from_utf8(&bytes).map_err(|e| {
         FixerError::Other(format!(
             "debian/upstream/metadata is not valid UTF-8: {}",
             e
         ))
     })?;
-    let mut current = original.clone();
+    let original: String = original_str.to_string();
+    let mut current: String = original.clone();
     let mut delete_file = false;
 
     let mut yaml_invalid_count = 0usize;

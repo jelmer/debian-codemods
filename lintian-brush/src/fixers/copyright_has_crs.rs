@@ -17,7 +17,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let new_content: Vec<u8> = content.into_iter().filter(|&b| b != b'\r').collect();
+    let new_content: Vec<u8> = content.iter().copied().filter(|&b| b != b'\r').collect();
 
     let issue = LintianIssue::source("copyright-has-crs");
     Ok(vec![Diagnostic::with_actions(

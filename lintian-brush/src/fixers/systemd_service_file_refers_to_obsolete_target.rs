@@ -26,7 +26,7 @@ pub fn detect(
         let Some(bytes) = ws.read_file(&rel)? else {
             continue;
         };
-        let Ok(content) = String::from_utf8(bytes) else {
+        let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
         let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {

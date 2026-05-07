@@ -16,7 +16,7 @@ pub fn detect(
         Some(b) => b,
         None => return Ok(Vec::new()),
     };
-    let Ok(content) = String::from_utf8(bytes) else {
+    let Ok(content) = std::str::from_utf8(&bytes) else {
         return Ok(Vec::new());
     };
     let oldlines: Vec<&str> = content.lines().collect();

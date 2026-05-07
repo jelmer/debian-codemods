@@ -58,12 +58,12 @@ pub fn detect(
     for rel in OTHERS {
         let p = PathBuf::from(rel);
         if let Some(data) = ws.read_file(&p)? {
-            existing.push((p, data));
+            existing.push((p, data.into_owned()));
         }
     }
     let main_rel = PathBuf::from(MAIN);
     if let Some(data) = ws.read_file(&main_rel)? {
-        existing.push((main_rel.clone(), data));
+        existing.push((main_rel.clone(), data.into_owned()));
     }
 
     if existing.len() < 2 {
