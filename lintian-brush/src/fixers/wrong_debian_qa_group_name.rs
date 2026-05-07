@@ -51,6 +51,13 @@ pub fn detect(
 declare_detector! {
     name: "wrong-debian-qa-group-name",
     tags: ["faulty-debian-qa-group-phrase"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

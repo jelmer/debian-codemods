@@ -67,6 +67,15 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-not-mangling-version",
     tags: ["debian-watch-not-mangling-version", "debian-watch-file-should-mangle-version"],
+    triggers: [
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+            "dversionmangle",
+        )),
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+            "uversionmangle",
+        )),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -111,6 +111,15 @@ pub fn detect(
 declare_detector! {
     name: "declares-possibly-conflicting-debhelper-compat-versions",
     tags: ["declares-possibly-conflicting-debhelper-compat-versions"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::File("debian/rules"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

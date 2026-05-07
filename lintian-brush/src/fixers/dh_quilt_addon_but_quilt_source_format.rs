@@ -109,6 +109,10 @@ fn dh_invoke_drop_with(line: &[u8], with_argument: &[u8]) -> Vec<u8> {
 declare_detector! {
     name: "dh-quilt-addon-but-quilt-source-format",
     tags: ["dh-quilt-addon-but-quilt-source-format"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/source/format"),
+        crate::workspace::Trigger::File("debian/rules"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

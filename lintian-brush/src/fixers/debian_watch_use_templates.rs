@@ -78,6 +78,10 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-use-templates",
     tags: [],
+    triggers: [
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Source),
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::MatchingPattern),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -71,6 +71,14 @@ pub fn detect(
 declare_detector! {
     name: "rules-requires-root-missing",
     tags: ["silent-on-rules-requiring-root"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Rules-Requires-Root",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -132,6 +132,18 @@ fn describe_aggregate(fixed: &[Diagnostic], actions: &[Action]) -> String {
 declare_detector! {
     name: "vcs-field-for-maintainer",
     tags: ["old-dpmt-vcs", "old-papt-vcs"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

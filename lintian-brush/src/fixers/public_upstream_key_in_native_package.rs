@@ -45,6 +45,10 @@ pub fn detect(
 declare_detector! {
     name: "public-upstream-key-in-native-package",
     tags: ["public-upstream-key-in-native-package"],
+    triggers: [
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

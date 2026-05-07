@@ -95,6 +95,18 @@ pub fn detect(
 declare_detector! {
     name: "ancient-python-version-field",
     tags: ["ancient-python-version-field", "old-python-version-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "X-Python-Version",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "X-Python3-Version",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

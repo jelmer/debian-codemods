@@ -47,6 +47,13 @@ pub fn detect(
 declare_detector! {
     name: "libmodule-build-perl-needs-to-be-in-build-depends",
     tags: ["libmodule-build-perl-needs-to-be-in-build-depends"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -68,6 +68,16 @@ pub fn detect(
 declare_detector! {
     name: "quilt-series-but-no-build-dep",
     tags: ["quilt-series-but-no-build-dep"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::File("debian/source/format"),
+        crate::workspace::Trigger::File("debian/patches/series"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

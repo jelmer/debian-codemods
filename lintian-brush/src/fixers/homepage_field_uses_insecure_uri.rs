@@ -151,6 +151,13 @@ pub fn detect(
 declare_detector! {
     name: "homepage-field-uses-insecure-uri",
     tags: ["homepage-field-uses-insecure-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Homepage",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

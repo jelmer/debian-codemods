@@ -113,6 +113,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-parses-dpkg-parsechangelog",
     tags: ["debian-rules-parses-dpkg-parsechangelog"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

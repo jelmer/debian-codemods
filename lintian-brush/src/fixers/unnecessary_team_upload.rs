@@ -103,6 +103,15 @@ pub fn detect(
 declare_detector! {
     name: "unnecessary-team-upload",
     tags: ["unnecessary-team-upload"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Uploaders",
+        },
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Maintainer),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

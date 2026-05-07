@@ -60,6 +60,15 @@ declare_detector! {
     name: "missing-vcs-browser-field",
     tags: ["missing-vcs-browser-field"],
     after: ["vcs-field-uses-not-recommended-uri-format"],
+    triggers: [
+        // Reads any Vcs-* field on the source paragraph to derive a
+        // browser URL, and writes Vcs-Browser there.
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

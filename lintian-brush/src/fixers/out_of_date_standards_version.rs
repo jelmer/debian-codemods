@@ -749,5 +749,20 @@ declare_detector! {
         "out-of-date-copyright-format-uri",
         "missing-vcs-browser-field"
     ],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Standards-Version",
+        },
+        // Upgrade-checklist callbacks read these too.
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "Files",
+        },
+        crate::workspace::Trigger::File("debian/compat"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }

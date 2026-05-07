@@ -376,6 +376,7 @@ fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "debug-symbol-migration-possibly-complete",
     tags: ["debug-symbol-migration-possibly-complete"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

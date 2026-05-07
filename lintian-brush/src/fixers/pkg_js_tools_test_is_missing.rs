@@ -65,6 +65,15 @@ pub fn detect(
 declare_detector! {
     name: "pkg-js-tools-test-is-missing",
     tags: ["pkg-js-tools-test-is-missing"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::File("test/node.js"),
+        crate::workspace::Trigger::File("test.js"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -146,6 +146,15 @@ pub fn detect(
 declare_detector! {
     name: "autotools-pkg-config-macro-not-cross-compilation-safe",
     tags: ["autotools-pkg-config-macro-not-cross-compilation-safe"],
+    triggers: [
+        crate::workspace::Trigger::File("configure.ac"),
+        crate::workspace::Trigger::File("configure.in"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

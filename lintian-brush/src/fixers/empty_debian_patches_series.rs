@@ -36,6 +36,7 @@ pub fn detect(
 declare_detector! {
     name: "empty-debian-patches-series",
     tags: [],
+    triggers: [crate::workspace::Trigger::File("debian/patches/series")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

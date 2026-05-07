@@ -115,6 +115,13 @@ pub fn detect(
 declare_detector! {
     name: "maintainer-script-without-set-e",
     tags: ["maintainer-script-without-set-e"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/preinst"),
+        crate::workspace::Trigger::File("debian/prerm"),
+        crate::workspace::Trigger::File("debian/postinst"),
+        crate::workspace::Trigger::File("debian/config"),
+        crate::workspace::Trigger::File("debian/postrm"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

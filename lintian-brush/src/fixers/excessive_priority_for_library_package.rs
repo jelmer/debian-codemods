@@ -122,6 +122,23 @@ fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
 declare_detector! {
     name: "excessive-priority-for-library-package",
     tags: ["excessive-priority-for-library-package"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Priority",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Section",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Priority",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

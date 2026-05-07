@@ -30,6 +30,7 @@ pub fn detect(
 declare_detector! {
     name: "rules-not-executable",
     tags: [],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

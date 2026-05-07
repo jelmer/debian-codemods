@@ -96,6 +96,13 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "license-file-listed-in-debian-copyright",
     tags: ["license-file-listed-in-debian-copyright"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "Files",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

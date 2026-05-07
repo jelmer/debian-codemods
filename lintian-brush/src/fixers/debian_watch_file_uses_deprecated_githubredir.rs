@@ -72,6 +72,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-uses-deprecated-githubredir",
     tags: ["debian-watch-file-uses-deprecated-githubredir"],
+    triggers: [crate::workspace::Trigger::Watch(
+        crate::workspace::WatchAspect::Source,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

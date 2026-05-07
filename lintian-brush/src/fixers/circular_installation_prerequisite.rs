@@ -67,6 +67,48 @@ pub fn detect(
 declare_detector! {
     name: "circular-installation-prerequisite",
     tags: ["circular-installation-prerequisite"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Pre-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Recommends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Suggests",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Enhances",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Breaks",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Conflicts",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

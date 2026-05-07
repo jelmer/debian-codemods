@@ -279,6 +279,24 @@ pub fn detect(
 declare_detector! {
     name: "missing-build-dependency-for-dh_-command",
     tags: ["missing-build-dependency-for-dh_-command", "missing-build-dependency-for-dh-addon"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Arch",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

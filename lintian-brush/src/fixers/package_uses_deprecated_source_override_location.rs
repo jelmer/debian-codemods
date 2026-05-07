@@ -47,6 +47,10 @@ pub fn detect(
 declare_detector! {
     name: "package-uses-deprecated-source-override-location",
     tags: ["old-source-override-location"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/source.lintian-overrides"),
+        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

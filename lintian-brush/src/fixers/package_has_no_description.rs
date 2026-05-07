@@ -195,6 +195,18 @@ pub fn detect(
 declare_detector! {
     name: "package-has-no-description",
     tags: ["required-field", "extended-description-is-empty"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Description",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

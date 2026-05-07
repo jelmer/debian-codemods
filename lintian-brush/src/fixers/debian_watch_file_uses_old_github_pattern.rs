@@ -49,6 +49,10 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-uses-old-github-pattern",
     tags: ["debian-watch-file-uses-old-github-pattern"],
+    triggers: [
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Source),
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::MatchingPattern),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

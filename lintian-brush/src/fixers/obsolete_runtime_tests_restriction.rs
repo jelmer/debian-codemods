@@ -153,6 +153,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "obsolete-runtime-tests-restriction",
     tags: ["obsolete-runtime-tests-restriction"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Tests",
+            field: "Restrictions",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Test-Command",
+            field: "Restrictions",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

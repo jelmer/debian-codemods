@@ -288,6 +288,23 @@ fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
 declare_detector! {
     name: "no-section-field",
     tags: ["recommended-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Section",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Section",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

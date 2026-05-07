@@ -90,6 +90,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-uses-as-needed-linker-flag",
     tags: ["debian-rules-uses-as-needed-linker-flag"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

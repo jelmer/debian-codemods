@@ -597,6 +597,17 @@ declare_detector! {
         "debian-watch-does-not-check-openpgp-signature",
         "debian-watch-file-pubkey-file-is-missing"
     ],
+    triggers: [
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Source),
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+            "pgpsigurlmangle",
+        )),
+        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+            "pgpmode",
+        )),
+        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

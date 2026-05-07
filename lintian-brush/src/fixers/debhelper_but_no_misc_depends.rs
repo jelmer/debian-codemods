@@ -123,6 +123,34 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "debhelper-but-no-misc-depends",
     tags: ["debhelper-but-no-misc-depends"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "X-DH-Compat",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Pre-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

@@ -80,6 +80,11 @@ pub fn detect(
 declare_detector! {
     name: "debian-upstream-obsolete-path",
     tags: ["debian-upstream-obsolete-path"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/upstream"),
+        crate::workspace::Trigger::File("debian/upstream-metadata"),
+        crate::workspace::Trigger::File("debian/upstream-metadata.yaml"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

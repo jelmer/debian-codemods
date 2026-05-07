@@ -66,6 +66,7 @@ fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "uses-deprecated-adttmp",
     tags: ["uses-deprecated-adttmp"],
+    triggers: [crate::workspace::Trigger::Glob("debian/tests/*")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
