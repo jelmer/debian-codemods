@@ -520,6 +520,7 @@ declare_detector! {
             field: "Vcs-*",
         },
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

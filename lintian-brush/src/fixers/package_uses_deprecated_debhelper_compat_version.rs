@@ -1009,6 +1009,7 @@ declare_detector! {
         crate::workspace::Trigger::File("debian/tmpfile"),
         crate::workspace::Trigger::Glob("debian/*.maintscript"),
     ],
+    cost: crate::workspace::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -765,5 +765,6 @@ declare_detector! {
         },
         crate::workspace::Trigger::File("debian/compat"),
     ],
+    cost: crate::workspace::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
 }
