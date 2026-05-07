@@ -238,6 +238,23 @@ declare_detector! {
     tags: ["field-name-typo-in-dep5-copyright"],
     // Must fix field name typos before copyright format updates
     before: ["out-of-date-copyright-format-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "License",
+            field: "*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

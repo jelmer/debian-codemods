@@ -101,6 +101,28 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "debian-tests-control-autodep8-is-obsolete",
     tags: ["debian-tests-control-autodep8-is-obsolete", "debian-tests-control-and-control-autodep8"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control.autodep8",
+            paragraph_key: "Tests",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control.autodep8",
+            paragraph_key: "Test-Command",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Tests",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Test-Command",
+            field: "*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

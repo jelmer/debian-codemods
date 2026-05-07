@@ -31,6 +31,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-pycompat-is-obsolete",
     tags: ["debian-pycompat-is-obsolete"],
+    triggers: [crate::workspace::Trigger::File("debian/pycompat")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

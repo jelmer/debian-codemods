@@ -49,6 +49,7 @@ pub fn detect(
 declare_detector! {
     name: "dh-clean-k-is-deprecated",
     tags: ["dh-clean-k-is-deprecated"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

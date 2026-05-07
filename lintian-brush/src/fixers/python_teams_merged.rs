@@ -73,6 +73,18 @@ pub fn detect(
 declare_detector! {
     name: "python-teams-merged",
     tags: ["python-teams-merged"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Source",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

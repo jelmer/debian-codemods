@@ -122,6 +122,14 @@ pub fn detect(
 declare_detector! {
     name: "debhelper-tools-from-autotools-dev-are-deprecated",
     tags: ["debhelper-tools-from-autotools-dev-are-deprecated"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

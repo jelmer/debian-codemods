@@ -74,6 +74,13 @@ declare_detector! {
     tags: ["insecure-copyright-format-uri", "wiki-copyright-format-uri"],
     // Must convert http to https before adding version (unversioned-copyright-format-uri).
     before: ["unversioned-copyright-format-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Format",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

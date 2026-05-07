@@ -46,6 +46,13 @@ pub fn detect(
 declare_detector! {
     name: "unnecessary-testsuite-autopkgtest-field",
     tags: ["unnecessary-testsuite-autopkgtest-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Testsuite",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

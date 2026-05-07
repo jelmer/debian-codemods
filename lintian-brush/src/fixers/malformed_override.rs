@@ -117,6 +117,10 @@ pub fn detect(
 declare_detector! {
     name: "malformed-override",
     tags: ["malformed-override"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
+        crate::workspace::Trigger::Glob("debian/*.lintian-overrides"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

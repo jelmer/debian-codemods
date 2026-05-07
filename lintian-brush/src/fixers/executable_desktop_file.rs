@@ -50,6 +50,7 @@ pub fn detect(
 declare_detector! {
     name: "executable-desktop-file",
     tags: ["executable-desktop-file"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.desktop")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

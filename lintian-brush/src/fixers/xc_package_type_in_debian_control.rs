@@ -84,6 +84,18 @@ pub fn detect(
 declare_detector! {
     name: "xc-package-type-in-debian-control",
     tags: ["adopted-extended-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "XC-Package-Type",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "XC-Package-Type",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

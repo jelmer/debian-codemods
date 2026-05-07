@@ -58,6 +58,13 @@ pub fn detect(
 declare_detector! {
     name: "vcs-git-uses-invalid-user-uri",
     tags: ["vcs-git-uses-invalid-user-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-Git",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

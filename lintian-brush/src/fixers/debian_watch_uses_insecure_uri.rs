@@ -73,6 +73,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-uses-insecure-uri",
     tags: ["debian-watch-uses-insecure-uri"],
+    triggers: [crate::workspace::Trigger::Watch(
+        crate::workspace::WatchAspect::Source,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -292,6 +292,9 @@ pub fn detect(
 declare_detector! {
     name: "no-copyright-file",
     tags: ["no-copyright-file"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/copyright"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

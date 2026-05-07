@@ -41,6 +41,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-uses-github-releases",
     tags: ["debian-watch-file-uses-github-releases"],
+    triggers: [crate::workspace::Trigger::Watch(
+        crate::workspace::WatchAspect::Source,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

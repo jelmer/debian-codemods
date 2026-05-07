@@ -57,6 +57,13 @@ pub fn detect(
 declare_detector! {
     name: "xs-vcs-field-in-debian-control",
     tags: ["adopted-extended-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "XS-Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

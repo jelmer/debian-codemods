@@ -74,6 +74,13 @@ pub fn detect(
 declare_detector! {
     name: "comma-separated-files-in-dep5-copyright",
     tags: ["comma-separated-files-in-dep5-copyright"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "Files",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

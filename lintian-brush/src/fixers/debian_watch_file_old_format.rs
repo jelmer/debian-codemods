@@ -63,6 +63,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-old-format",
     tags: ["older-debian-watch-file-standard", "obsolete-debian-watch-file-standard"],
+    triggers: [crate::workspace::Trigger::Watch(
+        crate::workspace::WatchAspect::Version,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

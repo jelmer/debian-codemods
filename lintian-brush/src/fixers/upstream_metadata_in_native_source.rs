@@ -46,6 +46,10 @@ pub fn detect(
 declare_detector! {
     name: "upstream-metadata-in-native-source",
     tags: ["upstream-metadata-in-native-source"],
+    triggers: [
+        crate::workspace::Trigger::UpstreamMetadataField("*"),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

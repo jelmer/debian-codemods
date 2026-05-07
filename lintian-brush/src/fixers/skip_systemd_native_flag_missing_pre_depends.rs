@@ -96,6 +96,22 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "skip-systemd-native-flag-missing-pre-depends",
     tags: ["skip-systemd-native-flag-missing-pre-depends"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Pre-Depends",
+        },
+        crate::workspace::Trigger::Glob("debian/*.init"),
+        crate::workspace::Trigger::Glob("debian/*.service"),
+        crate::workspace::Trigger::Glob("debian/*.upstart"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

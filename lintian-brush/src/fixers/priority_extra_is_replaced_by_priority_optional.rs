@@ -74,6 +74,23 @@ pub fn detect(
 declare_detector! {
     name: "priority-extra-is-replaced-by-priority-optional",
     tags: ["priority-extra-is-replaced-by-priority-optional"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Priority",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Priority",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

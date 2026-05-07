@@ -162,6 +162,20 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-uses-unnecessary-dh-argument",
     tags: ["debian-rules-uses-unnecessary-dh-argument"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "X-DH-Compat",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

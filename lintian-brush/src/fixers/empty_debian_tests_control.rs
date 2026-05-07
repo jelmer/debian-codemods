@@ -41,6 +41,7 @@ pub fn detect(
 declare_detector! {
     name: "empty-debian-tests-control",
     tags: ["empty-debian-tests-control"],
+    triggers: [crate::workspace::Trigger::File("debian/tests/control")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

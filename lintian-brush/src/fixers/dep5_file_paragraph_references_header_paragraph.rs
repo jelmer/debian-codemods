@@ -100,6 +100,23 @@ pub fn detect(
 declare_detector! {
     name: "dep5-file-paragraph-references-header-paragraph",
     tags: ["dep5-file-paragraph-references-header-paragraph"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "License",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "License",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "License",
+            field: "License",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

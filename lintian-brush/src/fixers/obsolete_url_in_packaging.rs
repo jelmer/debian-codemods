@@ -52,6 +52,13 @@ pub fn detect(
 declare_detector! {
     name: "obsolete-url-in-packaging",
     tags: ["obsolete-url-in-packaging"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Homepage",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

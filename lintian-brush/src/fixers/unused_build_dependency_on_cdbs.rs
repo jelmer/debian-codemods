@@ -75,6 +75,19 @@ pub fn detect(
 declare_detector! {
     name: "unused-build-dependency-on-cdbs",
     tags: ["unused-build-dependency-on-cdbs"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -70,6 +70,13 @@ declare_detector! {
     // Must improve URI format after securing them and before adding browser field
     after: ["vcs-field-uses-insecure-uri"],
     before: ["missing-vcs-browser-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-Git",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

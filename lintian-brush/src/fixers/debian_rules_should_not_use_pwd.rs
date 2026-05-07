@@ -45,6 +45,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-should-not-use-pwd",
     tags: ["debian-rules-calls-pwd"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

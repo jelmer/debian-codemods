@@ -49,6 +49,13 @@ pub fn detect(
 declare_detector! {
     name: "essential-no-not-needed",
     tags: ["essential-no-not-needed"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Essential",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

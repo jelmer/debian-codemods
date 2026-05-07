@@ -69,6 +69,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-contains-unnecessary-get-orig-source-target",
     tags: ["debian-rules-contains-unnecessary-get-orig-source-target"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -34,6 +34,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-pyversions-is-obsolete",
     tags: ["debian-pyversions-is-obsolete"],
+    triggers: [crate::workspace::Trigger::File("debian/pyversions")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

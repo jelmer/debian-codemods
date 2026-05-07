@@ -555,6 +555,12 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-is-missing",
     tags: ["debian-watch-file-is-missing"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/watch"),
+        crate::workspace::Trigger::File("debian/upstream/metadata"),
+        crate::workspace::Trigger::File("setup.py"),
+        crate::workspace::Trigger::Glob("*.cabal"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
