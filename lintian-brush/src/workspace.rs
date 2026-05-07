@@ -608,6 +608,61 @@ pub fn iter_detectors() -> impl Iterator<Item = Box<dyn Detector>> {
         .map(|reg| (reg.create)())
 }
 
+/// Error indicating an unknown detector was requested.
+#[derive(Debug, PartialEq, Eq)]
+pub struct UnknownDetector(pub String);
+
+impl std::fmt::Display for UnknownDetector {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Unknown detector: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownDetector {}
+
+/// Select detectors by name from a list, applying include/exclude sets.
+///
+/// `names` keeps only the listed detectors; `exclude` drops them. An
+/// entry that appears in either set but matches no detector returns
+/// [`UnknownDetector`].
+pub fn select_detectors(
+    detectors: Vec<Box<dyn Detector>>,
+    names: Option<&[&str]>,
+    exclude: Option<&[&str]>,
+) -> Result<Vec<Box<dyn Detector>>, UnknownDetector> {
+    use std::collections::HashSet;
+    let mut select_set = names.map(|names| names.iter().cloned().collect::<HashSet<_>>());
+    let mut exclude_set = exclude.map(|exclude| exclude.iter().cloned().collect::<HashSet<_>>());
+    let mut ret = vec![];
+    for d in detectors.into_iter() {
+        if let Some(select_set) = select_set.as_mut() {
+            if !select_set.remove(d.name()) {
+                if let Some(exclude_set) = exclude_set.as_mut() {
+                    exclude_set.remove(d.name());
+                }
+                continue;
+            }
+        }
+        if let Some(exclude_set) = exclude_set.as_mut() {
+            if exclude_set.remove(d.name()) {
+                continue;
+            }
+        }
+        ret.push(d);
+    }
+    if let Some(select_set) = select_set.filter(|x| !x.is_empty()) {
+        Err(UnknownDetector(
+            select_set.iter().next().unwrap().to_string(),
+        ))
+    } else if let Some(exclude_set) = exclude_set.filter(|x| !x.is_empty()) {
+        Err(UnknownDetector(
+            exclude_set.iter().next().unwrap().to_string(),
+        ))
+    } else {
+        Ok(ret)
+    }
+}
+
 /// Bridge a [`Detector`] into the public [`crate::Fixer`] trait so the CLI
 /// driver picks it up via [`crate::builtin_fixers::get_builtin_fixers`].
 ///
@@ -907,5 +962,81 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
         assert!(ws.walk_dir(Path::new("debian")).unwrap().is_none());
+    }
+
+    /// Mock detector for select_detectors tests; doesn't actually detect
+    /// anything.
+    struct DummyDetector {
+        name: &'static str,
+        tags: &'static [&'static str],
+    }
+
+    impl Detector for DummyDetector {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+        fn lintian_tags(&self) -> &'static [&'static str] {
+            self.tags
+        }
+        fn detect(
+            &self,
+            _ws: &dyn FixerWorkspace,
+            _preferences: &crate::FixerPreferences,
+        ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
+            unimplemented!()
+        }
+    }
+
+    fn dummies() -> Vec<Box<dyn Detector>> {
+        vec![
+            Box::new(DummyDetector {
+                name: "dummy1",
+                tags: &["some-tag"],
+            }),
+            Box::new(DummyDetector {
+                name: "dummy2",
+                tags: &["other-tag"],
+            }),
+        ]
+    }
+
+    #[test]
+    fn select_detectors_includes() {
+        let result = select_detectors(dummies(), Some(["dummy1"].as_slice()), None).map(|m| {
+            m.into_iter()
+                .map(|d| d.name().to_string())
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(result, Ok(vec!["dummy1".to_string()]));
+    }
+
+    #[test]
+    fn select_detectors_unknown_include() {
+        assert!(select_detectors(dummies(), Some(["other"].as_slice()), None).is_err());
+    }
+
+    #[test]
+    fn select_detectors_unknown_exclude() {
+        assert!(select_detectors(
+            dummies(),
+            Some(["dummy"].as_slice()),
+            Some(["some-other"].as_slice())
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn select_detectors_excludes() {
+        let result = select_detectors(
+            dummies(),
+            Some(["dummy1"].as_slice()),
+            Some(["dummy2"].as_slice()),
+        )
+        .map(|m| {
+            m.into_iter()
+                .map(|d| d.name().to_string())
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(result, Ok(vec!["dummy1".to_string()]));
     }
 }
