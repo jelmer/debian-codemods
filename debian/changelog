@@ -6,8 +6,10 @@ debian-codemods (0.176) UNRELEASED; urgency=medium
   * no-homepage-field, package-has-no-description: Report the lintian
     issue even when no upstream homepage or description can be guessed,
     rather than silently dropping the diagnostic.
+  * Bump debian-analyzer to 0.160.16, fixing versioning of new files.
+    Thanks, Timo Röhling, for the debugging help. Closes: #1064436
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 03 May 2026 00:00:00 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 May 2026 21:59:22 +0100
 
 debian-codemods (0.175) unstable; urgency=medium
 

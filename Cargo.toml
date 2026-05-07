@@ -35,7 +35,7 @@ sqlx = { version = "0.8", default-features = false }
 semver = "1"
 toml_edit = ">=0.22,<0.29"
 tokio = "1.39"
-debian-analyzer = { version = "0.160.15" }
+debian-analyzer = { version = "0.160.16" }
 svp-client = "0.2.0"
 regex = "1"
 indexmap = "2.7"
