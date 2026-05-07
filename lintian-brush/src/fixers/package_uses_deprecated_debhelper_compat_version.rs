@@ -148,7 +148,7 @@ fn upgrade_to_debhelper_11(
         let maintscript_rel = PathBuf::from("debian").join(format!("{}.maintscript", package));
         let existing = ws
             .read_file(&maintscript_rel)?
-            .and_then(|b| String::from_utf8(b).ok())
+            .and_then(|b| String::from_utf8(b.into_owned()).ok())
             .unwrap_or_default();
 
         let rm_conffile_line = format!(
@@ -805,7 +805,7 @@ pub fn detect(
     let mut rules_mf: Option<Makefile> = None;
     let original_rules_text = ws
         .read_file(Path::new("debian/rules"))?
-        .and_then(|b| String::from_utf8(b).ok())
+        .and_then(|b| String::from_utf8(b.into_owned()).ok())
         .unwrap_or_default();
 
     if compat_bytes.is_some() {

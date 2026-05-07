@@ -26,7 +26,7 @@ pub fn detect(
         let Some(bytes) = ws.read_file(&rel_path)? else {
             continue;
         };
-        let Ok(content) = String::from_utf8(bytes) else {
+        let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
         let desktop = Desktop::from_str(&content)

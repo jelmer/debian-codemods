@@ -12,7 +12,7 @@ pub fn detect(
     let Some(bytes) = ws.read_file(Path::new("debian/pyversions"))? else {
         return Ok(Vec::new());
     };
-    let content = String::from_utf8(bytes).map_err(|_| FixerError::NoChanges)?;
+    let content = std::str::from_utf8(&bytes).map_err(|_| FixerError::NoChanges)?;
     if !content.trim().starts_with("2.") {
         return Ok(Vec::new());
     }
