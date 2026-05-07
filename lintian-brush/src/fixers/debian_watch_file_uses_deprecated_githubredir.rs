@@ -59,6 +59,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "debian/watch uses deprecated githubredir.debian.net.",
                 "Remove use of githubredir - see https://lists.debian.org/debian-devel-announce/2014/10/msg00000.html for details.",
                 actions,
             )

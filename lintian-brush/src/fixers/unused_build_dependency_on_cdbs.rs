@@ -56,15 +56,21 @@ pub fn detect(
             field: (*field).to_string(),
             package: "cdbs".into(),
         });
-        let message = "Drop unused build-dependency on cdbs.";
+        let description = "Build-Depends on cdbs but cdbs is not used.";
+        let label = "Drop unused build-dependency on cdbs.";
         if emitted_issue {
-            diagnostics.push(Diagnostic::untagged(message, vec![action]));
+            diagnostics.push(Diagnostic::untagged(description, label, vec![action]));
         } else {
             let issue = LintianIssue::source_with_info(
                 "unused-build-dependency-on-cdbs",
                 vec!["[debian/rules]".to_string()],
             );
-            diagnostics.push(Diagnostic::with_actions(issue, message, vec![action]));
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                description,
+                label,
+                vec![action],
+            ));
             emitted_issue = true;
         }
     }

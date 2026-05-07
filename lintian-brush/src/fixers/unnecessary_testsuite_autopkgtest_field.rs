@@ -34,6 +34,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Testsuite: autopkgtest is now implied.",
         "Remove unnecessary 'Testsuite: autopkgtest' header.",
         vec![Action::Deb822(Deb822Action::RemoveField {
             file: PathBuf::from("debian/control"),

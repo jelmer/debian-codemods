@@ -20,6 +20,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/pycompat is obsolete.",
         "Remove obsolete debian/pycompat file.",
         vec![Action::Filesystem(FilesystemAction::Delete {
             file: pycompat,

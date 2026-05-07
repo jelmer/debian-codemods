@@ -51,6 +51,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/rules contains unnecessary get-orig-source target.",
         "Remove unnecessary get-orig-source-target.",
         vec![
             Action::Makefile(MakefileAction::RemoveRule {

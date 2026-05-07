@@ -38,6 +38,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Maintainer uses non-canonical Debian QA group name.",
         "Fix Debian QA group name.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),
@@ -197,7 +198,10 @@ mod tests {
         let diagnostics = detect_in(base_path).unwrap();
         assert_eq!(diagnostics.len(), 1);
         let diag = &diagnostics[0];
-        assert_eq!(diag.message, "Fix Debian QA group name.");
+        assert_eq!(
+            diag.message,
+            "Maintainer uses non-canonical Debian QA group name."
+        );
         assert_eq!(diag.plans.len(), 1);
         assert_eq!(diag.plans[0].actions.len(), 1);
         assert_eq!(

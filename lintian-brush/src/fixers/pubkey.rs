@@ -504,8 +504,13 @@ pub fn detect(
             );
             watch_actions.extend(entry_actions.iter().cloned());
             diagnostics.push(
-                Diagnostic::with_actions(issue, desc, entry_actions)
-                    .with_certainty(Certainty::Certain),
+                Diagnostic::with_actions(
+                    issue,
+                    "debian/watch does not check the OpenPGP signature.",
+                    desc,
+                    entry_actions,
+                )
+                .with_certainty(Certainty::Certain),
             );
         }
     }
@@ -576,6 +581,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "debian/watch references signing keys that are not present.",
                     key_desc,
                     vec![Action::Filesystem(FilesystemAction::Write {
                         file: PathBuf::from("debian/upstream/signing-key.asc"),

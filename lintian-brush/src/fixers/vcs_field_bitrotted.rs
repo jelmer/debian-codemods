@@ -457,6 +457,7 @@ pub fn detect(
             "vcs-obsolete-in-debian-infrastructure",
             vec![format!("vcs-{} {}", vcs_type.to_lowercase(), old_vcs_url)],
         ),
+        "Vcs-* headers point to obsolete Debian infrastructure.",
         "Update Vcs-* headers to use salsa repository.",
         actions.clone(),
     ));
@@ -486,6 +487,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source_with_info("vcs-field-bitrotted", vec![info]),
+            "Vcs-* field is bitrotted.",
             "Update Vcs-* headers to use salsa repository.",
             actions,
         ));

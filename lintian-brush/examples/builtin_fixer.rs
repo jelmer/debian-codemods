@@ -15,7 +15,8 @@ fn detect(
 ) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(vec![Diagnostic::with_actions(
         LintianIssue::source("example-tag"),
-        "Fixed example issue",
+        "Example issue is present.",
+        "Fix example issue.",
         Vec::new(),
     )
     .with_certainty(Certainty::Certain)])

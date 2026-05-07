@@ -112,6 +112,7 @@ pub fn detect(
         let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Deprecated debhelper tools from autotools-dev are used.",
             "Drop use of autotools-dev debhelper.",
             plan_actions,
         ));

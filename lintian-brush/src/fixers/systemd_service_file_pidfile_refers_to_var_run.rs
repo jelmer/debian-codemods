@@ -78,6 +78,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "systemd service PIDFile refers to obsolete /var/run.",
             "Replace /var/run with /run for the Service PIDFile.",
             actions,
         ));

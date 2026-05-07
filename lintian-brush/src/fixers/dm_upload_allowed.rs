@@ -23,6 +23,7 @@ pub fn detect(
     let issue = LintianIssue::source_with_info("malformed-dm-upload-allowed", vec![value]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "DM-Upload-Allowed field in debian/control is obsolete.",
         "Remove malformed and unnecessary DM-Upload-Allowed field in debian/control.",
         vec![Action::Deb822(Deb822Action::RemoveField {
             file: PathBuf::from("debian/control"),

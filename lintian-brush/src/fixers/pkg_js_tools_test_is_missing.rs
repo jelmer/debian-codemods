@@ -56,6 +56,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "pkg-js-tools test is missing.",
         "Add autopkgtest for node.",
         actions,
     )

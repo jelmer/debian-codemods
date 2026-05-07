@@ -48,6 +48,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "pkg-perl package is missing the Testsuite header.",
         "Set Testsuite header for perl package.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),

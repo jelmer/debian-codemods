@@ -74,7 +74,7 @@ pub fn detect(
             issue,
             format!("file{}{}", SEP, name),
             vec![ActionPlan {
-                label: Some(format!("Remove unreferenced patch {}.", name)),
+                label: format!("Remove unreferenced patch {}.", name),
                 opinionated: true,
                 actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
             }],
@@ -84,10 +84,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut names: Vec<String> = fixed
         .iter()
-        .filter_map(|d| {
+        .filter_map(|(d, _)| {
             d.message
                 .split_once(SEP)
                 .filter(|(tag, _)| *tag == "file")

@@ -155,6 +155,7 @@ pub fn detect(
                 };
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
+                    "Trailing whitespace.",
                     "Trim trailing whitespace.",
                     plan_actions,
                 ));

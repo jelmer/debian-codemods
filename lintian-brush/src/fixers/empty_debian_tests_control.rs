@@ -27,6 +27,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/tests/control is empty.",
         "Remove empty debian/tests/control.",
         vec![
             Action::Filesystem(FilesystemAction::Delete { file: rel }),

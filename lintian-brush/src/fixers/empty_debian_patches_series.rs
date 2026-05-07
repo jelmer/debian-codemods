@@ -26,7 +26,7 @@ pub fn detect(
         certainty: Some(Certainty::Certain),
         patch_name: None,
         plans: vec![ActionPlan {
-            label: None,
+            label: "Remove empty debian/patches/series.".to_string(),
             opinionated: true,
             actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
         }],

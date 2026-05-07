@@ -83,15 +83,19 @@ pub fn detect(
         }));
     }
 
-    let description = if renamed_list {
+    let label = if renamed_list {
         "Migrate from dpatch to 3.0 (quilt) source format. Remove dpatch from Build-Depends. Set source format to 3.0 (quilt). Rename debian/patches/00list to series"
     } else {
         "Migrate from dpatch to 3.0 (quilt) source format. Remove dpatch from Build-Depends. Set source format to 3.0 (quilt)"
     };
 
-    Ok(vec![
-        Diagnostic::with_actions(issue, description, actions).with_certainty(Certainty::Certain)
-    ])
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        "Package uses deprecated dpatch patch system.",
+        label,
+        actions,
+    )
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_detector! {

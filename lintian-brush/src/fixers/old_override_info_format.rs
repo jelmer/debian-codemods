@@ -122,7 +122,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let description = if fixed_linenos.len() == 1 {
+    let label = if fixed_linenos.len() == 1 {
         let (path, linenos) = fixed_linenos.iter().next().unwrap();
         format!(
             "Update lintian override info format in {} on line {}.",
@@ -157,7 +157,8 @@ pub fn detect(
     for (issue, selector, file, new_info) in pending {
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            description.clone(),
+            "Update lintian override info format in d/source/lintian-overrides on line 1.",
+            label.clone(),
             vec![Action::LintianOverrides(
                 LintianOverridesAction::SetLineInfo {
                     file,

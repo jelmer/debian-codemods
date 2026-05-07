@@ -593,6 +593,10 @@ pub fn detect(
 
     // Build description - if repository was converted, it's already in changed_fields
     let description = format!(
+        "Upstream metadata is missing fields: {}.",
+        formatted_fields.join(", ")
+    );
+    let label = format!(
         "Set upstream metadata fields: {}.",
         formatted_fields.join(", ")
     );
@@ -635,7 +639,7 @@ pub fn detect(
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     let mut action_attached = false;
-    let mut take_action = |attached: &mut bool| -> Vec<Action> {
+    let take_action = |attached: &mut bool| -> Vec<Action> {
         if *attached {
             Vec::new()
         } else {
@@ -646,8 +650,12 @@ pub fn detect(
 
     if fixed_issues.is_empty() {
         diagnostics.push(
-            Diagnostic::untagged(description.clone(), take_action(&mut action_attached))
-                .with_certainty(achieved_certainty),
+            Diagnostic::untagged(
+                description.clone(),
+                label.clone(),
+                take_action(&mut action_attached),
+            )
+            .with_certainty(achieved_certainty),
         );
     } else {
         for issue in fixed_issues {
@@ -657,7 +665,7 @@ pub fn detect(
                 Vec::new()
             };
             diagnostics.push(
-                Diagnostic::with_actions(issue, description.clone(), actions)
+                Diagnostic::with_actions(issue, description.clone(), label.clone(), actions)
                     .with_certainty(achieved_certainty),
             );
         }

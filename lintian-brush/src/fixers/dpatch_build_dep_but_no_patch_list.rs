@@ -54,6 +54,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "dpatch is in Build-Depends but no patch list is present.",
         "Add missing debian/patches/00list file for dpatch.",
         vec![Action::Filesystem(FilesystemAction::Write {
             file: PathBuf::from("debian/patches/00list"),

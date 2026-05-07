@@ -695,9 +695,13 @@ pub trait Detector: Send + Sync {
     /// Optional: customise the description used in the resulting
     /// [`crate::FixerResult`]. Defaults to
     /// [`crate::builtin_fixers::default_describe`].
+    ///
+    /// Each entry in `fixed` pairs a diagnostic with the [`ActionPlan`]
+    /// the applier picked for it, so the describer can use the picked
+    /// plan's `label` directly without re-running the selection logic.
     fn describe(
         &self,
-        fixed: &[crate::diagnostic::Diagnostic],
+        fixed: &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
         actions: &[crate::diagnostic::Action],
     ) -> String {
         crate::builtin_fixers::default_describe(fixed, actions)
@@ -976,11 +980,17 @@ macro_rules! declare_detector {
             $(
             fn describe(
                 &self,
-                fixed: &[$crate::diagnostic::Diagnostic],
+                fixed: &[(
+                    $crate::diagnostic::Diagnostic,
+                    $crate::diagnostic::ActionPlan,
+                )],
                 actions: &[$crate::diagnostic::Action],
             ) -> String {
                 let describe_fn: fn(
-                    &[$crate::diagnostic::Diagnostic],
+                    &[(
+                        $crate::diagnostic::Diagnostic,
+                        $crate::diagnostic::ActionPlan,
+                    )],
                     &[$crate::diagnostic::Action],
                 ) -> String = $describe_fn;
                 describe_fn(fixed, actions)

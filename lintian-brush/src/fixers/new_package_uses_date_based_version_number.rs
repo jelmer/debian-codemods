@@ -47,6 +47,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "New package uses a date-based version number.",
         "Use version prefix for date-based versionioning.",
         vec![Action::Changelog(ChangelogAction::SetEntryVersion {
             file: PathBuf::from("debian/changelog"),

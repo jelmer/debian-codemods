@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, MakefileAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_control::lossless::relations::Relations;
@@ -318,7 +318,8 @@ pub fn detect(
             if let Some(first_issue) = issues_iter.next() {
                 diagnostics.push(Diagnostic::with_actions(
                     first_issue,
-                    String::new(),
+                    "Debug symbol migration appears complete.",
+                    "Drop transition for old debug package migration.",
                     vec![
                         Action::Makefile(MakefileAction::RemoveRule {
                             file: rules_rel.clone(),
@@ -334,7 +335,8 @@ pub fn detect(
             for extra_issue in issues_iter {
                 diagnostics.push(Diagnostic::with_actions(
                     extra_issue,
-                    String::new(),
+                    "Debug symbol migration appears complete.",
+                    "Drop transition for old debug package migration.",
                     Vec::new(),
                 ));
             }
@@ -359,7 +361,8 @@ pub fn detect(
                 };
                 diagnostics.push(Diagnostic::with_actions(
                     rewrite.issue,
-                    String::new(),
+                    "Debug symbol migration appears complete.",
+                    "Drop transition for old debug package migration.",
                     vec![action],
                 ));
             }
@@ -369,7 +372,7 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(_fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     "Drop transition for old debug package migration.".to_string()
 }
 

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_control::lossless::relations::Relations;
@@ -79,6 +79,7 @@ pub fn detect(
             );
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                format!("Built-Using field on arch:all package {}.", binary_name),
                 format!(
                     "Remove unnecessary {} from Built-Using for {}.",
                     MISC_BU, binary_name
@@ -109,6 +110,7 @@ pub fn detect(
                 );
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
+                    format!("Missing Built-Using field for Go package {}.", binary_name),
                     format!("Add missing {} to Built-Using on {}.", MISC_BU, binary_name),
                     vec![Action::Deb822(Deb822Action::EnsureSubstvar {
                         file: control_rel.clone(),
@@ -138,6 +140,10 @@ pub fn detect(
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
                     format!(
+                        "Missing Static-Built-Using field for Go package {}.",
+                        binary_name
+                    ),
+                    format!(
                         "Add missing {} to Static-Built-Using on {}.",
                         MISC_SBU, binary_name
                     ),
@@ -160,7 +166,7 @@ pub fn detect(
 /// Categorise each Built-Using-related action by its (substvar, field,
 /// is_drop) shape and collect the binary package name from the
 /// paragraph selector.
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut added: Vec<String> = Vec::new();
     let mut removed: Vec<String> = Vec::new();
     let mut added_static: Vec<String> = Vec::new();

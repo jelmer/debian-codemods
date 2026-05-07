@@ -242,29 +242,24 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let summary = if effective.len() == 1 {
-        let (dep, kind, name, _) = &effective[0];
-        format!(
-            "Add missing build dependency on {} for {} {}.",
-            dep, kind, name
-        )
-    } else {
-        let mut desc = "Add missing build dependencies:".to_string();
-        for (dep, kind, name, _) in &effective {
-            desc.push_str(&format!("\n* {} for {} {}.", dep, kind, name));
-        }
-        desc
-    };
-
     // Each diagnostic carries its own EnsureRelation. The applier runs
     // them in order against the same Build-Depends field; ensure_relation
     // is idempotent and additive so concurrent dependent edits compose
     // correctly.
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
-    for (dep, _, _, issue) in effective {
+    for (dep, kind, name, issue) in effective {
+        let description = format!(
+            "Build dependency on {} is missing for {} {}.",
+            dep, kind, name
+        );
+        let label = format!(
+            "Add missing build dependency on {} for {} {}.",
+            dep, kind, name
+        );
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            summary.clone(),
+            description,
+            label,
             vec![Action::Deb822(Deb822Action::EnsureRelation {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::Source,

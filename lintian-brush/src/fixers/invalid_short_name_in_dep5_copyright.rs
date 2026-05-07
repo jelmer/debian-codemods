@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashMap;
@@ -126,11 +126,21 @@ pub fn detect(
         let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Invalid short license name in debian/copyright.",
             summary.clone(),
             plan_actions,
         ));
     }
     Ok(diagnostics)
+}
+
+/// Describer that prefers the per-diagnostic plan label (which carries the
+/// per-rename summary) over the deduplicated descriptions.
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    fixed
+        .iter()
+        .find_map(|(d, _)| d.plans.first().map(|p| p.label.clone()))
+        .unwrap_or_default()
 }
 
 declare_detector! {
@@ -149,6 +159,7 @@ declare_detector! {
         },
     ],
     detect: |ws, prefs| detect(ws, prefs),
+    describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
 
 #[cfg(test)]

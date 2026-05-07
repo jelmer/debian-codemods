@@ -128,6 +128,11 @@ pub fn detect(
     let mut sorted_removed = to_remove.clone();
     sorted_removed.sort();
     let description = format!(
+        "debian/upstream/metadata has obsolete field{} {} (already in machine-readable debian/copyright).",
+        if sorted_removed.len() > 1 { "s" } else { "" },
+        sorted_removed.join(", ")
+    );
+    let label = format!(
         "Remove obsolete field{} {} from debian/upstream/metadata (already present in machine-readable debian/copyright).",
         if sorted_removed.len() > 1 { "s" } else { "" },
         sorted_removed.join(", ")
@@ -159,7 +164,7 @@ pub fn detect(
             .collect()
     };
 
-    Ok(vec![Diagnostic::untagged(description, actions)])
+    Ok(vec![Diagnostic::untagged(description, label, actions)])
 }
 
 declare_detector! {

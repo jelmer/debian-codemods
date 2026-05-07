@@ -90,8 +90,18 @@ pub fn detect(
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     for (i, issue) in issues.into_iter().enumerate() {
         let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
+        let problem_description = match issue.tag.as_deref() {
+            Some("copyright-refers-to-symlink-license") => {
+                "debian/copyright refers to symlink in common-licenses.".to_string()
+            }
+            Some("copyright-refers-to-versionless-license-file") => {
+                "debian/copyright refers to versionless license file.".to_string()
+            }
+            _ => "debian/copyright refers to non-specific license file.".to_string(),
+        };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            problem_description,
             summary.clone(),
             plan_actions,
         ));

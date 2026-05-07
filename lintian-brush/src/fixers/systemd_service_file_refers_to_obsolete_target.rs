@@ -56,6 +56,7 @@ pub fn detect(
 
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                "systemd service file refers to obsolete target.",
                 "Remove references to obsolete targets in systemd unit files.",
                 vec![Action::Systemd(SystemdAction::RemoveValue {
                     file: rel.clone(),

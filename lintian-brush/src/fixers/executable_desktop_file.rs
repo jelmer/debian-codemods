@@ -37,6 +37,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "Desktop file is executable.",
             "Remove executable bit from desktop files.",
             vec![Action::Filesystem(FilesystemAction::SetMode {
                 file: rel,

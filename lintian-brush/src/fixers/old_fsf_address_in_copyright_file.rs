@@ -49,6 +49,7 @@ pub fn detect(
     let issue = LintianIssue::source_with_info("old-fsf-address-in-copyright-file", vec![]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Old FSF postal address in debian/copyright.",
         "Update FSF postal address.",
         actions,
     )

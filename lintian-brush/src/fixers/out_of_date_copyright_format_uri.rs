@@ -76,6 +76,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Out-of-date machine-readable copyright file URI.",
         "Use correct machine-readable copyright file URI.",
         actions,
     )

@@ -56,6 +56,7 @@ pub fn detect(
                     occurrence: *count,
                 });
                 diagnostics.push(Diagnostic::untagged(
+                    "Duplicate line in changelog.",
                     "Remove duplicate line from changelog.",
                     vec![action],
                 ));

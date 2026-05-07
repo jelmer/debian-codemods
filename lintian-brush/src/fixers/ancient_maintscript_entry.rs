@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, MaintscriptAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, MaintscriptAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -180,8 +180,10 @@ pub fn detect(
         })?;
         for r in removed {
             let detail = format_removed_entry_detail(&r, &cl_dates);
+            let label = format!("Remove obsolete maintscript entry {}.", detail);
             diagnostics.push(Diagnostic::untagged(
                 detail,
+                label,
                 vec![Action::Maintscript(MaintscriptAction::DropEntry {
                     file: rel.clone(),
                     entry: r.entry.to_string(),
@@ -193,13 +195,13 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let summary = if fixed.len() == 1 {
         "Remove an obsolete maintscript entry.".to_string()
     } else {
         format!("Remove {} obsolete maintscript entries.", fixed.len())
     };
-    let details: Vec<&str> = fixed.iter().map(|d| d.message.as_str()).collect();
+    let details: Vec<&str> = fixed.iter().map(|(d, _)| d.message.as_str()).collect();
     format!("{}\n\n{}", summary, details.join("\n"))
 }
 

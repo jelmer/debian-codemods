@@ -67,6 +67,7 @@ pub fn detect(
         let plan_actions = if i == 0 { actions.clone() } else { Vec::new() };
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "dh quilt addon used with '3.0 (quilt)' source format.",
             "Don't specify --with=quilt, since package uses '3.0 (quilt)' source format.",
             plan_actions,
         ));

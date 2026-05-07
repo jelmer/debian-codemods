@@ -1,10 +1,8 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::{Path, PathBuf};
-
-const SEP: char = '\t';
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -31,7 +29,8 @@ pub fn detect(
         let rel = PathBuf::from("debian").join(&file_name);
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            format!("file{}{}", SEP, file_name),
+            format!("Package contains obsolete linda override {}.", file_name),
+            format!("Remove obsolete linda override {}.", file_name),
             vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
         ));
     }
@@ -39,14 +38,15 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let mut files: Vec<String> = fixed
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
+    let mut files: Vec<String> = actions
         .iter()
-        .filter_map(|d| {
-            d.message
-                .split_once(SEP)
-                .filter(|(tag, _)| *tag == "file")
-                .map(|(_, name)| name.to_string())
+        .filter_map(|a| match a {
+            Action::Filesystem(FilesystemAction::Delete { file }) => file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string()),
+            _ => None,
         })
         .collect();
     files.sort();

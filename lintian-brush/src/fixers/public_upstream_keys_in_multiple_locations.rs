@@ -93,6 +93,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Upstream signing keys are in multiple locations.",
         "Merge upstream signing key files.",
         actions,
     )

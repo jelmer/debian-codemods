@@ -240,6 +240,7 @@ pub async fn detect_async(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Vcs-Git URL points at an invalid branch.".to_string(),
         "Set branch from vcswatch in Vcs-Git URL.".to_string(),
         actions,
     )])

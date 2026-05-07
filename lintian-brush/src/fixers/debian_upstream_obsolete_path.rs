@@ -63,6 +63,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                format!("Upstream metadata is at obsolete path {}.", label),
                 "Move upstream metadata to debian/upstream/metadata.",
                 actions,
             )

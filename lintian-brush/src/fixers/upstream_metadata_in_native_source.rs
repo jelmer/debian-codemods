@@ -32,6 +32,7 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Native source package contains debian/upstream/metadata.",
         "Remove debian/upstream/metadata in native source package.",
         vec![
             Action::Filesystem(FilesystemAction::Delete { file: metadata_rel }),

@@ -87,12 +87,17 @@ pub fn detect(
         // resolution that gets overwritten by later iterations).
         "This patch changes it to use AC_PATH_TOOL."
     };
+    let description = if any_pkg_prog && !any_path_tool {
+        "AC_PATH_PROG is not cross-compilation safe; use PKG_PROG_PKG_CONFIG."
+    } else {
+        "AC_PATH_PROG is not cross-compilation safe; use AC_PATH_TOOL."
+    };
     let first_line = matches[0].line_number;
     let issue = LintianIssue::source_with_info(
         "autotools-pkg-config-macro-not-cross-compilation-safe",
         vec![format!("AC_PATH_PROG [{}:{}]", file_name, first_line)],
     );
-    let description = format!(
+    let label = format!(
         "Use cross-build compatible macro for finding pkg-config.\n\n\
          The package uses AC_PATH_PROG to discover the location of pkg-config(1). This\n\
          macro fails to select the correct version to support cross-compilation.\n\n\
@@ -138,9 +143,13 @@ pub fn detect(
         }
     }
 
-    Ok(vec![
-        Diagnostic::with_actions(issue, description, actions).with_patch_name("ac-path-pkgconfig")
-    ])
+    Ok(vec![Diagnostic::with_actions(
+        issue,
+        description,
+        label,
+        actions,
+    )
+    .with_patch_name("ac-path-pkgconfig")])
 }
 
 declare_detector! {

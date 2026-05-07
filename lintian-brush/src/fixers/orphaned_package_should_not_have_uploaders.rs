@@ -44,6 +44,7 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Orphaned package has Uploaders.",
         "Remove uploaders from orphaned package.",
         vec![Action::Deb822(Deb822Action::RemoveField {
             file: PathBuf::from("debian/control"),

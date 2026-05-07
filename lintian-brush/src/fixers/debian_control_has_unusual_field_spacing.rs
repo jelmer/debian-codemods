@@ -48,15 +48,16 @@ fn collect_diagnostics(
                 paragraph: selector.clone(),
                 field: key.clone(),
             })];
-            let message = "Strip unusual field spacing from debian/control.";
+            let description = "debian/control has unusual field spacing.";
+            let label = "Strip unusual field spacing from debian/control.";
             if tagged {
                 let issue = LintianIssue::source_with_info(
                     "debian-control-has-unusual-field-spacing",
                     vec![format!("{} [debian/control:{}]", key, line_number)],
                 );
-                diagnostics.push(Diagnostic::with_actions(issue, message, actions));
+                diagnostics.push(Diagnostic::with_actions(issue, description, label, actions));
             } else {
-                diagnostics.push(Diagnostic::untagged(message, actions));
+                diagnostics.push(Diagnostic::untagged(description, label, actions));
             }
         }
     }

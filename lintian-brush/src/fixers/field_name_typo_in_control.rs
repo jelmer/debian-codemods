@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashSet;
@@ -58,6 +58,10 @@ pub fn detect(
                     );
                     diagnostics.push(Diagnostic::with_actions(
                         issue,
+                        format!(
+                            "Field name {} has wrong case (should be {}).",
+                            field, valid_field
+                        ),
                         format!("{} ⇒ {}", field, valid_field),
                         vec![Action::Deb822(Deb822Action::RenameField {
                             file: PathBuf::from("debian/control"),
@@ -91,6 +95,10 @@ pub fn detect(
                     );
                     diagnostics.push(Diagnostic::with_actions(
                         issue,
+                        format!(
+                            "Field name {} has wrong case (should be {}).",
+                            field, valid_field
+                        ),
                         format!("{} ⇒ {}", field, valid_field),
                         vec![Action::Deb822(Deb822Action::RenameField {
                             file: PathBuf::from("debian/control"),
@@ -112,7 +120,7 @@ pub fn detect(
 
 /// Aggregate per-rename diagnostics into one
 /// "Fix field name case(s) in debian/control (X ⇒ Y, A ⇒ B)." line.
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut pairs: Vec<(String, String)> = actions
         .iter()
         .filter_map(|a| match a {

@@ -45,6 +45,7 @@ pub fn detect(
             );
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                format!("debian/rules uses deprecated {} target.", trimmed),
                 String::new(),
                 vec![Action::Makefile(MakefileAction::RenameRuleTarget {
                     file: rules_rel.clone(),
@@ -70,7 +71,9 @@ pub fn detect(
         )
     };
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

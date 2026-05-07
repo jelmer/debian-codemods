@@ -85,6 +85,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 LintianIssue::source("team/pkg-perl/vcs/no-team-url"),
+                "pkg-perl package does not use the team Vcs URL.",
                 "Use standard Vcs fields for perl package.",
                 actions,
             )
@@ -107,6 +108,7 @@ pub fn detect(
                     "team/pkg-perl/vcs/no-git",
                     vec![format!("{} {}", key, value)],
                 ),
+                format!("pkg-perl package has stale {} field.", key),
                 "Use standard Vcs fields for perl package.",
                 vec![Action::Deb822(Deb822Action::RemoveField {
                     file: control_rel.clone(),

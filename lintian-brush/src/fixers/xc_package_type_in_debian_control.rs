@@ -4,7 +4,8 @@ use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
 
-const MESSAGE: &str = "Replace XC-Package-Type with Package-Type.";
+const DESCRIPTION: &str = "Replace XC-Package-Type with Package-Type.";
+const LABEL: &str = "Replace XC-Package-Type with Package-Type.";
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -31,7 +32,8 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
-                    MESSAGE,
+                    DESCRIPTION,
+                    LABEL,
                     vec![Action::Deb822(Deb822Action::RenameField {
                         file: PathBuf::from("debian/control"),
                         paragraph: ParagraphSelector::Source,
@@ -64,7 +66,8 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
-                MESSAGE,
+                DESCRIPTION,
+                LABEL,
                 vec![Action::Deb822(Deb822Action::RenameField {
                     file: PathBuf::from("debian/control"),
                     paragraph: ParagraphSelector::Binary {
@@ -125,7 +128,7 @@ mod tests {
         fs::write(&control_path, "Source: test\nXC-Package-Type: deb\n\nPackage: test\nDescription: Test\n Test package\n").unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
         assert_eq!(result.certainty, Some(Certainty::Certain));
 
         assert_eq!(

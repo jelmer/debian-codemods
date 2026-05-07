@@ -94,6 +94,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "systemd service Alias= is missing an extension.",
             "Use proper extensions in Alias in systemd files.",
             actions,
         ));

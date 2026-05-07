@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_analyzer::lintian::StandardsVersion;
@@ -50,6 +50,7 @@ pub fn detect(
         let new_value = format!("{}.0", standards_version_str);
         return Ok(vec![Diagnostic::with_actions(
             issue,
+            "Standards-Version is missing a .0 suffix.",
             format!("suffix{}{}", SEP, new_value),
             vec![Action::Deb822(Deb822Action::SetField {
                 file: control_rel,
@@ -87,6 +88,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Standards-Version is invalid.",
         format!(
             "replace{}{}{}{}",
             SEP, standards_version_str, SEP, new_version_str
@@ -100,11 +102,14 @@ pub fn detect(
     )])
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let Some(first) = fixed.first() else {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let Some((first, _)) = fixed.first() else {
         return "Update Standards-Version.".to_string();
     };
-    let parts: Vec<&str> = first.message.split(SEP).collect();
+    let Some(plan) = first.plans.first() else {
+        return "Update Standards-Version.".to_string();
+    };
+    let parts: Vec<&str> = plan.label.split(SEP).collect();
     match parts.first().copied() {
         Some("suffix") => "Add missing .0 suffix in Standards-Version.".to_string(),
         Some("replace") if parts.len() == 3 => format!(
