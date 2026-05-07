@@ -43,6 +43,7 @@ pub fn detect(
     // into the typed control editor's canonical order.
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Vcs-Browser field is missing.",
         "debian/control: Add Vcs-Browser field",
         vec![Action::Deb822(Deb822Action::SetField {
             file: control_rel,

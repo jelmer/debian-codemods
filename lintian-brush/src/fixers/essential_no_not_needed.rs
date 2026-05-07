@@ -32,6 +32,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                format!("Package {} has redundant Essential: no.", package),
                 format!("Remove redundant Essential: no from package {}.", package),
                 vec![Action::Deb822(Deb822Action::RemoveField {
                     file: control_rel.clone(),

@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::path::PathBuf;
@@ -35,6 +35,7 @@ pub fn detect(
             return Ok(vec![Diagnostic::with_actions(
                 issue_obsolete,
                 format!("{}", RENAME_TAG),
+                format!("Rename {} to {}.", OLD_REL, NEW_REL),
                 vec![Action::Filesystem(FilesystemAction::Rename {
                     file: old_rel,
                     to: new_rel,
@@ -75,13 +76,19 @@ pub fn detect(
 
     // The issue order in the message file is merge first, then obsolete.
     Ok(vec![
-        Diagnostic::with_actions(issue_merge, format!("{}", MERGE_TAG), actions),
+        Diagnostic::with_actions(
+            issue_merge,
+            format!("{}", MERGE_TAG),
+            format!("Merge {} into {}.", OLD_REL, NEW_REL),
+            actions,
+        ),
         // The obsolete diagnostic carries no actions of its own — the
         // merge above already removed the file. Emitting it as a separate
         // diagnostic ensures the lintian issue is still reported.
         Diagnostic::with_actions(
             issue_obsolete,
             format!("{}", MERGE_TAG),
+            format!("Merge {} into {}.", OLD_REL, NEW_REL),
             vec![Action::Filesystem(FilesystemAction::Delete {
                 file: PathBuf::from(OLD_REL),
             })],
@@ -89,8 +96,8 @@ pub fn detect(
     ])
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
-    let is_merge = fixed.iter().any(|d| d.message.starts_with(MERGE_TAG));
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
+    let is_merge = fixed.iter().any(|(d, _)| d.message.starts_with(MERGE_TAG));
     if is_merge {
         format!("Merge {} into {}.", OLD_REL, NEW_REL)
     } else {

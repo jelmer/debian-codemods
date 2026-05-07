@@ -47,6 +47,7 @@ pub fn detect(
         converted.push(name);
         diagnostics.push(
             Diagnostic::untagged(
+                "debian/watch entry can be expressed as a template.",
                 String::new(),
                 vec![Action::Watch(WatchAction::ConvertEntryToTemplate {
                     file: watch_rel.clone(),
@@ -70,7 +71,9 @@ pub fn detect(
         "Use templates in watch file instead of explicit Source/Matching-Pattern.".to_string()
     };
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

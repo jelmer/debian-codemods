@@ -45,6 +45,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Vcs-Git URI for personal Debian Git repository is invalid.",
         "Use valid URI for personal Debian Git repository.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),

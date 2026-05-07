@@ -1,10 +1,8 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::path::PathBuf;
-
-const SEP: char = '\t';
 
 fn is_go_package(source: &debian_control::lossless::Source) -> bool {
     let Some(build_depends) = source.build_depends() else {
@@ -84,7 +82,14 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
-            format!("pkg{}{}", SEP, binary_name),
+            format!(
+                "Static-Built-Using field is missing for Go package {}.",
+                binary_name
+            ),
+            format!(
+                "Add ${{misc:Static-Built-Using}} to Static-Built-Using on {}.",
+                binary_name
+            ),
             vec![Action::Deb822(Deb822Action::EnsureSubstvar {
                 file: control_rel.clone(),
                 paragraph: ParagraphSelector::Binary {
@@ -99,15 +104,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut packages: Vec<String> = fixed
         .iter()
-        .filter_map(|d| {
-            d.message
-                .split_once(SEP)
-                .filter(|(tag, _)| *tag == "pkg")
-                .map(|(_, pkg)| pkg.to_string())
-        })
+        .filter_map(|(d, _)| d.issue.as_ref()?.package.clone())
         .collect();
     packages.sort();
     packages.dedup();

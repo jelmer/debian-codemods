@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::collections::BTreeMap;
@@ -59,6 +59,10 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 format!(
+                    "Field {} on binary package {} duplicates source paragraph.",
+                    key, package_name
+                ),
+                format!(
                     "Remove field {} from binary package {} that duplicates source.",
                     key, package_name
                 ),
@@ -78,7 +82,7 @@ pub fn detect(
 
 /// Aggregate "field X on packages A, B" or, when several distinct fields
 /// are involved, the bullet-list form the original fixer used.
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     // field -> sorted unique package names that had it removed
     let mut by_field: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for action in actions {

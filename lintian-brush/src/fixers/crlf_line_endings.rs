@@ -25,6 +25,7 @@ pub fn detect(
         LintianIssue::source_with_info("carriage-return-line-feed", vec![CONTROL_REL.to_string()]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/control uses CRLF line endings.",
         "Format control file with unix-style line endings.",
         vec![Action::Filesystem(FilesystemAction::NormalizeLineEndings {
             file: PathBuf::from(CONTROL_REL),

@@ -5,7 +5,8 @@ use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-const MESSAGE: &str = "Set Homepage field in Source rather than Binary package.";
+const DESCRIPTION: &str = "Set Homepage field in Source rather than Binary package.";
+const LABEL: &str = "Set Homepage field in Source rather than Binary package.";
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
@@ -40,7 +41,8 @@ pub fn detect(
                 );
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
-                    MESSAGE,
+                    DESCRIPTION,
+                    LABEL,
                     vec![Action::Deb822(Deb822Action::RemoveField {
                         file: PathBuf::from("debian/control"),
                         paragraph: ParagraphSelector::Binary {
@@ -92,7 +94,12 @@ pub fn detect(
                     "homepage-in-binary-package",
                     vec![name.clone()],
                 );
-                diagnostics.push(Diagnostic::with_actions(issue, MESSAGE, actions.clone()));
+                diagnostics.push(Diagnostic::with_actions(
+                    issue,
+                    DESCRIPTION,
+                    LABEL,
+                    actions.clone(),
+                ));
             }
         }
     }
@@ -147,7 +154,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(temp_dir.path()).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
         assert_eq!(result.fixed_lintian_issues.len(), 2);
 
         assert_eq!(

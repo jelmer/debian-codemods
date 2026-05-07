@@ -61,6 +61,7 @@ pub fn detect(
 
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "systemd service may have shutdown ordering problems.",
             "Add Before=shutdown.target to Unit section.",
             vec![Action::Systemd(SystemdAction::Add {
                 file: rel.clone(),

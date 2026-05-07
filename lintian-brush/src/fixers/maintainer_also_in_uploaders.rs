@@ -48,6 +48,7 @@ pub fn detect(
     let issue = LintianIssue::source_with_info("maintainer-also-in-uploaders", vec![]);
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Maintainer is also listed in Uploaders.",
         "Remove maintainer from uploaders.",
         vec![action],
     )])

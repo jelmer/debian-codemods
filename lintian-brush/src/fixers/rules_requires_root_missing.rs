@@ -43,6 +43,7 @@ pub fn detect(
             );
             return Ok(vec![Diagnostic::with_actions(
                 issue,
+                "Rules-Requires-Root field is missing.",
                 "Set Rules-Requires-Root: no.",
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: control_rel,
@@ -55,6 +56,7 @@ pub fn detect(
         }
     } else if current.as_deref() == Some("no") && oldest_dpkg >= dpkg_1_22_13 {
         return Ok(vec![Diagnostic::untagged(
+            "Rules-Requires-Root: no is redundant on modern dpkg.",
             "Removed Rules-Requires-Root",
             vec![Action::Deb822(Deb822Action::RemoveField {
                 file: control_rel,

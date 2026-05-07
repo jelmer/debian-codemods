@@ -28,6 +28,7 @@ pub fn detect(
     }
 
     Ok(vec![Diagnostic::untagged(
+        "debhelper-compat is in Build-Depends-Indep instead of Build-Depends.",
         "Move debhelper-compat from Build-Depends-Indep to Build-Depends.",
         vec![Action::Deb822(Deb822Action::MoveRelation {
             file: control_rel,

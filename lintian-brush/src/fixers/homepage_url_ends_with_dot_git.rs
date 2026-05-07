@@ -4,7 +4,8 @@ use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
 
-const MESSAGE: &str = "Remove .git suffix from Homepage URL.";
+const DESCRIPTION: &str = "Remove .git suffix from Homepage URL.";
+const LABEL: &str = "Remove .git suffix from Homepage URL.";
 
 /// Check if a URL path ends with .git
 fn should_fix_url(url_str: &str) -> bool {
@@ -64,7 +65,8 @@ pub fn detect(
     let issue = LintianIssue::source_with_info(tag, vec![format!("[{}]", homepage)]);
     Ok(vec![Diagnostic::with_actions(
         issue,
-        MESSAGE,
+        DESCRIPTION,
+        LABEL,
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),
             paragraph: ParagraphSelector::Source,
@@ -181,7 +183,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
 
         assert_eq!(
             fs::read_to_string(debian_dir.join("control")).unwrap(),
@@ -203,7 +205,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
 
         assert_eq!(
             fs::read_to_string(debian_dir.join("control")).unwrap(),
@@ -225,7 +227,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
 
         assert_eq!(
             fs::read_to_string(debian_dir.join("control")).unwrap(),
@@ -297,7 +299,7 @@ mod tests {
         .unwrap();
 
         let result = run_apply(base_path).unwrap();
-        assert_eq!(result.description, MESSAGE);
+        assert_eq!(result.description, DESCRIPTION);
 
         assert_eq!(
             fs::read_to_string(debian_dir.join("control")).unwrap(),

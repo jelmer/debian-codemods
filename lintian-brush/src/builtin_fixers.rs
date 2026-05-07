@@ -15,16 +15,16 @@
 
 use super::*;
 
-/// Default describer: deduplicates the diagnostics' per-issue messages
-/// and joins them with newlines.
+/// Default describer: deduplicates the imperative labels of the
+/// applied plans and joins them with newlines.
 pub fn default_describe(
-    fixed: &[crate::diagnostic::Diagnostic],
+    fixed: &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
     _actions: &[crate::diagnostic::Action],
 ) -> String {
     let mut seen = std::collections::HashSet::new();
     let unique: Vec<&str> = fixed
         .iter()
-        .map(|d| d.message.as_str())
+        .map(|(_, plan)| plan.label.as_str())
         .filter(|m| seen.insert(*m))
         .collect();
     if unique.len() == 1 {
@@ -57,7 +57,10 @@ pub fn apply_diagnostics_with(
     basedir: &std::path::Path,
     diagnostics: &[crate::diagnostic::Diagnostic],
     preferences: &FixerPreferences,
-    describe: &dyn Fn(&[crate::diagnostic::Diagnostic], &[crate::diagnostic::Action]) -> String,
+    describe: &dyn Fn(
+        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
+        &[crate::diagnostic::Action],
+    ) -> String,
 ) -> Result<FixerResult, FixerError> {
     use debian_analyzer::certainty_sufficient;
 
@@ -67,7 +70,7 @@ pub fn apply_diagnostics_with(
 
     let min_certainty = preferences.minimum_certainty;
 
-    let mut fixed: Vec<crate::diagnostic::Diagnostic> = Vec::new();
+    let mut fixed: Vec<(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)> = Vec::new();
     let mut overridden_issues = Vec::new();
     let mut not_certain_enough: Vec<LintianIssue> = Vec::new();
     let mut min_actual_certainty: Option<Certainty> = None;
@@ -96,7 +99,7 @@ pub fn apply_diagnostics_with(
             continue;
         };
         all_actions.extend(plan.actions.iter().cloned());
-        fixed.push(diag.clone());
+        fixed.push((diag.clone(), plan.clone()));
         min_actual_certainty = match (min_actual_certainty, diag.certainty) {
             (None, c) => c,
             (Some(prev), None) => Some(prev),
@@ -126,8 +129,8 @@ pub fn apply_diagnostics_with(
     }
 
     let description = describe(&fixed, &all_actions);
-    let patch_name = fixed.iter().find_map(|d| d.patch_name.clone());
-    let fixed_issues: Vec<LintianIssue> = fixed.into_iter().filter_map(|d| d.issue).collect();
+    let patch_name = fixed.iter().find_map(|(d, _)| d.patch_name.clone());
+    let fixed_issues: Vec<LintianIssue> = fixed.into_iter().filter_map(|(d, _)| d.issue).collect();
 
     let mut builder = FixerResult::builder(description).fixed_issues(fixed_issues);
     if let Some(cert) = min_actual_certainty {
@@ -598,6 +601,7 @@ mod tests {
             diagnostics: vec![Diagnostic::with_actions(
                 LintianIssue::source("recommended-field"),
                 "Set Priority on source",
+                "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: PathBuf::from("debian/control"),
                     paragraph: ParagraphSelector::Source,
@@ -654,6 +658,7 @@ mod tests {
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
                 LintianIssue::source("recommended-field"),
+                "Priority field is missing on source.",
                 "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: PathBuf::from("debian/control"),
@@ -691,6 +696,7 @@ mod tests {
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
                 LintianIssue::source("recommended-field"),
+                "Priority field is missing on source.",
                 "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {
                     file: PathBuf::from("debian/control"),

@@ -102,6 +102,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Package uses debian/compat instead of debhelper-compat.",
         "Set debhelper-compat version in Build-Depends.",
         actions,
     )])

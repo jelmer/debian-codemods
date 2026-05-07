@@ -41,6 +41,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "debian/changelog contains obsolete add-log-mailing-address emacs setting.",
                 "Drop no longer supported add-log-mailing-address setting from debian/changelog.",
                 vec![Action::Filesystem(FilesystemAction::ReplaceText {
                     file: rel.clone(),

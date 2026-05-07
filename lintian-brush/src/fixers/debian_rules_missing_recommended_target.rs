@@ -95,6 +95,7 @@ pub fn detect(
                 "debian-rules-missing-recommended-target",
                 vec!["build-indep [debian/rules]".to_string()],
             ),
+            "debian/rules is missing recommended target build-indep.",
             String::new(),
             actions,
         ));
@@ -122,6 +123,7 @@ pub fn detect(
                 "debian-rules-missing-recommended-target",
                 vec!["build-arch [debian/rules]".to_string()],
             ),
+            "debian/rules is missing recommended target build-arch.",
             String::new(),
             actions,
         ));
@@ -138,7 +140,9 @@ pub fn detect(
         format!("Add missing debian/rules targets {}.", added.join(", "))
     };
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

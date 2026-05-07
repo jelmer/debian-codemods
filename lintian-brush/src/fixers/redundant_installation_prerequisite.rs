@@ -94,9 +94,11 @@ pub fn detect(
         );
 
         for (issue, field, pkg) in pending {
+            let label = format!("Drop redundant {} on {}.", field, pkg);
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 String::new(),
+                label,
                 vec![Action::Deb822(Deb822Action::DropRelation {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Binary {
@@ -122,7 +124,9 @@ pub fn detect(
         )
     };
     for d in &mut diagnostics {
-        d.message = summary.clone();
+        for plan in &mut d.plans {
+            plan.label = summary.clone();
+        }
     }
     Ok(diagnostics)
 }

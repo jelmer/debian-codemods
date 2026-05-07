@@ -160,17 +160,18 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let message = if opinionated {
+    let label = if opinionated {
         "Rely on pre-initialized dpkg-architecture variables."
     } else if !to_remove.is_empty() && already_included {
         "Rely on existing architecture.mk include."
     } else {
         "Use ?= for assignments to architecture variables."
     };
+    let description = "Use ?= for assignments to architecture variables.";
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
     if issues.is_empty() {
-        diagnostics.push(Diagnostic::untagged(message, actions));
+        diagnostics.push(Diagnostic::untagged(description, label, actions));
     } else {
         for (i, issue) in issues.into_iter().enumerate() {
             let plan_actions = if i == 0 {
@@ -178,7 +179,12 @@ pub fn detect(
             } else {
                 Vec::new()
             };
-            diagnostics.push(Diagnostic::with_actions(issue, message, plan_actions));
+            diagnostics.push(Diagnostic::with_actions(
+                issue,
+                description,
+                label,
+                plan_actions,
+            ));
         }
     }
     Ok(diagnostics)

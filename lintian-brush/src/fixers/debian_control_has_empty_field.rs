@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use std::path::PathBuf;
@@ -40,6 +40,7 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 format!("source{}{}", SEP, key),
+                format!("Remove empty field {} from source paragraph.", key),
                 vec![Action::Deb822(Deb822Action::RemoveField {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Source,
@@ -74,6 +75,10 @@ pub fn detect(
             diagnostics.push(Diagnostic::with_actions(
                 issue,
                 format!("{}{}{}", package_name, SEP, key),
+                format!(
+                    "Remove empty field {} from binary package {}.",
+                    key, package_name
+                ),
                 vec![Action::Deb822(Deb822Action::RemoveField {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Binary {
@@ -88,10 +93,10 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut fields: Vec<String> = Vec::new();
     let mut packages: Vec<String> = Vec::new();
-    for d in fixed {
+    for (d, _) in fixed {
         let Some((scope, field)) = d.message.split_once(SEP) else {
             continue;
         };

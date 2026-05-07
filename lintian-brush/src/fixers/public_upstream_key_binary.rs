@@ -35,6 +35,7 @@ pub fn detect(
         .map_err(|e| FixerError::Other(format!("Failed to convert key to armor: {}", e)))?;
 
     Ok(vec![Diagnostic::untagged(
+        "Upstream signing key is in binary form.",
         "Enarmor upstream signing key.",
         vec![
             Action::Filesystem(FilesystemAction::Write {

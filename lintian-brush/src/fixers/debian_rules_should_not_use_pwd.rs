@@ -34,6 +34,7 @@ pub fn detect(
     Ok(vec![Diagnostic::with_actions(
         issue,
         "debian/rules: Avoid using $(PWD) variable.".to_string(),
+        "debian/rules: Avoid using $(PWD) variable.".to_string(),
         vec![Action::Filesystem(FilesystemAction::Substitute {
             file: rules_rel,
             from: "$(PWD)".into(),

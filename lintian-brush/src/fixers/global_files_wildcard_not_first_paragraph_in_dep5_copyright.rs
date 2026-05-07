@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use deb822_lossless::Deb822;
@@ -59,6 +59,7 @@ pub fn detect(
             );
             diagnostics.push(Diagnostic::with_actions(
                 issue,
+                "Global Files wildcard is not the first paragraph.",
                 format!("{}", MARKER_WILDCARD),
                 Vec::new(),
             ));
@@ -79,6 +80,7 @@ pub fn detect(
                 );
                 diagnostics.push(Diagnostic::with_actions(
                     issue,
+                    "Files paragraphs are out of glob order.",
                     format!("{}", MARKER_OUTOFORDER),
                     Vec::new(),
                 ));
@@ -114,11 +116,16 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     // If the only kind of diagnostic that fired was the wildcard-not-first
     // one, use the more specific phrasing. Otherwise use the generic
     // "reorder by depth" description.
-    let only_wildcard = fixed.iter().all(|d| d.message.starts_with(MARKER_WILDCARD));
+    let only_wildcard = fixed.iter().all(|(d, _)| {
+        d.plans
+            .first()
+            .map(|p| p.label.starts_with(MARKER_WILDCARD))
+            .unwrap_or(false)
+    });
     if only_wildcard {
         "Make \"Files: *\" paragraph the first in the copyright file.".to_string()
     } else {

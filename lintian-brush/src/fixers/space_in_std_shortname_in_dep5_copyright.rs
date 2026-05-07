@@ -130,6 +130,7 @@ pub fn detect(
         );
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "License short name in debian/copyright contains a space.",
             "Replace spaces in short license names with dashes.",
             vec![Action::Deb822(Deb822Action::SetField {
                 file: copyright_rel.clone(),
@@ -166,6 +167,7 @@ pub fn detect(
         // before the rewrite.
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            "License short name in debian/copyright contains a space.",
             "Replace spaces in short license names with dashes.",
             vec![Action::Deb822(Deb822Action::SetField {
                 file: copyright_rel.clone(),

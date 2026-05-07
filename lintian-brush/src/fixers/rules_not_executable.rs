@@ -18,6 +18,7 @@ pub fn detect(
     }
 
     Ok(vec![Diagnostic::untagged(
+        "debian/rules is not executable.",
         "Mark debian/rules as executable.",
         vec![Action::Filesystem(FilesystemAction::SetMode {
             file: rules_rel,

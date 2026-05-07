@@ -32,6 +32,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Source overrides live at deprecated location.",
         "Move source package lintian overrides to debian/source.",
         vec![
             Action::Filesystem(FilesystemAction::Write {

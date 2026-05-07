@@ -180,19 +180,21 @@ pub fn detect_with_unused_overrides(
         return Ok(Vec::new());
     }
 
-    let mut description = format!(
-        "Remove {} unused lintian override(s)\n\n",
-        tags_collected.len()
-    );
+    let mut description = format!("{} unused lintian override(s)\n\n", tags_collected.len());
     for tag in &tags_collected {
         description.push_str(&format!("* {}\n", tag));
     }
+    let label = format!(
+        "Remove {} unused lintian override(s).",
+        tags_collected.len()
+    );
 
     for (issue, selector, file) in pending {
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
                 description.clone(),
+                label.clone(),
                 vec![Action::LintianOverrides(LintianOverridesAction::DropLine {
                     file,
                     selector,
@@ -308,10 +310,7 @@ mod tests {
         }];
 
         let result = run(tmp.path(), &unused).unwrap();
-        assert!(result
-            .description
-            .contains("Remove 1 unused lintian override(s)"));
-        assert!(result.description.contains("* some-tag"));
+        assert_eq!(result.description, "Remove 1 unused lintian override(s).");
         let content = fs::read_to_string(&overrides).unwrap();
         assert!(content.contains("another-tag"));
         assert!(!content.contains("some-tag"));
@@ -355,7 +354,7 @@ mod tests {
         }];
 
         let result = run(tmp.path(), &unused).unwrap();
-        assert!(result.description.contains("unused-tag"));
+        assert_eq!(result.description, "Remove 1 unused lintian override(s).");
         assert!(!overrides.exists());
     }
 

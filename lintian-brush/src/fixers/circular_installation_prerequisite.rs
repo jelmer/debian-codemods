@@ -46,6 +46,7 @@ pub fn detect(
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
+                    "Package depends on itself.",
                     "Remove circular dependency on self in package.",
                     vec![Action::Deb822(Deb822Action::DropRelation {
                         file: control_rel.clone(),

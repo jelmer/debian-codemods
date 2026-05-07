@@ -40,6 +40,7 @@ pub fn detect(
     );
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Homepage points at an obsolete URL.",
         "Drop fields with obsolete URLs.",
         vec![Action::Deb822(Deb822Action::RemoveField {
             file: PathBuf::from("debian/control"),

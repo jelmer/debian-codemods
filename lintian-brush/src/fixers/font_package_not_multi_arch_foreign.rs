@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use std::path::PathBuf;
@@ -35,6 +35,7 @@ pub fn detect(
             LintianIssue::binary_with_info(&package, "font-package-not-multi-arch-foreign", vec![]);
         diagnostics.push(Diagnostic::with_actions(
             issue,
+            format!("Font package {} is not Multi-Arch: foreign.", package),
             format!("Set Multi-Arch: foreign on package {}.", package),
             vec![Action::Deb822(Deb822Action::SetField {
                 file: control_rel.clone(),
@@ -50,7 +51,7 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
+fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -> String {
     let mut packages: Vec<&str> = actions
         .iter()
         .filter_map(|a| match a {

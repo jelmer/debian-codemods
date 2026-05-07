@@ -29,6 +29,7 @@ pub fn detect(
     // diagnostic. Override and tag bookkeeping skip it, but the action
     // still applies.
     Ok(vec![Diagnostic::untagged(
+        "Vcs-Git URL is broken.",
         "Fix broken Vcs URL.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: PathBuf::from("debian/control"),

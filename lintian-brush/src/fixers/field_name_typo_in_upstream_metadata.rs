@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, YamlAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
@@ -49,6 +49,10 @@ pub fn detect(
                     continue;
                 }
                 diagnostics.push(crate::diagnostic::Diagnostic::untagged(
+                    format!(
+                        "Field name {} appears to be a typo for {}.",
+                        field, without_prefix
+                    ),
                     format!("typo\t{} ⇒ {}", field, without_prefix),
                     vec![Action::Yaml(YamlAction::RenameField {
                         file: rel.clone(),
@@ -70,14 +74,23 @@ pub fn detect(
             continue;
         };
         let is_case = target.eq_ignore_ascii_case(&field);
-        let message = format!(
+        let label = format!(
             "{}\t{} ⇒ {}",
             if is_case { "case" } else { "typo" },
             field,
             target,
         );
+        let description = if is_case {
+            format!(
+                "Field name {} has wrong case (should be {}).",
+                field, target
+            )
+        } else {
+            format!("Field name {} appears to be a typo for {}.", field, target)
+        };
         diagnostics.push(crate::diagnostic::Diagnostic::untagged(
-            message,
+            description,
+            label,
             vec![Action::Yaml(YamlAction::RenameField {
                 file: rel.clone(),
                 parent_path: Vec::new(),
@@ -90,11 +103,14 @@ pub fn detect(
     Ok(diagnostics)
 }
 
-fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
+fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -> String {
     let mut case_pairs: Vec<(String, String)> = Vec::new();
     let mut typo_pairs: Vec<(String, String)> = Vec::new();
-    for diag in fixed {
-        let Some((kind, rest)) = diag.message.split_once('\t') else {
+    for (diag, _) in fixed {
+        let Some(plan) = diag.plans.first() else {
+            continue;
+        };
+        let Some((kind, rest)) = plan.label.split_once('\t') else {
             continue;
         };
         let Some((old, new)) = rest.split_once(" ⇒ ") else {

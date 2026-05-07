@@ -47,6 +47,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Versioned debhelper build-dependency is missing.",
         format!(
             "Bump debhelper dependency to >= {}, since that's what is used in debian/compat.",
             minimum_version

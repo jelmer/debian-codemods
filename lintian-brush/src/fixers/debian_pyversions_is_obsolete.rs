@@ -24,6 +24,7 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "debian/pyversions is obsolete.",
         "Remove obsolete debian/pyversions.",
         vec![Action::Filesystem(FilesystemAction::Delete {
             file: pyversions,

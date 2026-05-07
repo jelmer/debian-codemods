@@ -57,6 +57,7 @@ pub fn detect(
     // editor's `Source::set` would reorder it.
     Ok(vec![Diagnostic::with_actions(
         issue,
+        "Maintainer points at obsolete Python team address.",
         "Update maintainer email for merge of DPMT and PAPT.",
         vec![Action::Deb822(Deb822Action::SetField {
             file: control_rel,

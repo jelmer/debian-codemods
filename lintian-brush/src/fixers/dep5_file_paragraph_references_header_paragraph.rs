@@ -87,6 +87,10 @@ pub fn detect(
 
     Ok(vec![Diagnostic::with_actions(
         issue,
+        format!(
+            "Files paragraph references License '{}' defined in header.",
+            synopsis
+        ),
         format!("Add missing license paragraph for {}", synopsis),
         vec![Action::Deb822(Deb822Action::AppendParagraph {
             file: copyright_rel,

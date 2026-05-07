@@ -24,6 +24,7 @@ pub fn detect(
         let new_url = url.replace("/releases", "/tags");
         diagnostics.push(
             Diagnostic::untagged(
+                "debian/watch uses GitHub /releases page.",
                 "debian/watch: Use GitHub /tags rather than /releases page.",
                 vec![Action::Watch(WatchAction::SetEntryUrl {
                     file: watch_rel.clone(),

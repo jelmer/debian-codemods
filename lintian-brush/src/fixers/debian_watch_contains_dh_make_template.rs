@@ -32,6 +32,7 @@ pub fn detect(
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
+                "debian/watch contains dh_make template.",
                 "Remove dh_make template from debian watch.",
                 vec![Action::Watch(WatchAction::RemoveEntryOption {
                     file: watch_rel.clone(),

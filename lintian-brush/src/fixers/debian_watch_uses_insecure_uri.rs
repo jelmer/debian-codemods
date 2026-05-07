@@ -62,8 +62,13 @@ pub fn detect(
         }
 
         diagnostics.push(
-            Diagnostic::with_actions(issue, "Use secure URI in debian/watch.", actions)
-                .with_certainty(Certainty::Confident),
+            Diagnostic::with_actions(
+                issue,
+                "debian/watch uses insecure URI.",
+                "Use secure URI in debian/watch.",
+                actions,
+            )
+            .with_certainty(Certainty::Confident),
         );
     }
 
