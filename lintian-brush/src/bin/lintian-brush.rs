@@ -134,6 +134,21 @@ struct OutputArgs {
     )]
     detect_only: bool,
 
+    /// Show each detected issue and prompt for which action plan to apply.
+    ///
+    /// Like `--detect-only`, but for each diagnostic the user is asked to
+    /// pick a plan (or skip). Chosen plans are applied directly to the
+    /// working directory; no commit is created.
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "list_fixers",
+        conflicts_with = "list_tags",
+        conflicts_with = "identity",
+        conflicts_with = "detect_only"
+    )]
+    interactive: bool,
+
     /// Print user identity that would be used when committing
     #[arg(
         long,
@@ -373,6 +388,8 @@ fn main() -> Result<(), i32> {
         }
     } else if args.output.detect_only {
         return run_detect_only(&args, detectors);
+    } else if args.output.interactive {
+        return run_interactive(&args, detectors);
     } else {
         let mut update_changelog: Option<bool> = if args.output.update_changelog {
             Some(true)
@@ -817,23 +834,22 @@ fn main() -> Result<(), i32> {
     Ok(())
 }
 
-/// Drive every supplied detector against `args.output.directory` and print
-/// the diagnostics they emit. No fixes are applied.
-fn run_detect_only(
+/// Build a [`TreeFixerWorkspace`] + [`FixerPreferences`] pair for the
+/// detector-only entry points (`--detect-only`, `--interactive`). Falls
+/// back to a placeholder package / version when the changelog isn't
+/// readable so the entry points work against partial trees.
+fn detector_runtime(
     args: &Args,
-    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
-) -> Result<(), i32> {
+) -> (
+    lintian_brush::workspace::TreeFixerWorkspace,
+    lintian_brush::FixerPreferences,
+) {
     use debian_changelog::ChangeLog;
     use lintian_brush::workspace::TreeFixerWorkspace;
     use lintian_brush::FixerPreferences;
 
     let base_path = args.output.directory.clone();
     let changelog_path = base_path.join("debian/changelog");
-    // Detectors that genuinely need a package name / version pull them
-    // from the workspace, so it's fine to fall back to a placeholder
-    // when the changelog is missing or unreadable — the alternative
-    // (refusing to run) makes --detect-only useless against a partial
-    // tree.
     let (package, version) = match std::fs::read(&changelog_path) {
         Ok(bytes) => match ChangeLog::read_relaxed(bytes.as_slice()) {
             Ok(cl) => match cl.iter().next() {
@@ -863,6 +879,16 @@ fn run_detect_only(
     };
 
     let ws = TreeFixerWorkspace::new(base_path, package, version);
+    (ws, preferences)
+}
+
+/// Drive every supplied detector against `args.output.directory` and print
+/// the diagnostics they emit. No fixes are applied.
+fn run_detect_only(
+    args: &Args,
+    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
+) -> Result<(), i32> {
+    let (ws, preferences) = detector_runtime(args);
 
     let mut total = 0usize;
     for detector in detectors {
@@ -889,6 +915,178 @@ fn run_detect_only(
     if args.output.verbose {
         eprintln!("{} issue(s) detected.", total);
     }
+    Ok(())
+}
+
+/// Drive every supplied detector and prompt the user for which action
+/// plan (if any) to apply for each diagnostic. Per detector, the chosen
+/// plans are applied to the working directory and committed with the
+/// detector's name and the matching lintian trailers, mirroring the
+/// regular `lintian-brush` flow.
+fn run_interactive(
+    args: &Args,
+    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
+) -> Result<(), i32> {
+    use std::io::{BufRead, Write};
+
+    let (ws, preferences) = detector_runtime(args);
+
+    // Open the working tree once so we can build a commit per detector.
+    let (wt, _subpath) = match workingtree::open_containing(&args.output.directory) {
+        Ok((wt, sub)) => (wt, sub.display().to_string()),
+        Err(e) => {
+            tracing::error!(
+                "Unable to open tree at {}: {}",
+                args.output.directory.display(),
+                e
+            );
+            return Err(1);
+        }
+    };
+    let committer = get_committer(&wt);
+
+    let stdin = std::io::stdin();
+    let mut stdin_lock = stdin.lock();
+    let mut total_applied = 0usize;
+    let mut total_skipped = 0usize;
+    let mut total_commits = 0usize;
+
+    for detector in detectors {
+        let diagnostics = match detector.detect(&ws, &preferences) {
+            Ok(d) => d,
+            Err(lintian_brush::FixerError::NoChanges) => continue,
+            Err(e) => {
+                tracing::warn!("{}: {}", detector.name(), e);
+                continue;
+            }
+        };
+
+        // Diagnostics whose plan the user accepted, paired with the picked
+        // plan. Used to build the commit message after all of this
+        // detector's diagnostics have been processed.
+        let mut applied_pairs: Vec<(
+            lintian_brush::diagnostic::Diagnostic,
+            lintian_brush::diagnostic::ActionPlan,
+        )> = Vec::new();
+        let mut all_actions: Vec<lintian_brush::diagnostic::Action> = Vec::new();
+
+        for diag in diagnostics {
+            if diag.plans.is_empty() {
+                continue;
+            }
+            // Header: lintian issue (or detector name) plus the message.
+            if let Some(issue) = &diag.issue {
+                println!("\n{}", issue);
+            } else {
+                println!("\n({})", detector.name());
+            }
+            println!("  {}", diag.message);
+            // Numbered choices: 0 always means "skip"; 1..N pick a plan.
+            println!("  0: skip");
+            for (i, plan) in diag.plans.iter().enumerate() {
+                let label = plan.label.as_deref().unwrap_or("apply");
+                let suffix = if plan.opinionated {
+                    " (opinionated)"
+                } else {
+                    ""
+                };
+                println!(
+                    "  {}: {}{} ({} action{})",
+                    i + 1,
+                    label,
+                    suffix,
+                    plan.actions.len(),
+                    if plan.actions.len() == 1 { "" } else { "s" },
+                );
+            }
+
+            let choice = loop {
+                print!("Apply which plan? [0] ");
+                if std::io::stdout().flush().is_err() {
+                    break 0;
+                }
+                let mut line = String::new();
+                match stdin_lock.read_line(&mut line) {
+                    Ok(0) => break 0, // EOF
+                    Ok(_) => {}
+                    Err(_) => break 0,
+                }
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    break 0;
+                }
+                match trimmed.parse::<usize>() {
+                    Ok(n) if n <= diag.plans.len() => break n,
+                    _ => {
+                        eprintln!("Please enter a number between 0 and {}.", diag.plans.len());
+                    }
+                }
+            };
+
+            if choice == 0 {
+                total_skipped += 1;
+                continue;
+            }
+            let plan = diag.plans[choice - 1].clone();
+            match lintian_brush::appliers::apply_actions(&args.output.directory, &plan.actions) {
+                Ok(_) => {
+                    total_applied += 1;
+                    all_actions.extend(plan.actions.iter().cloned());
+                    applied_pairs.push((diag.clone(), plan));
+                }
+                Err(e) => {
+                    tracing::error!("Failed to apply: {}", e);
+                }
+            }
+        }
+
+        if applied_pairs.is_empty() {
+            continue;
+        }
+
+        // Commit this detector's accepted changes as a single revision,
+        // matching the regular runner's commit-message format:
+        //
+        //     <description>
+        //
+        //     Changes-By: lintian-brush
+        //     Fixes: lintian: ...
+        //     See-also: ...
+        let applied_diags: Vec<_> = applied_pairs.iter().map(|(d, _)| d.clone()).collect();
+        let description = detector.describe(&applied_diags, &all_actions);
+        let fixed_issues: Vec<lintian_brush::LintianIssue> = applied_pairs
+            .iter()
+            .filter_map(|(d, _)| d.issue.clone())
+            .collect();
+
+        let mut message = format!("{}\n", description);
+        message.push('\n');
+        message.push_str("Changes-By: lintian-brush\n");
+        message.push_str(&lintian_brush::render_lintian_trailers(&fixed_issues));
+
+        let mut builder = wt
+            .build_commit()
+            .message(message.as_str())
+            .allow_pointless(false);
+        builder = builder.committer(committer.as_str());
+        match builder.commit() {
+            Ok(_) => total_commits += 1,
+            Err(breezyshim::error::Error::PointlessCommit) => {
+                tracing::debug!(
+                    "{}: no changes to commit (actions had no effect)",
+                    detector.name()
+                );
+            }
+            Err(e) => {
+                tracing::error!("{}: failed to commit: {}", detector.name(), e);
+            }
+        }
+    }
+
+    println!(
+        "\n{} plan(s) applied across {} commit(s); {} skipped.",
+        total_applied, total_commits, total_skipped
+    );
     Ok(())
 }
 
