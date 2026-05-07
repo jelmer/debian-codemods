@@ -2,20 +2,18 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use makefile_lossless::Makefile;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let makefile = Makefile::read_relaxed(bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let mut diagnostics = Vec::new();
     for rule in makefile.rules() {
@@ -57,10 +55,10 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

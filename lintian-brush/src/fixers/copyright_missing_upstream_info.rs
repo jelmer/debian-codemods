@@ -68,37 +68,36 @@ pub fn detect(
 
     // Fold in debian/upstream/metadata, marking anything found there as
     // Certain (it's authoritative for this package).
-    if let Some(content_bytes) = ws.read_file(Path::new("debian/upstream/metadata"))? {
-        if let Ok(content) = String::from_utf8(content_bytes) {
-            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                if let Some(mapping) = yaml.as_mapping() {
-                    for (key, value) in mapping {
-                        let (Some(key_str), Some(value_str)) = (key.as_str(), value.as_str())
-                        else {
-                            continue;
-                        };
-                        let datum = match key_str {
-                            "Name" => UpstreamDatum::Name(value_str.to_string()),
-                            "Contact" => UpstreamDatum::Contact(value_str.to_string()),
-                            _ => continue,
-                        };
-                        let should_replace = upstream_metadata
-                            .get(key_str)
-                            .map(|d| d.certainty != Some(upstream_ontologist::Certainty::Certain))
-                            .unwrap_or(true);
-                        if !should_replace {
-                            continue;
-                        }
-                        upstream_metadata.remove(key_str);
-                        upstream_metadata.insert(upstream_ontologist::UpstreamDatumWithMetadata {
-                            datum,
-                            certainty: Some(upstream_ontologist::Certainty::Certain),
-                            origin: Some(upstream_ontologist::Origin::Other(
-                                "debian/upstream/metadata".to_string(),
-                            )),
-                        });
-                    }
+    if let Ok(yaml) = ws.parsed_upstream_metadata() {
+        if let Some(doc) = yaml.document() {
+            for key_str in &["Name", "Contact"] {
+                let Some(node) = doc.get(*key_str) else {
+                    continue;
+                };
+                let Some(value) = node.as_scalar() else {
+                    continue;
+                };
+                let value_str = value.value();
+                let datum = match *key_str {
+                    "Name" => UpstreamDatum::Name(value_str),
+                    "Contact" => UpstreamDatum::Contact(value_str),
+                    _ => continue,
+                };
+                let should_replace = upstream_metadata
+                    .get(key_str)
+                    .map(|d| d.certainty != Some(upstream_ontologist::Certainty::Certain))
+                    .unwrap_or(true);
+                if !should_replace {
+                    continue;
                 }
+                upstream_metadata.remove(key_str);
+                upstream_metadata.insert(upstream_ontologist::UpstreamDatumWithMetadata {
+                    datum,
+                    certainty: Some(upstream_ontologist::Certainty::Certain),
+                    origin: Some(upstream_ontologist::Origin::Other(
+                        "debian/upstream/metadata".to_string(),
+                    )),
+                });
             }
         }
     }
@@ -177,7 +176,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;

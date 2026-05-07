@@ -157,7 +157,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::Version;
     use tempfile::TempDir;

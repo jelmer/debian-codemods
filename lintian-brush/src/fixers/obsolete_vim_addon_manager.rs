@@ -3,7 +3,6 @@ use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, Paragr
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
 use debian_analyzer::rules::dh_invoke_add_with;
-use makefile_lossless::Makefile;
 use std::path::PathBuf;
 
 pub fn detect(
@@ -60,9 +59,7 @@ pub fn detect(
 
     // Update debian/rules: add `--with=vim_addon` to every `dh ...` recipe.
     let rules_rel = PathBuf::from("debian/rules");
-    if let Some(rules_bytes) = ws.read_file(&rules_rel)? {
-        let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-            .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
+    if let Ok(makefile) = ws.parsed_rules() {
         for rule in makefile.rules() {
             let Some(target) = rule.targets().next() else {
                 continue;
@@ -102,7 +99,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
