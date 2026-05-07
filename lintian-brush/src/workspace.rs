@@ -608,6 +608,19 @@ pub fn iter_detectors() -> impl Iterator<Item = Box<dyn Detector>> {
         .map(|reg| (reg.create)())
 }
 
+/// Iterate every registered [`DetectorRegistration`] without
+/// instantiating a [`Detector`].
+///
+/// Hosts that want to filter detectors by `cost`, `triggers`, or
+/// `name` before deciding whether to run them (e.g. an LSP server
+/// that runs a subset on every keystroke) should iterate the
+/// registrations directly and only call [`DetectorRegistration::create`]
+/// on the survivors. The CLI driver uses [`iter_detectors`] instead
+/// because it always runs everything.
+pub fn iter_detector_registrations() -> impl Iterator<Item = &'static DetectorRegistration> {
+    inventory::iter::<DetectorRegistration>.into_iter()
+}
+
 /// Error indicating an unknown detector was requested.
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnknownDetector(pub String);
