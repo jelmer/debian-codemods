@@ -136,6 +136,10 @@ declare_detector! {
     name: "debian-control-has-unusual-field-spacing",
     tags: ["debian-control-has-unusual-field-spacing"],
     before: ["file-contains-trailing-whitespace"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/control"),
+        crate::workspace::Trigger::File("debian/control.in"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

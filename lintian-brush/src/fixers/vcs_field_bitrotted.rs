@@ -501,6 +501,23 @@ declare_detector! {
     name: "vcs-field-bitrotted",
     tags: ["vcs-obsolete-in-debian-infrastructure", "vcs-field-bitrotted"],
     before: ["vcs-broken-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Source",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -61,6 +61,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-changelog-file-contains-obsolete-user-emacs-settings",
     tags: ["debian-changelog-file-contains-obsolete-user-emacs-settings"],
+    triggers: [crate::workspace::Trigger::Changelog(
+        crate::workspace::ChangelogAspect::Body,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -49,6 +49,9 @@ pub fn detect(
 declare_detector! {
     name: "public-upstream-key-binary",
     tags: [],
+    triggers: [
+        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

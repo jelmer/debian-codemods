@@ -97,6 +97,7 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "desktop-entry-contains-encoding-key",
     tags: ["desktop-entry-contains-encoding-key"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.desktop")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

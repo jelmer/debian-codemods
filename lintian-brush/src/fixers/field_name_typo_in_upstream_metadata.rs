@@ -143,6 +143,7 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "field-name-typo-in-upstream-metadata",
     tags: [],
+    triggers: [crate::workspace::Trigger::UpstreamMetadataField("*")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

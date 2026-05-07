@@ -31,6 +31,7 @@ pub fn detect(
 declare_detector! {
     name: "empty-debian-source-options",
     tags: [],
+    triggers: [crate::workspace::Trigger::File("debian/source/options")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

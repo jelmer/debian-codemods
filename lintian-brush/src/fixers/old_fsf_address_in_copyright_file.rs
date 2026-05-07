@@ -58,6 +58,18 @@ pub fn detect(
 declare_detector! {
     name: "old-fsf-address-in-copyright-file",
     tags: ["old-fsf-address-in-copyright-file"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "License",
+            field: "License",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "License",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

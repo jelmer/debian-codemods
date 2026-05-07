@@ -206,6 +206,12 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "ancient-maintscript-entry",
     tags: [],
+    triggers: [
+        crate::workspace::Trigger::File("debian/maintscript"),
+        crate::workspace::Trigger::Glob("debian/*.maintscript"),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Timestamp),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

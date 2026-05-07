@@ -212,6 +212,12 @@ pub fn detect(
 declare_detector! {
     name: "file-contains-trailing-whitespace",
     tags: ["trailing-whitespace"],
+    triggers: [
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::File("debian/control"),
+        crate::workspace::Trigger::Glob("debian/control.*"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

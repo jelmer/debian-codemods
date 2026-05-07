@@ -78,6 +78,13 @@ declare_detector! {
     tags: ["unversioned-copyright-format-uri"],
     after: ["copyright-format-uri"],
     before: ["out-of-date-copyright-format-uri"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Format",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -62,6 +62,28 @@ pub fn detect(
 declare_detector! {
     name: "pkg-perl-testsuite",
     tags: ["team/pkg-perl/testsuite/no-testsuite-header"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Tests",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Test-Command",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Testsuite",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

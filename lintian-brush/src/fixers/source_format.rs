@@ -100,6 +100,11 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "source-format",
     tags: ["missing-debian-source-format", "older-source-format"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::File("debian/source/format"),
+        crate::workspace::Trigger::File("debian/rules"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

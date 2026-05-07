@@ -57,6 +57,9 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "package-contains-linda-override",
     tags: ["package-contains-linda-override"],
+    triggers: [
+        crate::workspace::Trigger::Glob("debian/*.linda-overrides"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

@@ -43,6 +43,9 @@ pub fn detect(
 declare_detector! {
     name: "quilt-series-without-trailing-newline",
     tags: ["quilt-series-without-trailing-newline"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/patches/series"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

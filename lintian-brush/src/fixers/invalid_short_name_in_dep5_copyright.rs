@@ -136,6 +136,18 @@ pub fn detect(
 declare_detector! {
     name: "invalid-short-name-in-dep5-copyright",
     tags: ["invalid-short-name-in-dep5-copyright"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "License",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "License",
+            field: "License",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

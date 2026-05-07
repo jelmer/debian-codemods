@@ -975,6 +975,30 @@ pub fn detect(
 declare_detector! {
     name: "package-uses-deprecated-debhelper-compat-version",
     tags: ["package-uses-deprecated-debhelper-compat-version", "package-uses-old-debhelper-compat-version"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        crate::workspace::Trigger::File("configure"),
+        crate::workspace::Trigger::File("configure.ac"),
+        crate::workspace::Trigger::File("configure.in"),
+        crate::workspace::Trigger::File("Makefile.am"),
+        crate::workspace::Trigger::File("meson.build"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::Glob("debian/*.upstart"),
+        crate::workspace::Trigger::Glob("debian/*.tmpfile"),
+        crate::workspace::Trigger::File("debian/tmpfile"),
+        crate::workspace::Trigger::Glob("debian/*.maintscript"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

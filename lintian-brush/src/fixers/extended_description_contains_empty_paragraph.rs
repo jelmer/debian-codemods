@@ -61,6 +61,13 @@ pub fn detect(
 declare_detector! {
     name: "extended-description-contains-empty-paragraph",
     tags: ["extended-description-contains-empty-paragraph"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Description",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

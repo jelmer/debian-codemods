@@ -97,6 +97,24 @@ pub fn detect(
 declare_detector! {
     name: "package-uses-deprecated-dpatch-patch-system",
     tags: ["package-uses-deprecated-dpatch-patch-system"],
+    triggers: [
+        crate::workspace::Trigger::Glob("debian/patches/*"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Arch",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

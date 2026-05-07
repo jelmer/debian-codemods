@@ -59,6 +59,9 @@ pub fn detect(
 declare_detector! {
     name: "new-package-uses-date-based-version-number",
     tags: ["new-package-uses-date-based-version-number"],
+    triggers: [crate::workspace::Trigger::Changelog(
+        crate::workspace::ChangelogAspect::Version,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

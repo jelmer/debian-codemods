@@ -187,6 +187,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-sets-dpkg-architecture-variable",
     tags: ["debian-rules-sets-dpkg-architecture-variable"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

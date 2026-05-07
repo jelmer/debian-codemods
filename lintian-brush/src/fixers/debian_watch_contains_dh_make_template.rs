@@ -49,6 +49,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-contains-dh_make-template",
     tags: ["debian-watch-contains-dh_make-template"],
+    triggers: [crate::workspace::Trigger::Watch(
+        crate::workspace::WatchAspect::Option("filenamemangle"),
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

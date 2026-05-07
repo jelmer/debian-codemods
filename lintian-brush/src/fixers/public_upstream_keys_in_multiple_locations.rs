@@ -102,6 +102,11 @@ pub fn detect(
 declare_detector! {
     name: "public-upstream-keys-in-multiple-locations",
     tags: ["public-upstream-keys-in-multiple-locations"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+        crate::workspace::Trigger::File("debian/upstream-signing-key.pgp"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

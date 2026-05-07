@@ -70,6 +70,9 @@ pub fn detect(
 declare_detector! {
     name: "changelog-has-duplicate-line",
     tags: [],
+    triggers: [crate::workspace::Trigger::Changelog(
+        crate::workspace::ChangelogAspect::Body,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

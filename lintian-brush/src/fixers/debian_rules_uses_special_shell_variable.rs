@@ -39,6 +39,7 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-uses-special-shell-variable",
     tags: ["debian-rules-uses-special-shell-variable"],
+    triggers: [crate::workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

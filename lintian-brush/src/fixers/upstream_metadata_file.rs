@@ -720,6 +720,24 @@ declare_detector! {
         "upstream-metadata-missing-bug-tracking",
         "upstream-metadata-missing-repository"
     ],
+    triggers: [
+        crate::workspace::Trigger::UpstreamMetadataField("Name"),
+        crate::workspace::Trigger::UpstreamMetadataField("Contact"),
+        crate::workspace::Trigger::UpstreamMetadataField("Repository"),
+        crate::workspace::Trigger::UpstreamMetadataField("Repository-Browse"),
+        crate::workspace::Trigger::UpstreamMetadataField("Bug-*"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Upstream-Name",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Upstream-Contact",
+        },
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

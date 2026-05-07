@@ -207,6 +207,9 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "possible-missing-colon-in-closes",
     tags: ["possible-missing-colon-in-closes", "misspelled-closes-bug"],
+    triggers: [crate::workspace::Trigger::Changelog(
+        crate::workspace::ChangelogAspect::Body,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

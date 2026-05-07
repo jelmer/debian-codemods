@@ -124,6 +124,23 @@ pub fn detect(
 declare_detector! {
     name: "pkg-perl-vcs",
     tags: ["team/pkg-perl/vcs/no-team-url", "team/pkg-perl/vcs/no-git"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Source",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

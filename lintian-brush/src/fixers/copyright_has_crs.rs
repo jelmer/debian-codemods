@@ -37,6 +37,7 @@ declare_detector! {
     // Must normalize line endings before whitespace cleanup to avoid
     // corrupting content.
     before: ["file-contains-trailing-whitespace"],
+    triggers: [crate::workspace::Trigger::File("debian/copyright")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

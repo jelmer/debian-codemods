@@ -60,6 +60,18 @@ pub fn detect(
 declare_detector! {
     name: "build-depends-on-build-essential",
     tags: ["build-depends-on-build-essential"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

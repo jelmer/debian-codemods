@@ -45,6 +45,13 @@ declare_detector! {
     // Must fix broken URIs after infrastructure updates and before type mismatch checks
     after: ["vcs-field-bitrotted"],
     before: ["vcs-field-mismatch"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-Git",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
