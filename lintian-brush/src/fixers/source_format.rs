@@ -10,12 +10,11 @@ const TAG_MISSING: char = 'M';
 const TAG_OLDER: char = 'O';
 
 fn find_patches_directory(ws: &dyn FixerWorkspace) -> Result<Option<PathBuf>, FixerError> {
-    let rules = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(None),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(None),
+        Err(e) => return Err(e),
     };
-    let makefile = makefile_lossless::Makefile::read(rules.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse debian/rules: {}", e)))?;
     Ok(debian_analyzer::patches::rules_find_patches_directory(
         &makefile,
     ))
@@ -108,7 +107,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use debversion::Version;
     use std::fs;

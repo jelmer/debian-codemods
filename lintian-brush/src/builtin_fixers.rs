@@ -1,82 +1,22 @@
+//! Driver glue between [`Detector`](crate::workspace::Detector)s and
+//! the public [`crate::Fixer`] trait.
+//!
+//! This module owns:
+//!
+//! * [`apply_diagnostics`] / [`apply_diagnostics_with`] — the shared
+//!   pipeline that filters diagnostics by lintian overrides and
+//!   `preferences.minimum_certainty`, then drives
+//!   [`crate::appliers::apply_actions`].
+//! * [`default_describe`] — the default commit message generator.
+//! * [`get_builtin_fixers`] — collects every registered
+//!   [`Detector`](crate::workspace::Detector), wraps it in a
+//!   [`DetectorAdapter`](crate::workspace::DetectorAdapter), and sorts
+//!   the result by `after`/`before` declarations.
+
 use super::*;
 
-/// Registration information for a builtin fixer
-pub struct BuiltinFixerRegistration {
-    /// Name of the fixer
-    pub name: &'static str,
-    /// Lintian tags this fixer addresses
-    pub lintian_tags: &'static [&'static str],
-    /// Function to create an instance of the fixer
-    pub create: fn() -> Box<dyn BuiltinFixer>,
-    /// Fixers that must run before this one
-    pub after: &'static [&'static str],
-    /// Fixers that must run after this one
-    pub before: &'static [&'static str],
-}
-
-inventory::collect!(BuiltinFixerRegistration);
-
-/// Trait for implementing a builtin fixer.
-///
-/// Each fixer implements [`diagnostics`](Self::diagnostics) (the
-/// detector). The framework drops any diagnostic that is overridden by
-/// a lintian override or whose certainty is below
-/// `preferences.minimum_certainty`, then applies the first plan of each
-/// surviving diagnostic via [`crate::appliers`]. The
-/// [`describe`](Self::describe) method controls the resulting commit
-/// message.
-pub trait BuiltinFixer: Send + Sync {
-    /// Name of the fixer
-    fn name(&self) -> &'static str;
-
-    /// Lintian tags this fixer addresses
-    fn lintian_tags(&self) -> &'static [&'static str];
-
-    /// Detect issues without modifying the tree.
-    fn diagnostics(
-        &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
-        preferences: &FixerPreferences,
-    ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError>;
-
-    /// Build the commit message from the diagnostics that actually
-    /// fired and the actions that were applied. The default
-    /// deduplicates and joins the per-diagnostic messages; override
-    /// when the description is a function of the *set* of issues or
-    /// fields touched (e.g. "Set priority for library packages X, Y to
-    /// optional.").
-    fn describe(
-        &self,
-        fixed: &[crate::diagnostic::Diagnostic],
-        actions: &[crate::diagnostic::Action],
-    ) -> String {
-        default_describe(fixed, actions)
-    }
-
-    /// Apply the fixer. Returns [`FixerError::NoChanges`] if no
-    /// diagnostics were emitted, and [`FixerError::NoChangesAfterOverrides`]
-    /// if every emitted diagnostic was filtered out by overrides.
-    fn apply(
-        &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
-        preferences: &FixerPreferences,
-    ) -> Result<FixerResult, FixerError> {
-        let diagnostics = self.diagnostics(basedir, package, current_version, preferences)?;
-        apply_diagnostics_with(basedir, &diagnostics, preferences, &|fixed, actions| {
-            self.describe(fixed, actions)
-        })
-    }
-}
-
-/// Default describer used by [`BuiltinFixer::describe`] and
-/// [`apply_diagnostics`].
-///
-/// Deduplicates the diagnostics' per-issue messages and joins them with
-/// newlines.
+/// Default describer: deduplicates the diagnostics' per-issue messages
+/// and joins them with newlines.
 pub fn default_describe(
     fixed: &[crate::diagnostic::Diagnostic],
     _actions: &[crate::diagnostic::Action],
@@ -202,222 +142,72 @@ pub fn apply_diagnostics_with(
     Ok(builder.build())
 }
 
-/// Wrapper to adapt BuiltinFixer trait to Fixer trait
-pub struct BuiltinFixerWrapper {
-    fixer: Box<dyn BuiltinFixer>,
-    name: &'static str,
-    lintian_tags: Vec<&'static str>,
-}
-
-impl BuiltinFixerWrapper {
-    /// Create a new BuiltinFixerWrapper
-    pub fn new(fixer: Box<dyn BuiltinFixer>) -> Self {
-        let name = fixer.name();
-        let lintian_tags = fixer.lintian_tags().to_vec();
-        Self {
-            fixer,
-            name,
-            lintian_tags,
-        }
-    }
-}
-
-impl std::fmt::Debug for BuiltinFixerWrapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BuiltinFixerWrapper")
-            .field("name", &self.name)
-            .field("lintian_tags", &self.lintian_tags)
-            .finish()
-    }
-}
-
-impl Fixer for BuiltinFixerWrapper {
-    fn name(&self) -> String {
-        self.name.to_string()
-    }
-
-    fn lintian_tags(&self) -> Vec<String> {
-        self.lintian_tags.iter().map(|s| s.to_string()).collect()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn run(
-        &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
-        preferences: &FixerPreferences,
-        _timeout: Option<chrono::Duration>,
-    ) -> Result<FixerResult, FixerError> {
-        // Set extra environment variables from preferences for native fixers
-        let mut env_backup = Vec::new();
-        if let Some(extra_env) = &preferences.extra_env {
-            for (key, value) in extra_env {
-                // Backup existing value
-                env_backup.push((key.clone(), std::env::var(key).ok()));
-                // Set new value
-                std::env::set_var(key, value);
-            }
-        }
-
-        // Run the fixer with panic handling
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.fixer
-                .apply(basedir, package, current_version, preferences)
-        }));
-
-        // Restore environment variables
-        for (key, old_value) in env_backup {
-            if let Some(value) = old_value {
-                std::env::set_var(&key, value);
-            } else {
-                std::env::remove_var(&key);
-            }
-        }
-
-        // Handle panic or return result
-        match result {
-            Ok(r) => r,
-            Err(panic_payload) => {
-                // Extract panic message
-                let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
-                    s.to_string()
-                } else if let Some(s) = panic_payload.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    "Unknown panic payload".to_string()
-                };
-
-                // Capture backtrace
-                let backtrace = std::backtrace::Backtrace::capture();
-                let backtrace = if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
-                    Some(backtrace)
-                } else {
-                    None
-                };
-
-                Err(FixerError::Panic { message, backtrace })
-            }
-        }
-    }
-}
-
-/// View of a registration sufficient for topological sorting.
+/// Topologically sort detector registrations based on their `after` /
+/// `before` declarations.
 ///
-/// Both legacy [`BuiltinFixerRegistration`] and
-/// [`crate::workspace::DetectorRegistration`] implement this so they can be
-/// sorted together.
-trait OrderedRegistration {
-    fn name(&self) -> &'static str;
-    fn after(&self) -> &'static [&'static str];
-    fn before(&self) -> &'static [&'static str];
-}
-
-impl OrderedRegistration for &BuiltinFixerRegistration {
-    fn name(&self) -> &'static str {
-        self.name
-    }
-    fn after(&self) -> &'static [&'static str] {
-        self.after
-    }
-    fn before(&self) -> &'static [&'static str] {
-        self.before
-    }
-}
-
-impl OrderedRegistration for &crate::workspace::DetectorRegistration {
-    fn name(&self) -> &'static str {
-        self.name
-    }
-    fn after(&self) -> &'static [&'static str] {
-        self.after
-    }
-    fn before(&self) -> &'static [&'static str] {
-        self.before
-    }
-}
-
-/// Topologically sort fixers based on their dependencies
-///
-/// This function resolves both `after` and `before` constraints into a unified
-/// dependency graph and performs topological sorting using Kahn's algorithm.
+/// Resolves both kinds of constraint into a single dependency graph and
+/// performs Kahn's-algorithm sort with deterministic tie-breaking.
 ///
 /// # Panics
 ///
-/// Panics if:
-/// - A circular dependency is detected
-/// - A fixer references a non-existent dependency
-fn topologically_sort_fixers<T: OrderedRegistration + Clone>(registrations: Vec<T>) -> Vec<T> {
+/// Panics if a circular dependency is detected, or if a registration
+/// references a non-existent detector.
+fn topologically_sort_detectors<'a>(
+    registrations: Vec<&'a crate::workspace::DetectorRegistration>,
+) -> Vec<&'a crate::workspace::DetectorRegistration> {
     use std::collections::{HashMap, HashSet, VecDeque};
 
-    // Build a map of fixer names to registrations for quick lookup
-    let name_to_reg: HashMap<&str, T> = registrations
-        .iter()
-        .map(|reg| (reg.name(), reg.clone()))
-        .collect();
+    let name_to_reg: HashMap<&str, &'a crate::workspace::DetectorRegistration> =
+        registrations.iter().map(|reg| (reg.name, *reg)).collect();
 
-    // Validate that all dependencies exist
     for reg in &registrations {
-        for dep in reg.after() {
+        for dep in reg.after {
             if !name_to_reg.contains_key(dep) {
                 panic!(
                     "Fixer '{}' declares dependency on non-existent fixer '{}' in 'after' list",
-                    reg.name(),
-                    dep
+                    reg.name, dep
                 );
             }
         }
-        for dep in reg.before() {
+        for dep in reg.before {
             if !name_to_reg.contains_key(dep) {
                 panic!(
                     "Fixer '{}' declares dependency on non-existent fixer '{}' in 'before' list",
-                    reg.name(),
-                    dep
+                    reg.name, dep
                 );
             }
         }
     }
 
-    // Build adjacency list and in-degree map
-    // edge A -> B means "A must run before B"
+    // edge A -> B means "A must run before B".
     let mut adj_list: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut in_degree: HashMap<&str, usize> = HashMap::new();
 
-    // Initialize structures
     for reg in &registrations {
-        adj_list.entry(reg.name()).or_default();
-        in_degree.entry(reg.name()).or_insert(0);
+        adj_list.entry(reg.name).or_default();
+        in_degree.entry(reg.name).or_insert(0);
     }
 
-    // Add edges from 'after' constraints
-    // If B declares after: [A], then A -> B (A must run before B)
     for reg in &registrations {
-        for dep in reg.after() {
-            adj_list.entry(*dep).or_default().push(reg.name());
-            *in_degree.entry(reg.name()).or_insert(0) += 1;
+        for dep in reg.after {
+            adj_list.entry(*dep).or_default().push(reg.name);
+            *in_degree.entry(reg.name).or_insert(0) += 1;
         }
     }
 
-    // Add edges from 'before' constraints
-    // If A declares before: [B], then A -> B (A must run before B)
     for reg in &registrations {
-        for dep in reg.before() {
-            adj_list.entry(reg.name()).or_default().push(*dep);
+        for dep in reg.before {
+            adj_list.entry(reg.name).or_default().push(*dep);
             *in_degree.entry(*dep).or_insert(0) += 1;
         }
     }
 
-    // Kahn's algorithm for topological sort
     let mut queue: VecDeque<&str> = in_degree
         .iter()
         .filter(|(_, &degree)| degree == 0)
         .map(|(&name, _)| name)
         .collect();
 
-    // Sort queue for deterministic ordering
     let mut queue_vec: Vec<_> = queue.drain(..).collect();
     queue_vec.sort();
     queue.extend(queue_vec);
@@ -429,7 +219,6 @@ fn topologically_sort_fixers<T: OrderedRegistration + Clone>(registrations: Vec<
         sorted.push(node);
         processed.insert(node);
 
-        // Get neighbors and sort for deterministic ordering
         let mut neighbors = adj_list.get(node).cloned().unwrap_or_default();
         neighbors.sort();
 
@@ -442,40 +231,36 @@ fn topologically_sort_fixers<T: OrderedRegistration + Clone>(registrations: Vec<
             }
         }
 
-        // Re-sort queue for deterministic ordering
         let mut queue_vec: Vec<_> = queue.drain(..).collect();
         queue_vec.sort();
         queue.extend(queue_vec);
     }
 
-    // Check for cycles
     if sorted.len() != registrations.len() {
-        // Find the cycle for error reporting
         let remaining: Vec<_> = registrations
             .iter()
-            .filter(|reg| !processed.contains(reg.name()))
-            .map(|reg| reg.name())
+            .filter(|reg| !processed.contains(reg.name))
+            .map(|reg| reg.name)
             .collect();
 
-        // Build a detailed cycle description
         let mut cycle_msg = String::from("Circular dependency detected among fixers: ");
         cycle_msg.push_str(&remaining.join(", "));
         cycle_msg.push_str("\nDependency relationships:");
 
         for name in &remaining {
             if let Some(reg) = name_to_reg.get(name) {
-                if !reg.after().is_empty() {
+                if !reg.after.is_empty() {
                     cycle_msg.push_str(&format!(
                         "\n  '{}' after: [{}]",
                         name,
-                        reg.after().join(", ")
+                        reg.after.join(", ")
                     ));
                 }
-                if !reg.before().is_empty() {
+                if !reg.before.is_empty() {
                     cycle_msg.push_str(&format!(
                         "\n  '{}' before: [{}]",
                         name,
-                        reg.before().join(", ")
+                        reg.before.join(", ")
                     ));
                 }
             }
@@ -484,142 +269,50 @@ fn topologically_sort_fixers<T: OrderedRegistration + Clone>(registrations: Vec<
         panic!("{}", cycle_msg);
     }
 
-    // Convert sorted names back to registrations
-    sorted
-        .iter()
-        .map(|name| name_to_reg[name].clone())
-        .collect()
-}
-
-/// Construct a fixer instance for a sorted entry — either from a legacy
-/// registration's `create` fn or by wrapping a freshly-created detector in
-/// a [`crate::workspace::DetectorAdapter`].
-#[derive(Clone)]
-enum MergedRegistration {
-    Legacy(&'static BuiltinFixerRegistration),
-    Detector(&'static crate::workspace::DetectorRegistration),
-}
-
-impl OrderedRegistration for MergedRegistration {
-    fn name(&self) -> &'static str {
-        match self {
-            MergedRegistration::Legacy(reg) => reg.name,
-            MergedRegistration::Detector(reg) => reg.name,
-        }
-    }
-    fn after(&self) -> &'static [&'static str] {
-        match self {
-            MergedRegistration::Legacy(reg) => reg.after,
-            MergedRegistration::Detector(reg) => reg.after,
-        }
-    }
-    fn before(&self) -> &'static [&'static str] {
-        match self {
-            MergedRegistration::Legacy(reg) => reg.before,
-            MergedRegistration::Detector(reg) => reg.before,
-        }
-    }
-}
-
-impl MergedRegistration {
-    fn into_fixer(self) -> Box<dyn Fixer> {
-        match self {
-            MergedRegistration::Legacy(reg) => {
-                Box::new(BuiltinFixerWrapper::new((reg.create)())) as Box<dyn Fixer>
-            }
-            MergedRegistration::Detector(reg) => {
-                let adapter = crate::workspace::DetectorAdapter::new((reg.create)());
-                Box::new(BuiltinFixerWrapper::new(Box::new(adapter))) as Box<dyn Fixer>
-            }
-        }
-    }
+    sorted.iter().map(|name| name_to_reg[name]).collect()
 }
 
 /// Get all registered builtin fixers.
 ///
-/// Yields fixers from both the legacy `BuiltinFixer` inventory and the
-/// modern [`crate::workspace::Detector`] inventory. Detectors are wrapped
-/// in [`crate::workspace::DetectorAdapter`] so they look like ordinary
-/// `BuiltinFixer`s to the CLI driver. Both kinds are sorted together so
-/// `after`/`before` declarations can cross the legacy/detector boundary.
+/// Iterates every [`Detector`](crate::workspace::Detector) registered via
+/// [`declare_detector!`](crate::declare_detector), wraps each in a
+/// [`DetectorAdapter`](crate::workspace::DetectorAdapter), and sorts the
+/// result by `after` / `before` declarations.
 pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
-    let mut merged: Vec<MergedRegistration> = Vec::new();
-    merged.extend(
-        inventory::iter::<BuiltinFixerRegistration>
-            .into_iter()
-            .map(MergedRegistration::Legacy),
-    );
-    merged.extend(
+    let registrations: Vec<&'static crate::workspace::DetectorRegistration> =
         inventory::iter::<crate::workspace::DetectorRegistration>
             .into_iter()
-            .map(MergedRegistration::Detector),
-    );
-
-    let sorted = topologically_sort_fixers(merged);
+            .collect();
+    let sorted = topologically_sort_detectors(registrations);
     sorted
         .into_iter()
-        .map(MergedRegistration::into_fixer)
+        .map(|reg| {
+            let adapter = crate::workspace::DetectorAdapter::new((reg.create)());
+            Box::new(adapter) as Box<dyn Fixer>
+        })
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
-
-    // Mock builtin fixer for testing
-    struct MockBuiltinFixer {
-        name: &'static str,
-        tags: &'static [&'static str],
-    }
-
-    impl BuiltinFixer for MockBuiltinFixer {
-        fn name(&self) -> &'static str {
-            self.name
-        }
-
-        fn lintian_tags(&self) -> &'static [&'static str] {
-            self.tags
-        }
-
-        fn diagnostics(
-            &self,
-            _basedir: &Path,
-            _package: &str,
-            _current_version: &Version,
-            _preferences: &FixerPreferences,
-        ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-            Ok(Vec::new())
-        }
-    }
 
     #[test]
     fn test_builtin_fixers_dependency_consistency() {
-        // This test verifies that all builtin fixers have consistent dependencies:
-        // 1. No circular dependencies
-        // 2. All referenced fixers in after/before actually exist
-        // 3. All registered fixers are successfully sorted (none lost)
+        // This test verifies that every registered detector has
+        // consistent `after` / `before` declarations:
+        // 1. No circular dependencies.
+        // 2. All referenced fixers exist.
+        // 3. All registered fixers are kept in the sorted output.
         //
-        // The topological sort will panic if there are issues, which fails this test.
-
-        let mut all_registrations: Vec<MergedRegistration> = Vec::new();
-        all_registrations.extend(
-            inventory::iter::<BuiltinFixerRegistration>
-                .into_iter()
-                .map(MergedRegistration::Legacy),
-        );
-        all_registrations.extend(
+        // The topological sort panics on (1) or (2); we assert (3).
+        let registrations: Vec<&'static crate::workspace::DetectorRegistration> =
             inventory::iter::<crate::workspace::DetectorRegistration>
                 .into_iter()
-                .map(MergedRegistration::Detector),
-        );
+                .collect();
+        let original_count = registrations.len();
+        let sorted = topologically_sort_detectors(registrations.clone());
 
-        let original_count = all_registrations.len();
-
-        // This will panic if there are circular dependencies or missing references
-        let sorted = topologically_sort_fixers(all_registrations.clone());
-
-        // Verify no fixers were lost during sorting
         assert_eq!(
             sorted.len(),
             original_count,
@@ -628,51 +321,46 @@ mod tests {
             sorted.len()
         );
 
-        // Verify all fixers are unique in the output
         let mut seen_names = std::collections::HashSet::new();
         for reg in &sorted {
             assert!(
-                seen_names.insert(reg.name()),
+                seen_names.insert(reg.name),
                 "Duplicate fixer name in sorted output: {}",
-                reg.name()
+                reg.name
             );
         }
 
-        // Verify dependencies are satisfied in the sorted order
         let name_to_index: std::collections::HashMap<_, _> = sorted
             .iter()
             .enumerate()
-            .map(|(idx, reg)| (reg.name(), idx))
+            .map(|(idx, reg)| (reg.name, idx))
             .collect();
 
         for (idx, reg) in sorted.iter().enumerate() {
-            // Check that all 'after' dependencies come before this fixer
-            for dep in reg.after() {
-                let dep_idx = name_to_index.get(dep).expect(&format!(
-                    "Fixer '{}' declares after: ['{}'], but '{}' not found in sorted output",
-                    reg.name(),
-                    dep,
-                    dep
-                ));
+            for dep in reg.after {
+                let dep_idx = name_to_index.get(dep).unwrap_or_else(|| {
+                    panic!(
+                        "Fixer '{}' declares after: ['{}'], but '{}' not found",
+                        reg.name, dep, dep
+                    )
+                });
                 assert!(
                     dep_idx < &idx,
-                    "Dependency ordering violated: '{}' (index {}) should run after '{}' (index {}), but doesn't",
-                    reg.name(), idx, dep, dep_idx
+                    "Dependency ordering violated: '{}' (index {}) should run after '{}' (index {})",
+                    reg.name, idx, dep, dep_idx
                 );
             }
-
-            // Check that all 'before' dependencies come after this fixer
-            for dep in reg.before() {
-                let dep_idx = name_to_index.get(dep).expect(&format!(
-                    "Fixer '{}' declares before: ['{}'], but '{}' not found in sorted output",
-                    reg.name(),
-                    dep,
-                    dep
-                ));
+            for dep in reg.before {
+                let dep_idx = name_to_index.get(dep).unwrap_or_else(|| {
+                    panic!(
+                        "Fixer '{}' declares before: ['{}'], but '{}' not found",
+                        reg.name, dep, dep
+                    )
+                });
                 assert!(
                     dep_idx > &idx,
-                    "Dependency ordering violated: '{}' (index {}) should run before '{}' (index {}), but doesn't",
-                    reg.name(), idx, dep, dep_idx
+                    "Dependency ordering violated: '{}' (index {}) should run before '{}' (index {})",
+                    reg.name, idx, dep, dep_idx
                 );
             }
         }
@@ -681,219 +369,104 @@ mod tests {
     #[test]
     fn test_get_builtin_fixers() {
         let fixers = get_builtin_fixers();
-        // Check that we have at least two fixers now
         assert!(
             fixers.len() >= 2,
             "Expected at least 2 builtin fixers, found {}",
             fixers.len()
         );
-
-        // Check that the CRLF fixer is registered
-        let crlf_fixer = fixers
-            .iter()
-            .find(|f| f.name() == "control-file-with-CRLF-EOLs");
-        assert!(crlf_fixer.is_some(), "CRLF fixer not found");
-
-        // Check that the executable desktop file fixer is registered
-        let desktop_fixer = fixers
-            .iter()
-            .find(|f| f.name() == "executable-desktop-file");
         assert!(
-            desktop_fixer.is_some(),
+            fixers
+                .iter()
+                .any(|f| f.name() == "control-file-with-CRLF-EOLs"),
+            "CRLF fixer not found"
+        );
+        assert!(
+            fixers.iter().any(|f| f.name() == "executable-desktop-file"),
             "executable-desktop-file fixer not found"
         );
     }
 
-    #[test]
-    fn test_builtin_fixer_wrapper_new() {
-        let mock_fixer = MockBuiltinFixer {
-            name: "test-fixer",
-            tags: &["test-tag1", "test-tag2"],
-        };
+    use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+    use crate::workspace::{Detector, DetectorAdapter, DetectorRegistration, FixerWorkspace};
+    use crate::Fixer;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use tempfile::TempDir;
 
-        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
-
-        assert_eq!(wrapper.name, "test-fixer");
-        assert_eq!(wrapper.lintian_tags, vec!["test-tag1", "test-tag2"]);
-    }
-
-    #[test]
-    fn test_builtin_fixer_wrapper_fixer_trait() {
-        let mock_fixer = MockBuiltinFixer {
-            name: "test-fixer",
-            tags: &["test-tag"],
-        };
-
-        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
-        let fixer: &dyn Fixer = &wrapper;
-
-        assert_eq!(fixer.name(), "test-fixer");
-        assert_eq!(fixer.lintian_tags(), vec!["test-tag"]);
-    }
-
-    #[test]
-    fn test_builtin_fixer_wrapper_run() {
-        // The mock fixer emits no diagnostics, so apply returns
-        // NoChanges. We just check the wrapper plumbs through to the
-        // underlying BuiltinFixer.
-        let mock_fixer = MockBuiltinFixer {
-            name: "test-fixer",
-            tags: &["test-tag"],
-        };
-
-        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
-        let temp_dir = tempfile::tempdir().unwrap();
-        let preferences = FixerPreferences::default();
-        let version: Version = "1.0".parse().unwrap();
-
-        let result = wrapper.run(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &preferences,
-            None,
-        );
-
-        assert!(matches!(result, Err(FixerError::NoChanges)));
-    }
-
-    #[test]
-    fn test_builtin_fixer_wrapper_as_any() {
-        let mock_fixer = MockBuiltinFixer {
-            name: "test-fixer",
-            tags: &[],
-        };
-
-        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
-        let fixer: &dyn Fixer = &wrapper;
-
-        // Test that as_any() works
-        let any = fixer.as_any();
-        assert!(any.downcast_ref::<BuiltinFixerWrapper>().is_some());
-    }
-
-    #[test]
-    fn test_builtin_fixer_wrapper_debug() {
-        let mock_fixer = MockBuiltinFixer {
-            name: "test-fixer",
-            tags: &["tag1", "tag2"],
-        };
-
-        let wrapper = BuiltinFixerWrapper::new(Box::new(mock_fixer));
-        let debug_str = format!("{:?}", wrapper);
-
-        assert!(debug_str.contains("BuiltinFixerWrapper"));
-        assert!(debug_str.contains("test-fixer"));
-        assert!(debug_str.contains("tag1"));
-        assert!(debug_str.contains("tag2"));
-    }
-
-    // Mock builtin fixer that panics
-    struct PanicBuiltinFixer {
+    /// Mock detector for the topological-sort tests.
+    struct MockDetector {
         name: &'static str,
         tags: &'static [&'static str],
     }
 
-    impl BuiltinFixer for PanicBuiltinFixer {
+    impl Detector for MockDetector {
         fn name(&self) -> &'static str {
             self.name
         }
-
         fn lintian_tags(&self) -> &'static [&'static str] {
             self.tags
         }
-
-        fn diagnostics(
+        fn detect(
             &self,
-            _basedir: &Path,
-            _package: &str,
-            _current_version: &Version,
+            _ws: &dyn FixerWorkspace,
             _preferences: &FixerPreferences,
-        ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-            panic!("Test panic from fixer");
+        ) -> Result<Vec<Diagnostic>, FixerError> {
+            Ok(Vec::new())
         }
     }
 
-    #[test]
-    fn test_builtin_fixer_wrapper_catches_panic() {
-        let panic_fixer = PanicBuiltinFixer {
-            name: "panic-test-fixer",
-            tags: &["test-tag"],
+    fn detector_reg(
+        name: &'static str,
+        after: &'static [&'static str],
+        before: &'static [&'static str],
+    ) -> DetectorRegistration {
+        fn make_a() -> Box<dyn Detector> {
+            Box::new(MockDetector {
+                name: "fixer-a",
+                tags: &[],
+            })
+        }
+        fn make_b() -> Box<dyn Detector> {
+            Box::new(MockDetector {
+                name: "fixer-b",
+                tags: &[],
+            })
+        }
+        fn make_c() -> Box<dyn Detector> {
+            Box::new(MockDetector {
+                name: "fixer-c",
+                tags: &[],
+            })
+        }
+        fn make_d() -> Box<dyn Detector> {
+            Box::new(MockDetector {
+                name: "fixer-d",
+                tags: &[],
+            })
+        }
+        let create: fn() -> Box<dyn Detector> = match name {
+            "fixer-a" => make_a,
+            "fixer-b" => make_b,
+            "fixer-c" => make_c,
+            "fixer-d" => make_d,
+            _ => unreachable!(),
         };
-
-        let wrapper = BuiltinFixerWrapper::new(Box::new(panic_fixer));
-        let temp_dir = tempfile::tempdir().unwrap();
-        let preferences = FixerPreferences::default();
-        let version: Version = "1.0".parse().unwrap();
-
-        let result = wrapper.run(
-            temp_dir.path(),
-            "test-package",
-            &version,
-            &preferences,
-            None,
-        );
-
-        // Verify that the panic was caught and converted to an error
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-
-        // Check that it's a Panic variant
-        match err {
-            FixerError::Panic {
-                message,
-                backtrace: _,
-            } => {
-                assert_eq!(message, "Test panic from fixer");
-            }
-            _ => panic!("Expected FixerError::Panic, got {:?}", err),
+        DetectorRegistration {
+            name,
+            lintian_tags: &[],
+            create,
+            after,
+            before,
         }
     }
 
-    // Tests for topological sorting and dependency resolution
     #[test]
     fn test_topological_sort_no_dependencies() {
-        let reg1 = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-        let reg2 = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-        let reg3 = BuiltinFixerRegistration {
-            name: "fixer-c",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-c",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-
-        let registrations = vec![&reg1, &reg2, &reg3];
-        let sorted = topologically_sort_fixers(registrations);
-
-        // Should be sorted alphabetically when no dependencies
+        let a = detector_reg("fixer-a", &[], &[]);
+        let b = detector_reg("fixer-b", &[], &[]);
+        let c = detector_reg("fixer-c", &[], &[]);
+        let registrations = vec![&a, &b, &c];
+        let sorted = topologically_sort_detectors(registrations);
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[1].name, "fixer-b");
         assert_eq!(sorted[2].name, "fixer-c");
@@ -901,117 +474,31 @@ mod tests {
 
     #[test]
     fn test_topological_sort_simple_after() {
-        let reg1 = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-        let reg2 = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"], // B runs after A
-            before: &[],
-        };
-
-        let registrations = vec![&reg2, &reg1]; // Intentionally out of order
-        let sorted = topologically_sort_fixers(registrations);
-
-        // A should come before B
+        let a = detector_reg("fixer-a", &[], &[]);
+        let b = detector_reg("fixer-b", &["fixer-a"], &[]);
+        let registrations = vec![&b, &a];
+        let sorted = topologically_sort_detectors(registrations);
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[1].name, "fixer-b");
     }
 
     #[test]
     fn test_topological_sort_simple_before() {
-        let reg1 = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &["fixer-b"], // A runs before B
-        };
-        let reg2 = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-
-        let registrations = vec![&reg2, &reg1]; // Intentionally out of order
-        let sorted = topologically_sort_fixers(registrations);
-
-        // A should come before B
+        let a = detector_reg("fixer-a", &[], &["fixer-b"]);
+        let b = detector_reg("fixer-b", &[], &[]);
+        let registrations = vec![&b, &a];
+        let sorted = topologically_sort_detectors(registrations);
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[1].name, "fixer-b");
     }
 
     #[test]
     fn test_topological_sort_chain() {
-        let reg1 = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &[],
-        };
-        let reg2 = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"],
-            before: &[],
-        };
-        let reg3 = BuiltinFixerRegistration {
-            name: "fixer-c",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-c",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-b"],
-            before: &[],
-        };
-
-        let registrations = vec![&reg3, &reg1, &reg2]; // Scrambled order
-        let sorted = topologically_sort_fixers(registrations);
-
-        // Should be A -> B -> C
+        let a = detector_reg("fixer-a", &[], &[]);
+        let b = detector_reg("fixer-b", &["fixer-a"], &[]);
+        let c = detector_reg("fixer-c", &["fixer-b"], &[]);
+        let registrations = vec![&c, &a, &b];
+        let sorted = topologically_sort_detectors(registrations);
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[1].name, "fixer-b");
         assert_eq!(sorted[2].name, "fixer-c");
@@ -1024,246 +511,69 @@ mod tests {
         //   B   C
         //    \ /
         //     D
-        let reg_a = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &["fixer-b", "fixer-c"],
-        };
-        let reg_b = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"],
-            before: &["fixer-d"],
-        };
-        let reg_c = BuiltinFixerRegistration {
-            name: "fixer-c",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-c",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"],
-            before: &["fixer-d"],
-        };
-        let reg_d = BuiltinFixerRegistration {
-            name: "fixer-d",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-d",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-b", "fixer-c"],
-            before: &[],
-        };
-
-        let registrations = vec![&reg_d, &reg_c, &reg_b, &reg_a];
-        let sorted = topologically_sort_fixers(registrations);
-
-        // A must be first, D must be last
+        let a = detector_reg("fixer-a", &[], &["fixer-b", "fixer-c"]);
+        let b = detector_reg("fixer-b", &["fixer-a"], &["fixer-d"]);
+        let c = detector_reg("fixer-c", &["fixer-a"], &["fixer-d"]);
+        let d = detector_reg("fixer-d", &["fixer-b", "fixer-c"], &[]);
+        let registrations = vec![&d, &c, &b, &a];
+        let sorted = topologically_sort_detectors(registrations);
         assert_eq!(sorted[0].name, "fixer-a");
         assert_eq!(sorted[3].name, "fixer-d");
-        // B and C can be in either order (both depend on A and come before D)
-        let middle_names: Vec<_> = sorted[1..3].iter().map(|r| r.name).collect();
-        assert!(middle_names.contains(&"fixer-b"));
-        assert!(middle_names.contains(&"fixer-c"));
+        let middle: Vec<_> = sorted[1..3].iter().map(|r| r.name).collect();
+        assert!(middle.contains(&"fixer-b"));
+        assert!(middle.contains(&"fixer-c"));
     }
 
     #[test]
     #[should_panic(expected = "Circular dependency detected")]
     fn test_topological_sort_circular_dependency_simple() {
-        let reg1 = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-b"], // A after B
-            before: &[],
-        };
-        let reg2 = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"], // B after A (cycle!)
-            before: &[],
-        };
-
-        let registrations = vec![&reg1, &reg2];
-        topologically_sort_fixers(registrations); // Should panic
+        let a = detector_reg("fixer-a", &["fixer-b"], &[]);
+        let b = detector_reg("fixer-b", &["fixer-a"], &[]);
+        topologically_sort_detectors(vec![&a, &b]);
     }
 
     #[test]
     #[should_panic(expected = "Circular dependency detected")]
     fn test_topological_sort_circular_dependency_complex() {
-        // A -> B -> C -> A (cycle)
-        let reg_a = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &["fixer-b"],
-        };
-        let reg_b = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"],
-            before: &["fixer-c"],
-        };
-        let reg_c = BuiltinFixerRegistration {
-            name: "fixer-c",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-c",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-b"],
-            before: &["fixer-a"], // Creates cycle
-        };
-
-        let registrations = vec![&reg_a, &reg_b, &reg_c];
-        topologically_sort_fixers(registrations); // Should panic
+        // A -> B -> C -> A
+        let a = detector_reg("fixer-a", &[], &["fixer-b"]);
+        let b = detector_reg("fixer-b", &["fixer-a"], &["fixer-c"]);
+        let c = detector_reg("fixer-c", &["fixer-b"], &["fixer-a"]);
+        topologically_sort_detectors(vec![&a, &b, &c]);
     }
 
     #[test]
     #[should_panic(expected = "non-existent fixer 'fixer-nonexistent'")]
     fn test_topological_sort_missing_dependency_after() {
-        let reg = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-nonexistent"], // References non-existent fixer
-            before: &[],
-        };
-
-        let registrations = vec![&reg];
-        topologically_sort_fixers(registrations); // Should panic
+        let a = detector_reg("fixer-a", &["fixer-nonexistent"], &[]);
+        topologically_sort_detectors(vec![&a]);
     }
 
     #[test]
     #[should_panic(expected = "non-existent fixer 'fixer-missing'")]
     fn test_topological_sort_missing_dependency_before() {
-        let reg = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &["fixer-missing"], // References non-existent fixer
-        };
-
-        let registrations = vec![&reg];
-        topologically_sort_fixers(registrations); // Should panic
+        let a = detector_reg("fixer-a", &[], &["fixer-missing"]);
+        topologically_sort_detectors(vec![&a]);
     }
 
-    #[test]
-    fn test_topological_sort_mixed_after_before() {
-        // A before B, B after A (both constraints point same direction)
-        let reg_a = BuiltinFixerRegistration {
-            name: "fixer-a",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-a",
-                    tags: &[],
-                })
-            },
-            after: &[],
-            before: &["fixer-b"],
-        };
-        let reg_b = BuiltinFixerRegistration {
-            name: "fixer-b",
-            lintian_tags: &[],
-            create: || {
-                Box::new(MockBuiltinFixer {
-                    name: "fixer-b",
-                    tags: &[],
-                })
-            },
-            after: &["fixer-a"],
-            before: &[],
-        };
-
-        let registrations = vec![&reg_b, &reg_a];
-        let sorted = topologically_sort_fixers(registrations);
-
-        // A should come before B
-        assert_eq!(sorted[0].name, "fixer-a");
-        assert_eq!(sorted[1].name, "fixer-b");
-    }
-
-    use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-    use std::fs;
-    use std::path::PathBuf;
-    use tempfile::TempDir;
-
-    /// A fixer that overrides only `diagnostics`. The default `apply` impl
-    /// from the trait should consume the diagnostics, filter via overrides,
-    /// and apply the actions.
-    struct DiagFixer {
+    /// A detector that yields a fixed list of diagnostics. Used by the
+    /// apply-pipeline tests below.
+    struct DiagDetector {
         name: &'static str,
         tags: &'static [&'static str],
         diagnostics: Vec<Diagnostic>,
     }
 
-    impl BuiltinFixer for DiagFixer {
+    impl Detector for DiagDetector {
         fn name(&self) -> &'static str {
             self.name
         }
         fn lintian_tags(&self) -> &'static [&'static str] {
             self.tags
         }
-        fn diagnostics(
+        fn detect(
             &self,
-            _basedir: &Path,
-            _package: &str,
-            _version: &Version,
+            _ws: &dyn FixerWorkspace,
             _preferences: &FixerPreferences,
         ) -> Result<Vec<Diagnostic>, FixerError> {
             Ok(self.diagnostics.clone())
@@ -1277,11 +587,11 @@ mod tests {
     }
 
     #[test]
-    fn default_apply_runs_diagnostic_actions() {
+    fn apply_pipeline_runs_diagnostic_actions() {
         let tmp = TempDir::new().unwrap();
         write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
 
-        let fixer = DiagFixer {
+        let detector = DiagDetector {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
@@ -1296,9 +606,9 @@ mod tests {
             )
             .with_certainty(Certainty::Confident)],
         };
-
+        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
-        let result = fixer
+        let result = adapter
             .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
             .unwrap();
 
@@ -1312,24 +622,25 @@ mod tests {
     }
 
     #[test]
-    fn default_apply_returns_no_changes_for_empty_diagnostics() {
+    fn apply_pipeline_returns_no_changes_for_empty_diagnostics() {
         let tmp = TempDir::new().unwrap();
         write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
 
-        let fixer = DiagFixer {
+        let detector = DiagDetector {
             name: "noop",
             tags: &["x"],
             diagnostics: vec![],
         };
+        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
-        let err = fixer
+        let err = adapter
             .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
             .unwrap_err();
         assert!(matches!(err, FixerError::NoChanges));
     }
 
     #[test]
-    fn default_apply_skips_overridden_diagnostics() {
+    fn apply_pipeline_skips_overridden_diagnostics() {
         let tmp = TempDir::new().unwrap();
         write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
         // Override that suppresses the only diagnostic.
@@ -1337,7 +648,7 @@ mod tests {
         fs::create_dir_all(&source_dir).unwrap();
         fs::write(source_dir.join("lintian-overrides"), "recommended-field\n").unwrap();
 
-        let fixer = DiagFixer {
+        let detector = DiagDetector {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
@@ -1351,8 +662,9 @@ mod tests {
                 })],
             )],
         };
+        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
-        let err = fixer
+        let err = adapter
             .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
             .unwrap_err();
         match err {
@@ -1362,7 +674,6 @@ mod tests {
             }
             other => panic!("expected NoChangesAfterOverrides, got {:?}", other),
         }
-        // Control file untouched.
         assert_eq!(
             fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
             "Source: foo\n\nPackage: foo\n"
@@ -1370,11 +681,11 @@ mod tests {
     }
 
     #[test]
-    fn default_apply_filters_below_minimum_certainty() {
+    fn apply_pipeline_filters_below_minimum_certainty() {
         let tmp = TempDir::new().unwrap();
         write_control(tmp.path(), "Source: foo\n\nPackage: foo\n");
 
-        let fixer = DiagFixer {
+        let detector = DiagDetector {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
@@ -1389,17 +700,52 @@ mod tests {
             )
             .with_certainty(Certainty::Possible)],
         };
+        let adapter = DetectorAdapter::new(Box::new(detector));
         let mut prefs = FixerPreferences::default();
         prefs.minimum_certainty = Some(Certainty::Confident);
         let version: Version = "1.0".parse().unwrap();
-        let err = fixer
+        let err = adapter
             .apply(tmp.path(), "foo", &version, &prefs)
             .unwrap_err();
         assert!(matches!(err, FixerError::NotCertainEnough(..)));
-        // Control file untouched.
         assert_eq!(
             fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
             "Source: foo\n\nPackage: foo\n"
         );
+    }
+
+    /// A detector that panics, used to confirm `DetectorAdapter::run`
+    /// catches the panic and converts it to `FixerError::Panic`.
+    struct PanickyDetector;
+
+    impl Detector for PanickyDetector {
+        fn name(&self) -> &'static str {
+            "panicky-detector"
+        }
+        fn lintian_tags(&self) -> &'static [&'static str] {
+            &["x"]
+        }
+        fn detect(
+            &self,
+            _ws: &dyn FixerWorkspace,
+            _preferences: &FixerPreferences,
+        ) -> Result<Vec<Diagnostic>, FixerError> {
+            panic!("Test panic from detector");
+        }
+    }
+
+    #[test]
+    fn detector_adapter_catches_panic() {
+        let adapter = DetectorAdapter::new(Box::new(PanickyDetector));
+        let tmp = TempDir::new().unwrap();
+        let prefs = FixerPreferences::default();
+        let version: Version = "1.0".parse().unwrap();
+        let result = adapter.run(tmp.path(), "test-package", &version, &prefs, None);
+        match result.unwrap_err() {
+            FixerError::Panic { message, .. } => {
+                assert_eq!(message, "Test panic from detector");
+            }
+            other => panic!("expected FixerError::Panic, got {:?}", other),
+        }
     }
 }

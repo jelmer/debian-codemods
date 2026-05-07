@@ -3,7 +3,6 @@ use crate::diagnostic::{Action, Diagnostic, FilesystemAction, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use debian_control::lossless::Control;
-use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 fn read_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
@@ -35,11 +34,11 @@ fn control_compat_level(control: &Control) -> Option<u32> {
 }
 
 fn rules_dh_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
-    let Some(bytes) = ws.read_file(Path::new("debian/rules"))? else {
-        return Ok(None);
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(None),
+        Err(e) => return Err(e),
     };
-    let makefile = Makefile::read_relaxed(bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
     let result = makefile
         .find_variable("DH_COMPAT")
         .next()
@@ -118,7 +117,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;

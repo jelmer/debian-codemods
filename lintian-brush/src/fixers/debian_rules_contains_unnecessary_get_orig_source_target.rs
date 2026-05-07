@@ -2,7 +2,6 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -21,12 +20,11 @@ pub fn detect(
     }
 
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let Some(rule) = makefile
         .rules()
@@ -77,7 +75,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;

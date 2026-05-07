@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const DH_MAKE_TEMPLATE: &str = r"s/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/";
 
@@ -11,15 +11,11 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
-    let bytes = match ws.read_file(Path::new("debian/watch"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let watch_file = match ws.parsed_watch() {
+        Ok(w) => w,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-
-    let content = String::from_utf8(bytes)
-        .map_err(|e| FixerError::Other(format!("debian/watch is not valid UTF-8: {}", e)))?;
-    let watch_file = debian_watch::parse::parse(&content)
-        .map_err(|e| FixerError::Other(format!("Failed to parse watch file: {}", e)))?;
 
     let mut diagnostics = Vec::new();
     for entry in watch_file.entries() {
@@ -59,10 +55,10 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

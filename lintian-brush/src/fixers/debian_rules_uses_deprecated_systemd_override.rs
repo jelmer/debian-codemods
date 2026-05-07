@@ -2,8 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::{compat_level, FixerWorkspace};
 use crate::{FixerError, FixerPreferences, LintianIssue};
-use makefile_lossless::Makefile;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const DEPRECATED_OVERRIDES: &[&str] = &["override_dh_systemd_enable", "override_dh_systemd_start"];
 const NEW_TARGET: &str = "override_dh_installsystemd";
@@ -13,9 +12,10 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let rules_bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
 
     // Issue only applies to compat level >= 11.
@@ -23,9 +23,6 @@ pub fn detect(
         Some(level) if level >= 11 => {}
         _ => return Ok(Vec::new()),
     }
-
-    let makefile = Makefile::read_relaxed(rules_bytes.as_slice())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let new_target_exists = makefile
         .rules()
@@ -87,10 +84,10 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

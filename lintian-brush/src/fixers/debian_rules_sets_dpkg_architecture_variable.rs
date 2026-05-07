@@ -3,7 +3,6 @@ use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue};
 use lazy_static::lazy_static;
-use makefile_lossless::Makefile;
 use regex::Regex;
 use std::collections::HashSet;
 #[cfg(test)]
@@ -52,15 +51,11 @@ pub fn detect(
     let opinionated = preferences.opinionated.unwrap_or(false);
 
     let rules_rel = PathBuf::from("debian/rules");
-    let bytes = match ws.read_file(&rules_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
     };
-    let Ok(content) = String::from_utf8(bytes) else {
-        return Ok(Vec::new());
-    };
-    let makefile = Makefile::read_relaxed(content.as_bytes())
-        .map_err(|e| FixerError::Other(format!("Failed to parse makefile: {}", e)))?;
 
     let already_included = makefile.included_files().any(|f| f == ARCHITECTURE_MK_PATH);
 
@@ -198,7 +193,6 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::Version;
     use std::fs;

@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const OBSOLETE_WATCH_FILE_FORMAT: u32 = 2;
 const WATCH_FILE_LATEST_VERSION: u32 = 5;
@@ -12,15 +12,9 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
-    let bytes = match ws.read_file(Path::new("debian/watch"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
-    };
-    let Ok(content) = String::from_utf8(bytes) else {
-        return Ok(Vec::new());
-    };
-    let watch_file = match debian_watch::parse::parse(&content) {
+    let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
+        Err(FixerError::NoChanges) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let version = watch_file.version();
@@ -75,10 +69,10 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builtin_fixers::BuiltinFixer;
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

@@ -29,6 +29,8 @@ use std::path::{Path, PathBuf};
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
 use debian_copyright::lossless::Copyright;
+use debian_watch::parse::ParsedWatchFile;
+use makefile_lossless::Makefile;
 
 use crate::{FixerError, LintianIssue, Version};
 
@@ -98,6 +100,18 @@ pub trait FixerWorkspace {
     /// unparseable.
     fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, FixerError>;
 
+    /// Read `debian/watch` and return a parsed value.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing.
+    fn parsed_watch(&self) -> Result<ParsedWatchFile, FixerError>;
+
+    /// Read `debian/rules` and return the parsed Makefile.
+    ///
+    /// Returns `Err(FixerError::NoChanges)` if the file is missing. Uses
+    /// `Makefile::read_relaxed`, mirroring the behaviour every fixer
+    /// currently expects from `debian/rules` parsing.
+    fn parsed_rules(&self) -> Result<Makefile, FixerError>;
+
     /// Read the trimmed contents of `debian/source/format`.
     ///
     /// Returns `Ok(None)` if the file is missing. The default format
@@ -137,6 +151,36 @@ pub trait FixerWorkspace {
     /// The order of returned entries is unspecified — a non-`Tree` host
     /// (an LSP) may not have a meaningful directory ordering.
     fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, FixerError>;
+
+    /// Recursively walk `rel`, returning the relative paths of every
+    /// regular file beneath it (paths are relative to the package root,
+    /// not to `rel`).
+    ///
+    /// Symbolic links and other non-regular entries are skipped. Returns
+    /// `Ok(None)` if `rel` does not exist.
+    ///
+    /// The order of returned paths is unspecified. Hosts that can't
+    /// meaningfully walk a tree (e.g. an LSP that only knows about open
+    /// buffers) may return only the files they currently track.
+    fn walk_dir(&self, rel: &Path) -> Result<Option<Vec<PathBuf>>, FixerError> {
+        // Default impl: depth-first walk via list_dir + read_file.
+        // Hosts that have a faster path can override.
+        let Some(top_entries) = self.list_dir(rel)? else {
+            return Ok(None);
+        };
+        let mut out = Vec::new();
+        let mut stack: Vec<(PathBuf, Vec<String>)> = vec![(rel.to_path_buf(), top_entries)];
+        while let Some((dir, entries)) = stack.pop() {
+            for name in entries {
+                let child = dir.join(&name);
+                match self.list_dir(&child)? {
+                    Some(sub) => stack.push((child, sub)),
+                    None => out.push(child),
+                }
+            }
+        }
+        Ok(Some(out))
+    }
 
     /// Read the Unix file mode of `rel`, or `None` if the file is missing.
     ///
@@ -311,6 +355,20 @@ impl FixerWorkspace for TreeFixerWorkspace {
             .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
     }
 
+    fn parsed_watch(&self) -> Result<ParsedWatchFile, FixerError> {
+        let path = self.full_path(Path::new("debian/watch"));
+        let text = fs::read_to_string(&path).map_err(map_open_error)?;
+        debian_watch::parse::parse(&text)
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {:?}", path.display(), e)))
+    }
+
+    fn parsed_rules(&self) -> Result<Makefile, FixerError> {
+        let path = self.full_path(Path::new("debian/rules"));
+        let bytes = fs::read(&path).map_err(map_open_error)?;
+        Makefile::read_relaxed(bytes.as_slice())
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))
+    }
+
     fn source_format(&self) -> Result<Option<String>, FixerError> {
         match self.read_file(Path::new("debian/source/format"))? {
             Some(b) => Ok(String::from_utf8(b)
@@ -376,6 +434,38 @@ impl FixerWorkspace for TreeFixerWorkspace {
             names.push(entry.file_name().to_string_lossy().into_owned());
         }
         Ok(Some(names))
+    }
+
+    fn walk_dir(&self, rel: &Path) -> Result<Option<Vec<PathBuf>>, FixerError> {
+        let abs = self.full_path(rel);
+        if !abs.exists() {
+            return Ok(None);
+        }
+        let mut out = Vec::new();
+        let mut stack: Vec<PathBuf> = vec![abs.clone()];
+        while let Some(dir) = stack.pop() {
+            let read_dir = match fs::read_dir(&dir) {
+                Ok(it) => it,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(FixerError::Io(e)),
+            };
+            for entry in read_dir {
+                let entry = entry?;
+                let ft = entry.file_type()?;
+                let path = entry.path();
+                if ft.is_dir() {
+                    stack.push(path);
+                } else if ft.is_file() {
+                    let rel_path = path
+                        .strip_prefix(&self.base_path)
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or(path);
+                    out.push(rel_path);
+                }
+                // Skip symlinks and other non-regular entries.
+            }
+        }
+        Ok(Some(out))
     }
 
     fn file_mode(&self, rel: &Path) -> Result<Option<u32>, FixerError> {
@@ -454,14 +544,14 @@ pub fn compat_level(ws: &dyn FixerWorkspace) -> Result<Option<u8>, FixerError> {
 /// anything) needs fixing, together with the [`Action`](crate::diagnostic::Action)s
 /// that would fix it. Detectors do *not* mutate the tree.
 ///
-/// This is the modern replacement for [`crate::builtin_fixers::BuiltinFixer`]'s
-/// `diagnostics()` method. It carries no `basedir`/`package`/`current_version`
-/// arguments — those are reachable through the workspace — and so works
-/// unchanged in an LSP host that has no on-disk basedir for the open buffer.
+/// Detectors carry no `basedir`/`package`/`current_version` arguments —
+/// those are reachable through the workspace — so the same detector
+/// works in the lintian-brush CLI (with a [`TreeFixerWorkspace`]) and in
+/// an LSP host that has no on-disk basedir for the open buffer.
 ///
-/// Each detector is also wrapped in a [`crate::builtin_fixers::BuiltinFixer`]
-/// adapter at registration time so the lintian-brush CLI driver picks it
-/// up alongside the legacy `BuiltinFixer` fixers.
+/// Each registered detector is wrapped in a [`DetectorAdapter`] at
+/// registration time so the lintian-brush CLI driver picks it up via
+/// [`crate::builtin_fixers::get_builtin_fixers`].
 pub trait Detector: Send + Sync {
     /// Stable name of the detector. Matches the corresponding fixer name.
     fn name(&self) -> &'static str;
@@ -518,14 +608,12 @@ pub fn iter_detectors() -> impl Iterator<Item = Box<dyn Detector>> {
         .map(|reg| (reg.create)())
 }
 
-/// Bridge a [`Detector`] into the legacy [`crate::builtin_fixers::BuiltinFixer`]
-/// trait so the CLI driver picks it up via
-/// [`crate::builtin_fixers::get_builtin_fixers`].
+/// Bridge a [`Detector`] into the public [`crate::Fixer`] trait so the CLI
+/// driver picks it up via [`crate::builtin_fixers::get_builtin_fixers`].
 ///
-/// `BuiltinFixer::diagnostics`'s default takes a `basedir` — we wrap it in
-/// a [`TreeFixerWorkspace`] and call the underlying detector. The default
-/// `BuiltinFixer::apply` then runs the actions through `appliers::apply_actions`
-/// with the same basedir, so the on-disk write path is unchanged.
+/// Constructs a [`TreeFixerWorkspace`] from the on-disk `basedir`, runs the
+/// detector, then applies the resulting actions through
+/// [`crate::appliers::apply_actions`].
 pub struct DetectorAdapter {
     detector: Box<dyn Detector>,
     name: &'static str,
@@ -533,7 +621,7 @@ pub struct DetectorAdapter {
 }
 
 impl DetectorAdapter {
-    /// Wrap a [`Detector`] for use as a [`crate::builtin_fixers::BuiltinFixer`].
+    /// Wrap a [`Detector`] for use as a [`crate::Fixer`].
     pub fn new(detector: Box<dyn Detector>) -> Self {
         let name = detector.name();
         let lintian_tags = detector.lintian_tags();
@@ -543,34 +631,102 @@ impl DetectorAdapter {
             lintian_tags,
         }
     }
-}
 
-impl crate::builtin_fixers::BuiltinFixer for DetectorAdapter {
-    fn name(&self) -> &'static str {
-        self.name
-    }
-
-    fn lintian_tags(&self) -> &'static [&'static str] {
-        self.lintian_tags
-    }
-
-    fn diagnostics(
+    /// Run the underlying detector against an on-disk package and apply
+    /// any actions it emits.
+    ///
+    /// Returns [`FixerError::NoChanges`] if the detector emitted nothing,
+    /// and [`FixerError::NoChangesAfterOverrides`] if every diagnostic was
+    /// filtered out by lintian overrides.
+    pub fn apply(
         &self,
         basedir: &Path,
         package: &str,
         current_version: &Version,
         preferences: &crate::FixerPreferences,
-    ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
+    ) -> Result<crate::FixerResult, FixerError> {
         let ws = TreeFixerWorkspace::new(basedir, package, current_version.clone());
-        self.detector.detect(&ws, preferences)
+        let diagnostics = self.detector.detect(&ws, preferences)?;
+        crate::builtin_fixers::apply_diagnostics_with(
+            basedir,
+            &diagnostics,
+            preferences,
+            &|fixed, actions| self.detector.describe(fixed, actions),
+        )
+    }
+}
+
+impl std::fmt::Debug for DetectorAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DetectorAdapter")
+            .field("name", &self.name)
+            .field("lintian_tags", &self.lintian_tags)
+            .finish()
+    }
+}
+
+impl crate::Fixer for DetectorAdapter {
+    fn name(&self) -> String {
+        self.name.to_string()
     }
 
-    fn describe(
+    fn lintian_tags(&self) -> Vec<String> {
+        self.lintian_tags.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn run(
         &self,
-        fixed: &[crate::diagnostic::Diagnostic],
-        actions: &[crate::diagnostic::Action],
-    ) -> String {
-        self.detector.describe(fixed, actions)
+        basedir: &Path,
+        package: &str,
+        current_version: &Version,
+        preferences: &crate::FixerPreferences,
+        _timeout: Option<chrono::Duration>,
+    ) -> Result<crate::FixerResult, FixerError> {
+        // Backup and apply any extra environment variables for native
+        // fixers.
+        let mut env_backup = Vec::new();
+        if let Some(extra_env) = &preferences.extra_env {
+            for (key, value) in extra_env {
+                env_backup.push((key.clone(), std::env::var(key).ok()));
+                std::env::set_var(key, value);
+            }
+        }
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.apply(basedir, package, current_version, preferences)
+        }));
+
+        for (key, old_value) in env_backup {
+            if let Some(value) = old_value {
+                std::env::set_var(&key, value);
+            } else {
+                std::env::remove_var(&key);
+            }
+        }
+
+        match result {
+            Ok(r) => r,
+            Err(panic_payload) => {
+                let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "Unknown panic payload".to_string()
+                };
+                let backtrace = std::backtrace::Backtrace::capture();
+                let backtrace = if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
+                    Some(backtrace)
+                } else {
+                    None
+                };
+                Err(FixerError::Panic { message, backtrace })
+            }
+        }
     }
 }
 
@@ -721,5 +877,35 @@ mod tests {
         // Don't make_pkg — no debian/ at all.
         let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
         assert!(matches!(ws.control(), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn tree_workspace_walk_dir_returns_relative_files() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        // Add a subdirectory with a file to verify recursion.
+        let nested = tmp.path().join("debian/source");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("format"), "3.0 (quilt)\n").unwrap();
+
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let mut paths = ws.walk_dir(Path::new("debian")).unwrap().unwrap();
+        paths.sort();
+
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("debian/changelog"),
+                PathBuf::from("debian/control"),
+                PathBuf::from("debian/source/format"),
+            ]
+        );
+    }
+
+    #[test]
+    fn tree_workspace_walk_dir_missing_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        assert!(ws.walk_dir(Path::new("debian")).unwrap().is_none());
     }
 }
