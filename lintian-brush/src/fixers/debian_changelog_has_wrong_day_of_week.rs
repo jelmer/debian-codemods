@@ -96,6 +96,9 @@ pub fn detect(
 declare_detector! {
     name: "debian-changelog-has-wrong-day-of-week",
     tags: ["debian-changelog-has-wrong-day-of-week"],
+    triggers: [crate::workspace::Trigger::Changelog(
+        crate::workspace::ChangelogAspect::Timestamp,
+    )],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

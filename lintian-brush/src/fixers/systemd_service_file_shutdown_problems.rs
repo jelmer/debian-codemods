@@ -77,6 +77,7 @@ pub fn detect(
 declare_detector! {
     name: "systemd-service-file-shutdown-problems",
     tags: ["systemd-service-file-shutdown-problems"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.service")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

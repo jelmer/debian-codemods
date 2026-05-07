@@ -252,6 +252,20 @@ pub fn detect(
 declare_detector! {
     name: "unused-override",
     tags: ["unused-override"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Source",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
+        crate::workspace::Trigger::Glob("debian/*.lintian-overrides"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

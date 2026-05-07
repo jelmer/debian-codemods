@@ -257,6 +257,14 @@ fn detect(
 declare_detector! {
     name: "vcs-field-invalid-branch",
     tags: ["vcs-field-invalid-branch"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-Git",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

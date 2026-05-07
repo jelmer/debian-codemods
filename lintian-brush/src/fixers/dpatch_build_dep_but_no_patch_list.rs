@@ -66,6 +66,24 @@ pub fn detect(
 declare_detector! {
     name: "dpatch-build-dep-but-no-patch-list",
     tags: ["dpatch-build-dep-but-no-patch-list"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Arch",
+        },
+        crate::workspace::Trigger::Glob("debian/patches/*"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

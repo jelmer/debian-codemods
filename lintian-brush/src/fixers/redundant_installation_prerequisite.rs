@@ -130,6 +130,28 @@ pub fn detect(
 declare_detector! {
     name: "redundant-installation-prerequisite",
     tags: ["redundant-installation-prerequisite"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Pre-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Recommends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Suggests",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

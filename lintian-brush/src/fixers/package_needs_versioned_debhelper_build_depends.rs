@@ -63,6 +63,14 @@ pub fn detect(
 declare_detector! {
     name: "package-needs-versioned-debhelper-build-depends",
     tags: ["no-versioned-debhelper-prerequisite"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

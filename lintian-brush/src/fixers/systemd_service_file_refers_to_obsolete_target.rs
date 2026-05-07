@@ -73,6 +73,7 @@ pub fn detect(
 declare_detector! {
     name: "systemd-service-file-refers-to-obsolete-target",
     tags: ["systemd-service-file-refers-to-obsolete-target"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.service")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

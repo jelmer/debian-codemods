@@ -165,6 +165,20 @@ pub fn detect(
 declare_detector! {
     name: "upstream-metadata-has-obsolete-field",
     tags: [],
+    triggers: [
+        crate::workspace::Trigger::UpstreamMetadataField("Name"),
+        crate::workspace::Trigger::UpstreamMetadataField("Contact"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Upstream-Name",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Format",
+            field: "Upstream-Contact",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

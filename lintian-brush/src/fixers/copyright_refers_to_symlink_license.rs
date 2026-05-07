@@ -120,6 +120,18 @@ fn replace_symlink_path(synopsis: &str, path: &str, _license_name: &str) -> Opti
 declare_detector! {
     name: "copyright-refers-to-symlink-license",
     tags: ["copyright-refers-to-symlink-license", "copyright-refers-to-versionless-license-file"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "License",
+            field: "License",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/copyright",
+            paragraph_key: "Files",
+            field: "License",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

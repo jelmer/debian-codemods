@@ -105,6 +105,7 @@ pub fn detect(
 declare_detector! {
     name: "systemd-service-alias-without-extension",
     tags: ["systemd-service-alias-without-extension"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.service")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

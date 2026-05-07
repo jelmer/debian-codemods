@@ -56,6 +56,18 @@ pub fn detect(
 declare_detector! {
     name: "maintainer-also-in-uploaders",
     tags: ["maintainer-also-in-uploaders"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Maintainer",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Uploaders",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

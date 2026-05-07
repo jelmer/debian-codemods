@@ -35,6 +35,13 @@ pub fn detect(
 declare_detector! {
     name: "dm-upload-allowed",
     tags: ["malformed-dm-upload-allowed", "dm-upload-allowed-is-obsolete"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "DM-Upload-Allowed",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

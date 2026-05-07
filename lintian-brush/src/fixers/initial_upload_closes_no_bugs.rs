@@ -102,6 +102,10 @@ fn find_wnpp_bugs(package_name: &str) -> Result<Vec<(BugId, BugKind)>, FixerErro
 declare_detector! {
     name: "initial-upload-closes-no-bugs",
     tags: ["initial-upload-closes-no-bugs"],
+    triggers: [
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -146,6 +146,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-missing-recommended-target",
     tags: ["debian-rules-missing-recommended-target"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Architecture",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

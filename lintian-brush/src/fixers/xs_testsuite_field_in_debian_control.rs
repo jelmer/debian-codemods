@@ -59,6 +59,13 @@ pub fn detect(
 declare_detector! {
     name: "xs-testsuite-field-in-debian-control",
     tags: ["adopted-extended-field"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "XS-Testsuite",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

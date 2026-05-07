@@ -146,6 +146,18 @@ declare_detector! {
     tags: ["vcs-field-uses-insecure-uri"],
     after: ["vcs-field-not-canonical"],
     before: ["vcs-field-uses-not-recommended-uri-format"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Source",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

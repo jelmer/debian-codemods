@@ -62,6 +62,7 @@ pub fn detect(
 declare_detector! {
     name: "systemd-service-file-refers-to-obsolete-bindto",
     tags: ["systemd-service-file-refers-to-obsolete-bindto"],
+    triggers: [crate::workspace::Trigger::Glob("debian/*.service")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

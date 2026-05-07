@@ -457,6 +457,7 @@ mod tests {
             create,
             after,
             before,
+            triggers: &[],
         }
     }
 

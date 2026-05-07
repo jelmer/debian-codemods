@@ -78,6 +78,14 @@ pub fn detect(
 declare_detector! {
     name: "useless-autoreconf-build-depends",
     tags: ["useless-autoreconf-build-depends"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -93,6 +93,14 @@ pub fn detect(
 declare_detector! {
     name: "obsolete-vim-addon-manager",
     tags: ["obsolete-vim-addon-manager"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Depends",
+        },
+        crate::workspace::Trigger::File("debian/rules"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

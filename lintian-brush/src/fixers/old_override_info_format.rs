@@ -173,6 +173,10 @@ pub fn detect(
 declare_detector! {
     name: "old-override-info-format",
     tags: ["mismatched-override"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
+        crate::workspace::Trigger::Glob("debian/*.lintian-overrides"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

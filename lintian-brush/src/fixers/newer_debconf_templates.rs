@@ -64,6 +64,9 @@ pub fn detect(
 declare_detector! {
     name: "newer-debconf-templates",
     tags: ["newer-debconf-templates"],
+    triggers: [
+        crate::workspace::Trigger::Glob("debian/po/*"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

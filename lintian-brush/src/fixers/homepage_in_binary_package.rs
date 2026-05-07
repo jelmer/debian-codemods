@@ -103,6 +103,18 @@ pub fn detect(
 declare_detector! {
     name: "homepage-in-binary-package",
     tags: ["homepage-in-binary-package"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Homepage",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Homepage",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

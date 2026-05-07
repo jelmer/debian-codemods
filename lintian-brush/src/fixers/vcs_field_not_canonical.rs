@@ -140,6 +140,14 @@ declare_detector! {
     tags: ["vcs-field-not-canonical"],
     after: ["vcs-field-mismatch"],
     before: ["vcs-field-uses-insecure-uri"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Vcs-*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

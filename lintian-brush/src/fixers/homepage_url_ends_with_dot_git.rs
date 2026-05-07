@@ -82,6 +82,13 @@ declare_detector! {
         "homepage-gitlab-url-ends-with-dot-git",
         "homepage-salsa-url-ends-with-dot-git"
     ],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Homepage",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

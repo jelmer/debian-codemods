@@ -78,6 +78,20 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-uses-deprecated-systemd-override",
     tags: ["debian-rules-uses-deprecated-systemd-override"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "X-DH-Compat",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

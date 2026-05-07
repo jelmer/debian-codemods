@@ -139,6 +139,18 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "field-name-typo-in-tests-control",
     tags: ["field-name-typo-in-tests-control"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Tests",
+            field: "*",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/tests/control",
+            paragraph_key: "Test-Command",
+            field: "*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

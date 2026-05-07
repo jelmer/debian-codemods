@@ -90,6 +90,10 @@ fn find_header_end(content: &str) -> usize {
 declare_detector! {
     name: "dep3-format-patch-author-or-from-is-better",
     tags: ["dep3-format-patch-author-or-from-is-better"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/patches/series"),
+        crate::workspace::Trigger::Glob("debian/patches/*"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

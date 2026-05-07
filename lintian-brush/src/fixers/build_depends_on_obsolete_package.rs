@@ -76,6 +76,23 @@ pub fn detect(
 declare_detector! {
     name: "build-depends-on-obsolete-package",
     tags: ["build-depends-on-obsolete-package"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Arch",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

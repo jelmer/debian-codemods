@@ -159,6 +159,16 @@ fn describe_aggregate(fixed: &[Diagnostic], _actions: &[Action]) -> String {
 declare_detector! {
     name: "maintainer-script-empty",
     tags: ["maintainer-script-empty"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/preinst"),
+        crate::workspace::Trigger::File("debian/postinst"),
+        crate::workspace::Trigger::File("debian/prerm"),
+        crate::workspace::Trigger::File("debian/postrm"),
+        crate::workspace::Trigger::Glob("debian/*.preinst"),
+        crate::workspace::Trigger::Glob("debian/*.postinst"),
+        crate::workspace::Trigger::Glob("debian/*.prerm"),
+        crate::workspace::Trigger::Glob("debian/*.postrm"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

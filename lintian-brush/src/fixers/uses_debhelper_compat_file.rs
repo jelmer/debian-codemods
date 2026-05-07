@@ -110,6 +110,25 @@ pub fn detect(
 declare_detector! {
     name: "uses-debhelper-compat-file",
     tags: ["uses-debhelper-compat-file"],
+    triggers: [
+        crate::workspace::Trigger::File("debian/compat"),
+        crate::workspace::Trigger::File("debian/rules"),
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Indep",
+        },
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Source",
+            field: "Build-Depends-Arch",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

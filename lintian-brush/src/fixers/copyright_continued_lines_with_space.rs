@@ -203,6 +203,7 @@ pub fn detect(
 declare_detector! {
     name: "copyright-continued-lines-with-space",
     tags: ["tab-in-license-text"],
+    triggers: [crate::workspace::Trigger::File("debian/copyright")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

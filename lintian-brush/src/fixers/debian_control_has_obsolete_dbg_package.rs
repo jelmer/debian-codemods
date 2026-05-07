@@ -169,6 +169,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-control-has-obsolete-dbg-package",
     tags: ["debian-control-has-obsolete-dbg-package"],
+    triggers: [
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "Package",
+        },
+        crate::workspace::Trigger::File("debian/rules"),
+    ],
     detect: |ws, prefs| detect(ws, prefs),
 }
 

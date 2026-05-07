@@ -121,6 +121,15 @@ fn describe_aggregate(_fixed: &[Diagnostic], actions: &[Action]) -> String {
 declare_detector! {
     name: "binary-control-field-duplicates-source",
     tags: ["installable-field-mirrors-source"],
+    triggers: [
+        // Any field in any binary paragraph may duplicate the source's
+        // value; matching on `*` keeps the trigger broad.
+        crate::workspace::Trigger::Deb822Field {
+            file: "debian/control",
+            paragraph_key: "Package",
+            field: "*",
+        },
+    ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

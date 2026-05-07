@@ -37,6 +37,7 @@ declare_detector! {
     tags: ["carriage-return-line-feed"],
     // Must normalize line endings before whitespace cleanup to avoid corrupting content.
     before: ["file-contains-trailing-whitespace"],
+    triggers: [crate::workspace::Trigger::File("debian/control")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
