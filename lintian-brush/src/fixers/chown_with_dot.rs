@@ -42,7 +42,7 @@ pub fn detect(
             Some(b) => b,
             None => continue,
         };
-        let Ok(content) = String::from_utf8(bytes) else {
+        let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
         if !chown_regex.is_match(&content) {

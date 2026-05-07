@@ -15,7 +15,7 @@ pub fn detect(
         None => return Ok(Vec::new()),
     };
 
-    let content = String::from_utf8(bytes)
+    let content = std::str::from_utf8(&bytes)
         .map_err(|e| FixerError::Other(format!("debian/rules is not valid UTF-8: {}", e)))?;
     let parsed = Makefile::parse(&content);
     let makefile = parsed.tree();

@@ -136,7 +136,12 @@ pub trait FixerWorkspace {
     /// Read raw bytes of an arbitrary file relative to the package root.
     ///
     /// Returns `Ok(None)` if the file does not exist.
-    fn read_file(&self, rel: &Path) -> Result<Option<Vec<u8>>, FixerError>;
+    ///
+    /// The returned `Cow` is borrowed when the host has the bytes
+    /// already in memory (an LSP host with the file open in an editor
+    /// buffer) and owned when they had to be fetched (a disk read).
+    /// Detectors that need owned bytes can call `.into_owned()`.
+    fn read_file(&self, rel: &Path) -> Result<Option<std::borrow::Cow<'_, [u8]>>, FixerError>;
 
     /// Write raw bytes to an arbitrary file relative to the package root.
     ///
@@ -371,7 +376,7 @@ impl FixerWorkspace for TreeFixerWorkspace {
 
     fn source_format(&self) -> Result<Option<String>, FixerError> {
         match self.read_file(Path::new("debian/source/format"))? {
-            Some(b) => Ok(String::from_utf8(b)
+            Some(b) => Ok(std::str::from_utf8(&b)
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())),
@@ -406,10 +411,10 @@ impl FixerWorkspace for TreeFixerWorkspace {
         }))
     }
 
-    fn read_file(&self, rel: &Path) -> Result<Option<Vec<u8>>, FixerError> {
+    fn read_file(&self, rel: &Path) -> Result<Option<std::borrow::Cow<'_, [u8]>>, FixerError> {
         let path = self.full_path(rel);
         match fs::read(&path) {
-            Ok(bytes) => Ok(Some(bytes)),
+            Ok(bytes) => Ok(Some(std::borrow::Cow::Owned(bytes))),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(FixerError::Io(e)),
         }
@@ -921,7 +926,7 @@ mod tests {
 
         ws.write_file(Path::new("debian/x"), b"hello").unwrap();
         let back = ws.read_file(Path::new("debian/x")).unwrap().unwrap();
-        assert_eq!(back, b"hello");
+        assert_eq!(&*back, b"hello");
 
         assert!(ws.read_file(Path::new("debian/missing")).unwrap().is_none());
     }

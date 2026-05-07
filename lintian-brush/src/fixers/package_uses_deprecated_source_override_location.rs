@@ -14,11 +14,12 @@ pub fn detect(
     let Some(old_bytes) = ws.read_file(&old_rel)? else {
         return Ok(Vec::new());
     };
-    let old_content = String::from_utf8(old_bytes).map_err(|e| FixerError::Other(e.to_string()))?;
+    let old_content =
+        String::from_utf8(old_bytes.into_owned()).map_err(|e| FixerError::Other(e.to_string()))?;
 
     let merged_content = if let Some(existing_bytes) = ws.read_file(&new_rel)? {
-        let mut existing =
-            String::from_utf8(existing_bytes).map_err(|e| FixerError::Other(e.to_string()))?;
+        let mut existing = String::from_utf8(existing_bytes.into_owned())
+            .map_err(|e| FixerError::Other(e.to_string()))?;
         existing.push_str(&old_content);
         existing
     } else {

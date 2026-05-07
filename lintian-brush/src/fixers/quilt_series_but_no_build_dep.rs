@@ -13,7 +13,7 @@ pub fn detect(
     }
 
     let format = match ws.read_file(Path::new("debian/source/format"))? {
-        Some(b) => String::from_utf8(b)
+        Some(b) => std::str::from_utf8(&b)
             .map(|s| s.trim().to_string())
             .unwrap_or_default(),
         None => String::new(),

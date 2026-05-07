@@ -21,7 +21,7 @@ pub fn detect(
         Some(b) => b,
         None => return Ok(Vec::new()),
     };
-    let pyproject_content = match String::from_utf8(pyproject_bytes) {
+    let pyproject_content = match std::str::from_utf8(&pyproject_bytes) {
         Ok(s) => s,
         Err(_) => return Ok(Vec::new()),
     };

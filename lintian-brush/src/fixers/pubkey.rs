@@ -337,7 +337,7 @@ pub fn detect(
             }
         }
         match found {
-            Some(d) => (true, d),
+            Some(d) => (true, d.into_owned()),
             None => (false, Vec::new()),
         }
     };
