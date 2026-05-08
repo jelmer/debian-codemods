@@ -63,6 +63,10 @@ struct FixerArgs {
     #[arg(long, default_value_t = false)]
     uncertain: bool,
 
+    /// Only run quick fixers (skip those that are slow)
+    #[arg(long, default_value_t = false)]
+    quick: bool,
+
     #[arg(long, default_value_t = false, hide = true)]
     yolo: bool,
 
@@ -342,7 +346,10 @@ fn main() -> Result<(), i32> {
     // Build the detector list once, filtered by --fixers/--exclude. The
     // CLI driver then wraps each surviving detector in a DetectorAdapter.
     let detectors: Vec<Box<dyn lintian_brush::workspace::Detector>> = {
-        let all: Vec<_> = lintian_brush::workspace::iter_detectors().collect();
+        let mut all: Vec<_> = lintian_brush::workspace::iter_detectors().collect();
+        if args.fixers.quick {
+            all.retain(|d| d.cost() < lintian_brush::workspace::DetectorCost::Network);
+        }
         if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
             let include = args
                 .fixers
