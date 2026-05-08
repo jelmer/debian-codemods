@@ -267,6 +267,7 @@ declare_detector! {
             field: "Vcs-Git",
         },
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

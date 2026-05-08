@@ -461,6 +461,7 @@ mod tests {
             after,
             before,
             triggers: &[],
+            cost: crate::workspace::DetectorCost::Cheap,
         }
     }
 

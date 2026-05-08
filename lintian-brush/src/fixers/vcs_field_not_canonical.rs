@@ -153,6 +153,7 @@ declare_detector! {
             field: "Vcs-*",
         },
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

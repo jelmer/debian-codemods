@@ -380,6 +380,7 @@ declare_detector! {
     name: "debug-symbol-migration-possibly-complete",
     tags: ["debug-symbol-migration-possibly-complete"],
     triggers: [crate::workspace::Trigger::File("debian/rules")],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
