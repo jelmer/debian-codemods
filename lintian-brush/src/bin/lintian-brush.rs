@@ -981,13 +981,17 @@ fn run_interactive(
             if diag.plans.is_empty() {
                 continue;
             }
-            // Header: lintian issue (or detector name) plus the message.
+            // Header: lintian issue (if any), otherwise detector name, plus certainty (if any).
+            print!("\n");
             if let Some(issue) = &diag.issue {
-                println!("\n{}", issue);
+                print!("{}", issue);
             } else {
-                println!("\n({})", detector.name());
+                print!("({})", detector.name());
             }
-            println!("  {}", diag.message);
+            if let Some(certainty) = diag.certainty {
+                print!(" [{:?}]", certainty);
+            }
+            println!("\n  {}", diag.message);
             // Numbered choices: 0 always means "skip"; 1..N pick a plan.
             println!("  0: skip");
             for (i, plan) in diag.plans.iter().enumerate() {
