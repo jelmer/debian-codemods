@@ -1,4 +1,8 @@
-debian-codemods (0.176) UNRELEASED; urgency=medium
+debian-codemods (0.176) unstable; urgency=medium
+
+  This release significantly changes how lintian-brush works under
+  the hood, with a view to supporting more complex workflows
+  like inclusion in a LSP.
 
   * Include per-issue package and info detail in Fixes: trailers, and
     emit each See-also: URL only once per unique tag.
@@ -14,7 +18,7 @@ debian-codemods (0.176) UNRELEASED; urgency=medium
     action plan to apply for each detected issue.
   * Add --quick flag for running fast fixers.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 May 2026 11:21:18 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 May 2026 14:01:25 +0100
 
 debian-codemods (0.175) unstable; urgency=medium
 

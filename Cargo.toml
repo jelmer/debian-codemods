@@ -4,7 +4,7 @@ resolver = "1"
 members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize"]
 
 [workspace.package]
-version = "0.174.0"
+version = "0.176.0"
 
 [workspace.dependencies]
 breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
