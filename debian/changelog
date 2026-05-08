@@ -12,8 +12,9 @@ debian-codemods (0.176) UNRELEASED; urgency=medium
     issues without applying any fixes.
   * Add --interactive flag to lintian-brush, which prompts for which
     action plan to apply for each detected issue.
+  * Add --quick flag for running fast fixers.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 May 2026 21:59:22 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 May 2026 11:21:18 +0100
 
 debian-codemods (0.175) unstable; urgency=medium
 
