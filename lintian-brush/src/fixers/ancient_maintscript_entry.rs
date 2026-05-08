@@ -214,6 +214,7 @@ declare_detector! {
         crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
         crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Timestamp),
     ],
+    cost: crate::workspace::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

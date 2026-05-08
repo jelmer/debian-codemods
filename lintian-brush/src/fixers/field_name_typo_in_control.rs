@@ -159,6 +159,7 @@ declare_detector! {
             field: "*",
         },
     ],
+    cost: crate::workspace::DetectorCost::Subprocess,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

@@ -614,6 +614,7 @@ declare_detector! {
         crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
         crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

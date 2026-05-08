@@ -268,6 +268,7 @@ declare_detector! {
         crate::workspace::Trigger::File("debian/source/lintian-overrides"),
         crate::workspace::Trigger::Glob("debian/*.lintian-overrides"),
     ],
+    cost: crate::workspace::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

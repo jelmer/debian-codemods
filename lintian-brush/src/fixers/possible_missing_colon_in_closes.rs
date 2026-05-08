@@ -223,6 +223,7 @@ declare_detector! {
     triggers: [crate::workspace::Trigger::Changelog(
         crate::workspace::ChangelogAspect::Body,
     )],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

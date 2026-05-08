@@ -159,6 +159,7 @@ declare_detector! {
             field: "Homepage",
         },
     ],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

@@ -175,6 +175,7 @@ pub fn detect(
 declare_detector! {
     name: "copyright-missing-upstream-info",
     tags: [],
+    cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
