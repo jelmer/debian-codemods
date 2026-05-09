@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::LintianOverrides;
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const REMOVED_TAGS: &[&str] = &[
@@ -73,11 +73,13 @@ pub fn detect(
                 LintianIssue::binary_with_info(
                     pkg,
                     "malformed-override",
+                    Visibility::Error,
                     vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
                 )
             } else {
                 LintianIssue::source_with_info(
                     "malformed-override",
+                    Visibility::Error,
                     vec![format!("Unknown tag {} in line {}", tag, lineno + 1)],
                 )
             };

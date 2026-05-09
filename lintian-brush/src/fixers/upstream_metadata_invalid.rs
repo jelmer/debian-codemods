@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -318,7 +318,7 @@ pub fn detect(
             sorted_fields.join(", ")
         );
         diagnostics.push(Diagnostic::with_actions(
-            LintianIssue::source("upstream-metadata-yaml-invalid"),
+            LintianIssue::source("upstream-metadata-yaml-invalid", Visibility::Warning),
             desc,
             label,
             vec![action.clone()],
@@ -326,7 +326,7 @@ pub fn detect(
     }
     for _ in 0..yaml_not_mapping_count {
         diagnostics.push(Diagnostic::with_actions(
-            LintianIssue::source("upstream-metadata-not-yaml-mapping"),
+            LintianIssue::source("upstream-metadata-not-yaml-mapping", Visibility::Warning),
             "debian/upstream/metadata is not a YAML mapping.",
             "Use YAML mapping in debian/upstream/metadata.",
             vec![action.clone()],

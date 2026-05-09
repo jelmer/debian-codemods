@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_analyzer::lintian::StandardsVersion;
 use std::path::PathBuf;
 
@@ -44,6 +44,7 @@ pub fn detect(
         let issue = LintianIssue {
             package: None,
             package_type: Some(PackageType::Source),
+            visibility: Some(Visibility::Error),
             tag: Some("invalid-standards-version".to_string()),
             info: Some(standards_version_str.clone()),
         };
@@ -82,6 +83,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Error),
         tag: Some("invalid-standards-version".to_string()),
         info: Some(standards_version_str.clone()),
     };

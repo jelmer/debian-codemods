@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DESCRIPTION: &str = "Replace XC-Package-Type with Package-Type.";
@@ -24,6 +24,7 @@ pub fn detect(
             let line_number = entry.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "adopted-extended-field",
+                Visibility::Info,
                 vec![format!(
                     "(in section for source) XC-Package-Type [debian/control:{}]",
                     line_number
@@ -58,6 +59,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             &package_name,
             "adopted-extended-field",
+            Visibility::Info,
             vec![format!(
                 "(in section for {}) XC-Package-Type [debian/control:{}]",
                 package_name, line_number

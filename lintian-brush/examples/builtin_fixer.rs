@@ -7,14 +7,14 @@
 use lintian_brush::declare_detector;
 use lintian_brush::diagnostic::Diagnostic;
 use lintian_brush::workspace::FixerWorkspace;
-use lintian_brush::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use lintian_brush::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 
 fn detect(
     _ws: &dyn FixerWorkspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     Ok(vec![Diagnostic::with_actions(
-        LintianIssue::source("example-tag"),
+        LintianIssue::source("example-tag", Visibility::Warning),
         "Example issue is present.",
         "Fix example issue.",
         Vec::new(),

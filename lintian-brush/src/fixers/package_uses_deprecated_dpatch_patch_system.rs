@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
@@ -49,8 +49,11 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let issue =
-        LintianIssue::source_with_info("package-uses-deprecated-dpatch-patch-system", vec![]);
+    let issue = LintianIssue::source_with_info(
+        "package-uses-deprecated-dpatch-patch-system",
+        Visibility::Warning,
+        vec![],
+    );
 
     let mut actions: Vec<Action> = drop_fields
         .iter()

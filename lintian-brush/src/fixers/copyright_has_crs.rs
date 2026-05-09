@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -19,7 +19,7 @@ pub fn detect(
 
     let new_content: Vec<u8> = content.iter().copied().filter(|&b| b != b'\r').collect();
 
-    let issue = LintianIssue::source("copyright-has-crs");
+    let issue = LintianIssue::source("copyright-has-crs", Visibility::Pedantic);
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Remove CRs from copyright file.".to_string(),

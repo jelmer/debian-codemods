@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
@@ -84,7 +84,7 @@ pub fn detect(
         }
         diagnostics.push(
             Diagnostic::with_actions(
-                LintianIssue::source("team/pkg-perl/vcs/no-team-url"),
+                LintianIssue::source("team/pkg-perl/vcs/no-team-url", Visibility::Info),
                 "pkg-perl package does not use the team Vcs URL.",
                 "Use standard Vcs fields for perl package.",
                 actions,
@@ -106,6 +106,7 @@ pub fn detect(
             Diagnostic::with_actions(
                 LintianIssue::source_with_info(
                     "team/pkg-perl/vcs/no-git",
+                    Visibility::Info,
                     vec![format!("{} {}", key, value)],
                 ),
                 format!("pkg-perl package has stale {} field.", key),

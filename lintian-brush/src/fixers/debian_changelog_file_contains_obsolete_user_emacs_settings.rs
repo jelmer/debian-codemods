@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -32,6 +32,7 @@ pub fn detect(
         let line_number = content[..mat.start()].matches('\n').count() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-changelog-file-contains-obsolete-user-emacs-settings",
+            Visibility::Warning,
             vec![format!(
                 "[usr/share/doc/{}/changelog.Debian.gz:{}]",
                 package, line_number

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::{Path, PathBuf};
 
@@ -63,6 +63,7 @@ pub fn detect(
         } else {
             let issue = LintianIssue::source_with_info(
                 "unused-build-dependency-on-cdbs",
+                Visibility::Warning,
                 vec!["[debian/rules]".to_string()],
             );
             diagnostics.push(Diagnostic::with_actions(

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use sequoia_openpgp::armor::{Kind, Writer};
 use sequoia_openpgp::cert::Cert;
 use sequoia_openpgp::parse::Parse;
@@ -78,7 +78,11 @@ pub fn detect(
         .iter()
         .map(|(p, _)| p.display().to_string())
         .collect();
-    let issue = LintianIssue::source_with_info("public-upstream-keys-in-multiple-locations", info);
+    let issue = LintianIssue::source_with_info(
+        "public-upstream-keys-in-multiple-locations",
+        Visibility::Info,
+        info,
+    );
 
     let mut actions: Vec<Action> = vec![Action::Filesystem(FilesystemAction::Write {
         file: main_rel,

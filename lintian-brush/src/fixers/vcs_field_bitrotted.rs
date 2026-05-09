@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -455,6 +455,7 @@ pub fn detect(
     diagnostics.push(Diagnostic::with_actions(
         LintianIssue::source_with_info(
             "vcs-obsolete-in-debian-infrastructure",
+            Visibility::Warning,
             vec![format!("vcs-{} {}", vcs_type.to_lowercase(), old_vcs_url)],
         ),
         "Vcs-* headers point to obsolete Debian infrastructure.",
@@ -486,7 +487,7 @@ pub fn detect(
             old_vcs_browser.as_deref().unwrap_or("")
         );
         diagnostics.push(Diagnostic::with_actions(
-            LintianIssue::source_with_info("vcs-field-bitrotted", vec![info]),
+            LintianIssue::source_with_info("vcs-field-bitrotted", Visibility::Warning, vec![info]),
             "Vcs-* field is bitrotted.",
             "Update Vcs-* headers to use salsa repository.",
             actions,

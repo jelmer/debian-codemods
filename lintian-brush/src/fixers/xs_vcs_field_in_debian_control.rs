@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DESCRIPTION: &str = "Remove unnecessary XS- prefix for Vcs- fields in debian/control.";
@@ -36,6 +36,7 @@ pub fn detect(
         let new_field = xs_field.strip_prefix("XS-").unwrap().to_string();
         let issue = LintianIssue::source_with_info(
             "adopted-extended-field",
+            Visibility::Info,
             vec![format!(
                 "(in section for source) {} [debian/control:{}]",
                 xs_field, line_number

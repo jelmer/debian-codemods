@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, DesktopIniAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use desktop_edit::Desktop;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -51,6 +51,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "desktop-entry-contains-encoding-key",
+            Visibility::Info,
             vec![
                 "Encoding".to_string(),
                 format!("[{}:{}]", rel_str, line_number),

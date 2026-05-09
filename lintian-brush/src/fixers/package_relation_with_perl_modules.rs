@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -75,6 +75,7 @@ pub fn detect(
             for name in &perl_modules {
                 issues.push(LintianIssue::source_with_info(
                     "package-relation-with-perl-modules",
+                    Visibility::Error,
                     vec![format!("{}: {}", field, name)],
                 ));
                 actions.push(Action::Deb822(Deb822Action::ReplaceRelation {
@@ -102,6 +103,7 @@ pub fn detect(
                 issues.push(LintianIssue::binary_with_info(
                     &pkg_name,
                     "package-relation-with-perl-modules",
+                    Visibility::Error,
                     vec![format!("{}: {}", field, name)],
                 ));
                 actions.push(Action::Deb822(Deb822Action::ReplaceRelation {

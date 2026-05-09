@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::{compat_level, FixerWorkspace};
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::rules::{dh_invoke_drop_argument, dh_invoke_drop_with};
 use std::path::PathBuf;
 
@@ -91,6 +91,7 @@ pub fn detect(
                     }
                     issues.push(LintianIssue::source_with_info(
                         "debian-rules-uses-unnecessary-dh-argument",
+                        Visibility::Warning,
                         vec![info],
                     ));
                 }
@@ -119,6 +120,7 @@ pub fn detect(
                     }
                     issues.push(LintianIssue::source_with_info(
                         "debian-rules-uses-unnecessary-dh-argument",
+                        Visibility::Warning,
                         vec![info],
                     ));
                 }

@@ -42,6 +42,7 @@ mod tests {
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

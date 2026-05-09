@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction};
 use crate::lintian_overrides::LintianOverrides;
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/renamed_tags.rs"));
@@ -53,6 +53,7 @@ pub fn detect(
             };
             let issue = LintianIssue::source_with_info(
                 "renamed-tag",
+                Visibility::Pedantic,
                 vec![format!("{} => {}", tag_token.text(), new_tag)],
             );
             diagnostics.push(Diagnostic::with_actions(

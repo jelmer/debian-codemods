@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use url::Url;
 
@@ -72,7 +72,11 @@ pub fn detect(
     let existing_homepage = source_para.get("Homepage");
     let (issue, message_kind) = match existing_homepage.as_deref() {
         None => (
-            LintianIssue::source_with_info("no-homepage-field", vec![String::new()]),
+            LintianIssue::source_with_info(
+                "no-homepage-field",
+                Visibility::Pedantic,
+                vec![String::new()],
+            ),
             "fill",
         ),
         Some(homepage) => {
@@ -81,11 +85,19 @@ pub fn detect(
             };
             match url.host_str() {
                 Some("pypi.org") => (
-                    LintianIssue::source_with_info("pypi-homepage", vec![homepage.to_string()]),
+                    LintianIssue::source_with_info(
+                        "pypi-homepage",
+                        Visibility::Warning,
+                        vec![homepage.to_string()],
+                    ),
                     "pypi",
                 ),
                 Some("rubygems.org") => (
-                    LintianIssue::source_with_info("rubygem-homepage", vec![homepage.to_string()]),
+                    LintianIssue::source_with_info(
+                        "rubygem-homepage",
+                        Visibility::Warning,
+                        vec![homepage.to_string()],
+                    ),
                     "rubygem",
                 ),
                 _ => return Ok(Vec::new()),

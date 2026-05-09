@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::bytes::Regex;
 use std::path::PathBuf;
 
@@ -47,6 +47,7 @@ pub fn detect(
             };
             issues.push(LintianIssue::source_with_info(
                 "dh-quilt-addon-but-quilt-source-format",
+                Visibility::Warning,
                 vec!["[debian/rules]".to_string()],
             ));
             actions.push(Action::Makefile(MakefileAction::ReplaceRecipe {

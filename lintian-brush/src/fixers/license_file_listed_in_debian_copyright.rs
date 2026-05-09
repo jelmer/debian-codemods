@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -40,6 +40,7 @@ pub fn detect(
             let issue = LintianIssue {
                 package: None,
                 package_type: Some(PackageType::Source),
+                visibility: Some(Visibility::Info),
                 tag: Some("license-file-listed-in-debian-copyright".to_string()),
                 info: Some(format!("{} [debian/copyright]", file_pattern)),
             };

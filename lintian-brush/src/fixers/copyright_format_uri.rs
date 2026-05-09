@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -54,14 +54,22 @@ pub fn detect(
 
     let mut diagnostics = Vec::new();
     diagnostics.push(Diagnostic::with_actions(
-        LintianIssue::source_with_info("insecure-copyright-format-uri", vec![format.clone()]),
+        LintianIssue::source_with_info(
+            "insecure-copyright-format-uri",
+            Visibility::Pedantic,
+            vec![format.clone()],
+        ),
         "Insecure copyright file specification URI.",
         "Use secure copyright file specification URI.",
         vec![make_action()],
     ));
     if is_wiki {
         diagnostics.push(Diagnostic::with_actions(
-            LintianIssue::source_with_info("wiki-copyright-format-uri", vec![format]),
+            LintianIssue::source_with_info(
+                "wiki-copyright-format-uri",
+                Visibility::Pedantic,
+                vec![format],
+            ),
             "Wiki copyright file specification URI.",
             "Use secure copyright file specification URI.",
             vec![make_action()],

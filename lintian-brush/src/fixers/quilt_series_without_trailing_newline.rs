@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -22,6 +22,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "quilt-series-without-trailing-newline",
+        Visibility::Error,
         vec!["debian/patches/series".to_string()],
     );
 

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 /// Per-diagnostic message tag separator. The describer parses these back out
@@ -32,6 +32,7 @@ pub fn detect(
             let line_number = entry.line() + 1;
             let issue = LintianIssue::source_with_info(
                 "debian-control-has-empty-field",
+                Visibility::Info,
                 vec![format!(
                     "(in source paragraph) {} [debian/control:{}]",
                     key, line_number
@@ -66,6 +67,7 @@ pub fn detect(
             let issue = LintianIssue {
                 package: Some(package_name.clone()),
                 package_type: Some(PackageType::Binary),
+                visibility: Some(Visibility::Info),
                 tag: Some("debian-control-has-empty-field".to_string()),
                 info: Some(format!(
                     "(in section for {}) {} [debian/control:{}]",

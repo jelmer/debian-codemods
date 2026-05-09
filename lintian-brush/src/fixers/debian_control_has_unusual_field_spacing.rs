@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
 use std::path::{Path, PathBuf};
@@ -53,6 +53,7 @@ fn collect_diagnostics(
             if tagged {
                 let issue = LintianIssue::source_with_info(
                     "debian-control-has-unusual-field-spacing",
+                    Visibility::Pedantic,
                     vec![format!("{} [debian/control:{}]", key, line_number)],
                 );
                 diagnostics.push(Diagnostic::with_actions(issue, description, label, actions));

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 const FIXABLE_HOSTS: &[&str] = &[
@@ -48,6 +48,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("vcs-field-uses-not-recommended-uri-format".to_string()),
         info: Some(format!("vcs-git {}", vcs_git)),
     };

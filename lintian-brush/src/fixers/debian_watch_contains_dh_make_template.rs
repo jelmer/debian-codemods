@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DH_MAKE_TEMPLATE: &str = r"s/.+\/v?(\d\S+)\.tar\.gz/<project>-$1\.tar\.gz/";
@@ -27,6 +27,7 @@ pub fn detect(
         }
         let issue = LintianIssue::source_with_info(
             "debian-watch-contains-dh_make-template",
+            Visibility::Warning,
             vec![format!("{} [debian/watch]", filenamemangle)],
         );
         diagnostics.push(

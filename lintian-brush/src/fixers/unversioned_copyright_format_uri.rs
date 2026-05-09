@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -64,6 +64,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "unversioned-copyright-format-uri",
+        Visibility::Pedantic,
         vec!["debian/copyright:1".to_string()],
     );
     Ok(vec![Diagnostic::with_actions(

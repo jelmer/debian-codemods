@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -52,8 +52,11 @@ pub fn detect(
     let metadata_abs = base_path.join(&metadata_rel);
     let file_existed = metadata_abs.exists();
 
-    let missing_file_issue =
-        LintianIssue::source_with_info("upstream-metadata-file-is-missing", vec![]);
+    let missing_file_issue = LintianIssue::source_with_info(
+        "upstream-metadata-file-is-missing",
+        Visibility::Pedantic,
+        vec![],
+    );
 
     // Load or create the YAML document
     let doc = if metadata_abs.exists() {
@@ -551,6 +554,7 @@ pub fn detect(
     if !all_fields_existed(&repository_fields) && all_fields_exist_now(&repository_fields) {
         fixed_issues.push(LintianIssue::source_with_info(
             "upstream-metadata-missing-repository",
+            Visibility::Info,
             vec!["[debian/upstream/metadata]".to_string()],
         ));
     }
@@ -560,6 +564,7 @@ pub fn detect(
     if !all_fields_existed(&bug_fields) && all_fields_exist_now(&bug_fields) {
         fixed_issues.push(LintianIssue::source_with_info(
             "upstream-metadata-missing-bug-tracking",
+            Visibility::Info,
             vec!["[debian/upstream/metadata]".to_string()],
         ));
     }

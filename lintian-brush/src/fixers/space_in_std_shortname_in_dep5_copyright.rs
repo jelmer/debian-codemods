@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -122,6 +122,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
+            Visibility::Warning,
             vec![format!(
                 "{} [debian/copyright:{}]",
                 name.to_lowercase(),
@@ -154,6 +155,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "space-in-std-shortname-in-dep5-copyright",
+            Visibility::Warning,
             vec![format!(
                 "{} [debian/copyright:{}]",
                 name.to_lowercase(),

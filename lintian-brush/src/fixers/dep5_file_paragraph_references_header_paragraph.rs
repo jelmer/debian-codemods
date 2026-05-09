@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_copyright::lossless::Copyright;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -82,6 +82,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "dep5-file-paragraph-references-header-paragraph",
+        Visibility::Warning,
         vec![format!("{} [debian/copyright:{}]", synopsis, line_no)],
     );
 

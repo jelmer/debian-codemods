@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -46,6 +46,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "systemd-service-file-refers-to-var-run",
+            Visibility::Info,
             vec![rel_str.clone(), "PIDFile".to_string(), old_pidfile.clone()],
         );
 

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -43,6 +43,7 @@ fn collect_redundant<'a>(
             let issue = LintianIssue::binary_with_info(
                 package,
                 "redundant-installation-prerequisite",
+                Visibility::Warning,
                 vec![format!("{} in {}", name, field_name)],
             );
             pending.push((issue, field_name, name));
