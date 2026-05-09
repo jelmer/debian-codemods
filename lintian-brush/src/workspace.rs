@@ -31,6 +31,7 @@ use debian_control::lossless::Control;
 use debian_copyright::lossless::Copyright;
 use debian_watch::parse::ParsedWatchFile;
 use makefile_lossless::Makefile;
+use toml_edit::DocumentMut;
 
 use crate::{FixerError, LintianIssue, Version};
 
@@ -132,6 +133,33 @@ pub trait FixerWorkspace {
 
     /// Open `debian/changelog` for editing. See [`control`](Self::control).
     fn changelog(&self) -> Result<Box<dyn Editor<ChangeLog> + '_>, FixerError>;
+
+    /// Read `debian/debcargo.toml` and return a parsed TOML document.
+    ///
+    /// Returns `Ok(None)` if the file does not exist (package is not a
+    /// debcargo-managed crate). Returns `Err` if the file exists but cannot
+    /// be parsed.
+    fn parsed_debcargo(&self) -> Result<Option<DocumentMut>, FixerError> {
+        let rel = Path::new("debian/debcargo.toml");
+        match self.read_file(rel)? {
+            None => Ok(None),
+            Some(bytes) => {
+                let text = String::from_utf8(bytes.into_owned()).map_err(|e| {
+                    FixerError::Other(format!("debcargo.toml is not valid UTF-8: {}", e))
+                })?;
+                let doc: DocumentMut = text.parse().map_err(|e| {
+                    FixerError::Other(format!("Failed to parse debcargo.toml: {}", e))
+                })?;
+                Ok(Some(doc))
+            }
+        }
+    }
+
+    /// Open `debian/debcargo.toml` for editing.
+    ///
+    /// Returns `Ok(None)` if the file does not exist.
+    /// Returns `Err` if the file exists but cannot be parsed.
+    fn debcargo(&self) -> Result<Option<Box<dyn Editor<DocumentMut> + '_>>, FixerError>;
 
     /// Read raw bytes of an arbitrary file relative to the package root.
     ///
@@ -409,6 +437,24 @@ impl FixerWorkspace for TreeFixerWorkspace {
             path,
             committed: false,
         }))
+    }
+
+    fn debcargo(&self) -> Result<Option<Box<dyn Editor<DocumentMut> + '_>>, FixerError> {
+        let path = self.full_path(Path::new("debian/debcargo.toml"));
+        let original = match fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(FixerError::Io(e)),
+        };
+        let parsed: DocumentMut = original
+            .parse()
+            .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", path.display(), e)))?;
+        Ok(Some(Box::new(FsEditor {
+            parsed,
+            original,
+            path,
+            committed: false,
+        })))
     }
 
     fn read_file(&self, rel: &Path) -> Result<Option<std::borrow::Cow<'_, [u8]>>, FixerError> {
@@ -1298,5 +1344,43 @@ mod tests {
         assert!(DetectorCost::Cheap < DetectorCost::Filesystem);
         assert!(DetectorCost::Filesystem < DetectorCost::Subprocess);
         assert!(DetectorCost::Subprocess < DetectorCost::Network);
+    }
+
+    #[test]
+    fn debcargo_absent_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        assert!(ws.parsed_debcargo().unwrap().is_none());
+        assert!(ws.debcargo().unwrap().is_none());
+    }
+
+    #[test]
+    fn debcargo_read_and_write() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let toml = "[source]\nvcs_git = \"https://salsa.debian.org/rust-team/debcargo-conf\"\n";
+        fs::write(tmp.path().join("debian/debcargo.toml"), toml).unwrap();
+
+        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+
+        let doc = ws.parsed_debcargo().unwrap().unwrap();
+        assert_eq!(
+            doc["source"]["vcs_git"].as_str().unwrap(),
+            "https://salsa.debian.org/rust-team/debcargo-conf"
+        );
+
+        {
+            let mut editor = ws.debcargo().unwrap().unwrap();
+            editor["source"]["vcs_git"] =
+                toml_edit::value("https://salsa.debian.org/rust-team/debcargo-conf.git");
+            editor.commit().unwrap();
+        }
+
+        let on_disk = fs::read_to_string(tmp.path().join("debian/debcargo.toml")).unwrap();
+        assert_eq!(
+            on_disk,
+            "[source]\nvcs_git = \"https://salsa.debian.org/rust-team/debcargo-conf.git\"\n"
+        );
     }
 }
