@@ -959,7 +959,7 @@ fn run_interactive(
     let mut total_commits = 0usize;
 
     for detector in detectors {
-        let diagnostics = match detector.detect(&ws, &preferences) {
+        let mut diagnostics = match detector.detect(&ws, &preferences) {
             Ok(d) => d,
             Err(lintian_brush::FixerError::NoChanges) => continue,
             Err(e) => {
@@ -967,6 +967,7 @@ fn run_interactive(
                 continue;
             }
         };
+        lintian_brush::diagnostic::add_override_plans(&mut diagnostics);
 
         // Diagnostics whose plan the user accepted, paired with the picked
         // plan. Used to build the commit message after all of this
@@ -992,16 +993,10 @@ fn run_interactive(
                 print!(" [{:?}]", certainty);
             }
             println!("\n  {}", diag.message);
-            // Numbered choices: 0 always means "skip"; 1..N pick a plan.
             println!("  0: skip");
             for (i, plan) in diag.plans.iter().enumerate() {
-                let label = plan.label.as_str();
-                let suffix = if plan.opinionated {
-                    " (opinionated)"
-                } else {
-                    ""
-                };
-                println!("  {}: {}{}", i + 1, label, suffix);
+                let suffix = if plan.opinionated { " (opinionated)" } else { "" };
+                println!("  {}: {}{}", i + 1, plan.label, suffix);
             }
 
             let choice = loop {
