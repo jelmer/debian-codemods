@@ -995,7 +995,11 @@ fn run_interactive(
             println!("\n  {}", diag.message);
             println!("  0: skip");
             for (i, plan) in diag.plans.iter().enumerate() {
-                let suffix = if plan.opinionated { " (opinionated)" } else { "" };
+                let suffix = if plan.opinionated {
+                    " (opinionated)"
+                } else {
+                    ""
+                };
                 println!("  {}: {}{}", i + 1, plan.label, suffix);
             }
 

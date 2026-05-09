@@ -2740,10 +2740,7 @@ fn apply_lintian_overrides_group(
                     if line_tag != *tag {
                         return false;
                     }
-                    let line_pkg = line
-                        .package_spec()
-                        .as_ref()
-                        .and_then(|s| s.package_name());
+                    let line_pkg = line.package_spec().as_ref().and_then(|s| s.package_name());
                     if line_pkg.as_deref() != package.as_deref() {
                         return false;
                     }
