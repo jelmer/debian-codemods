@@ -6,7 +6,7 @@
 //!
 //! Actions are `serde`-serialisable so they can be sent over an LSP wire.
 
-use crate::{Certainty, LintianIssue};
+use crate::{Certainty, LintianIssue, PackageType};
 use std::path::PathBuf;
 
 /// A single issue found by a detector, together with the actions that would
@@ -123,6 +123,54 @@ impl Diagnostic {
     pub fn with_patch_name(mut self, name: impl Into<String>) -> Self {
         self.patch_name = Some(name.into());
         self
+    }
+}
+
+/// Build a lintian-override [`ActionPlan`] for `issue`, or `None` if the issue
+/// carries no tag.
+///
+/// The target file is chosen by package type:
+/// - binary packages write to `debian/<package>.lintian-overrides`
+/// - everything else writes to `debian/source/lintian-overrides`
+pub fn override_action_plan(issue: &LintianIssue) -> Option<ActionPlan> {
+    let tag = issue.tag.as_ref()?;
+    let file = match issue.package_type {
+        Some(PackageType::Binary) => issue
+            .package
+            .as_deref()
+            .map(|p| PathBuf::from(format!("debian/{}.lintian-overrides", p)))
+            .unwrap_or_else(|| PathBuf::from("debian/source/lintian-overrides")),
+        _ => PathBuf::from("debian/source/lintian-overrides"),
+    };
+    Some(ActionPlan {
+        label: format!("Add lintian override for {}", tag),
+        opinionated: false,
+        actions: vec![Action::LintianOverrides(LintianOverridesAction::AddLine {
+            file,
+            package: issue.package.clone(),
+            tag: tag.clone(),
+            info: issue.info.clone(),
+        })],
+    })
+}
+
+/// Append a lintian-override plan to every diagnostic in `diags` that has a
+/// tagged [`LintianIssue`] but does not already carry an override plan.
+pub fn add_override_plans(diags: &mut Vec<Diagnostic>) {
+    for diag in diags.iter_mut() {
+        if let Some(plan) = diag.issue.as_ref().and_then(override_action_plan) {
+            let already_has_override = diag.plans.iter().any(|p| {
+                p.actions.iter().any(|a| {
+                    matches!(
+                        a,
+                        Action::LintianOverrides(LintianOverridesAction::AddLine { .. })
+                    )
+                })
+            });
+            if !already_has_override {
+                diag.plans.push(plan);
+            }
+        }
     }
 }
 
@@ -1000,6 +1048,24 @@ pub struct OverrideLineSelector {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum LintianOverridesAction {
+    /// Append a new override line. If the file does not exist it is
+    /// created (including any missing parent directories). The line is
+    /// only added when no existing line already overrides the same tag
+    /// (same tag + same optional info), so the action is idempotent.
+    AddLine {
+        /// File to edit, relative to the package root (e.g.
+        /// `debian/source/lintian-overrides` or
+        /// `debian/mypkg.lintian-overrides`).
+        file: PathBuf,
+        /// Optional package name prefix (e.g. `mypkg`).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        package: Option<String>,
+        /// Tag name.
+        tag: String,
+        /// Optional info string.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        info: Option<String>,
+    },
     /// Drop the first override line that matches `selector`. Each
     /// DropLine action consumes one line — to remove N copies of the
     /// same line, emit N actions. If the file becomes empty (no
