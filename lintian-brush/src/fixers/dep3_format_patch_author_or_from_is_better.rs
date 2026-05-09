@@ -4,7 +4,7 @@ use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
