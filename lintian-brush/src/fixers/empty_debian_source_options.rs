@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn detect(
     ws: &dyn FixerWorkspace,
