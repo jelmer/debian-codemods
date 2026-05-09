@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -46,7 +46,11 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let issue = LintianIssue::source_with_info("old-fsf-address-in-copyright-file", vec![]);
+    let issue = LintianIssue::source_with_info(
+        "old-fsf-address-in-copyright-file",
+        Visibility::Warning,
+        vec![],
+    );
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Old FSF postal address in debian/copyright.",

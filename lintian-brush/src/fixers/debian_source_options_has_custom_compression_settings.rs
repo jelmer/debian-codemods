@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -36,6 +36,7 @@ pub fn detect(
                 let issue = LintianIssue {
                     package: None,
                     package_type: Some(PackageType::Source),
+                    visibility: Some(Visibility::Warning),
                     tag: Some("custom-compression-in-debian-source-options".to_string()),
                     info: Some(format!("{} (line {})", line, lineno + 1)),
                 };

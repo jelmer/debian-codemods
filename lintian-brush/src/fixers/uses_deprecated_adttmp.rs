@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 
@@ -39,6 +39,7 @@ pub fn detect(
         for line_num in line_numbers {
             let issue = LintianIssue::source_with_info(
                 "uses-deprecated-adttmp",
+                Visibility::Warning,
                 vec![format!("[{}:{}]", rel_str, line_num)],
             );
             diagnostics.push(

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use strsim::levenshtein;
@@ -79,6 +79,7 @@ pub fn detect(
             };
             let issue = LintianIssue::source_with_info(
                 "typo-in-debhelper-override-target",
+                Visibility::Warning,
                 vec![format!(
                     "{} => {} [debian/rules:{}]",
                     trimmed, best_match, line_number

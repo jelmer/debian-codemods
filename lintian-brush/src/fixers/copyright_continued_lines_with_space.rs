@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const EXPECTED_HEADER: &[u8] =
@@ -101,6 +101,7 @@ pub fn detect(
         if line.starts_with(b"\t") {
             tab_issues.push(LintianIssue::source_with_info(
                 "tab-in-license-text",
+                Visibility::Warning,
                 vec![format!("debian/copyright:{}", line_number)],
             ));
 

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use breezyshim::branch::Branch;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -537,7 +537,8 @@ pub fn detect(
         entry.set_option(option);
     }
 
-    let issue = LintianIssue::source_with_info("debian-watch-file-is-missing", vec![]);
+    let issue =
+        LintianIssue::source_with_info("debian-watch-file-is-missing", Visibility::Info, vec![]);
     let mut diag = Diagnostic::with_actions(
         issue,
         "debian/watch file is missing.",

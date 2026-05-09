@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, LintianIssue};
+use crate::{Certainty, FixerError, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -28,7 +28,12 @@ pub fn detect(
             continue;
         };
 
-        let issue = LintianIssue::binary_with_info(&package, "essential-no-not-needed", vec![]);
+        let issue = LintianIssue::binary_with_info(
+            &package,
+            "essential-no-not-needed",
+            Visibility::Warning,
+            vec![],
+        );
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,

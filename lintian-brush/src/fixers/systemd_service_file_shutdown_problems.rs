@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -56,8 +56,11 @@ pub fn detect(
         }
 
         let rel_str = rel.to_string_lossy().to_string();
-        let issue =
-            LintianIssue::source_with_info("systemd-service-file-shutdown-problems", vec![rel_str]);
+        let issue = LintianIssue::source_with_info(
+            "systemd-service-file-shutdown-problems",
+            Visibility::Warning,
+            vec![rel_str],
+        );
 
         diagnostics.push(Diagnostic::with_actions(
             issue,

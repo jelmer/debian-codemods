@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -27,6 +27,7 @@ pub fn detect(
             }
             let issue = LintianIssue::source_with_info(
                 "dh-clean-k-is-deprecated",
+                Visibility::Warning,
                 vec!["[debian/rules]".to_string()],
             );
             diagnostics.push(Diagnostic::with_actions(

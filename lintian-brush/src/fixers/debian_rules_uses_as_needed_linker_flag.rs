@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
@@ -63,6 +63,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "debian-rules-uses-as-needed-linker-flag",
+            Visibility::Pedantic,
             vec!["[debian/rules]".to_string()],
         );
         let action = if new_args.is_empty() {

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DESCRIPTION: &str = "Change priority extra to priority optional.";
@@ -22,6 +22,7 @@ pub fn detect(
         if source.get("Priority").as_deref() == Some("extra") {
             let issue = LintianIssue::source_with_info(
                 "priority-extra-is-replaced-by-priority-optional",
+                Visibility::Warning,
                 vec![],
             );
             diagnostics.push(
@@ -51,6 +52,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             &package_name,
             "priority-extra-is-replaced-by-priority-optional",
+            Visibility::Warning,
             vec![],
         );
         diagnostics.push(

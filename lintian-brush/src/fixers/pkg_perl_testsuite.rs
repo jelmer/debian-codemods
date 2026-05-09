@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_changelog::parseaddr;
 use std::path::{Path, PathBuf};
 
@@ -42,6 +42,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("team/pkg-perl/testsuite/no-testsuite-header".to_string()),
         info: Some("autopkgtest".to_string()),
     };

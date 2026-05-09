@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -37,6 +37,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "build-depends-on-build-essential",
+            Visibility::Error,
             vec![field.to_string()],
         );
         diagnostics.push(

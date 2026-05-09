@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::Control;
 use std::path::{Path, PathBuf};
 
@@ -83,6 +83,7 @@ pub fn detect(
         if rules_v != target {
             issue = Some(LintianIssue::source_with_info(
                 "declares-possibly-conflicting-debhelper-compat-versions",
+                Visibility::Error,
                 vec![format!(
                     "{} vs elsewhere {} [{}]",
                     rules_v, target, compat_source

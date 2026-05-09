@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::{compat_level, FixerWorkspace};
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -78,6 +78,7 @@ pub fn detect(
         let issue = LintianIssue {
             package: Some(package_name.clone()),
             package_type: Some(PackageType::Binary),
+            visibility: Some(Visibility::Warning),
             tag: Some("debhelper-but-no-misc-depends".to_string()),
             info: Some(format!(
                 "(in section for {}) Depends [debian/control:{}]",

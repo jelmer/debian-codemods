@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use url::Url;
@@ -61,6 +61,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "vcs-field-mismatch",
+            Visibility::Warning,
             vec![format!(
                 "Vcs-{} != Vcs-{} {}",
                 vcs_type, actual_vcs, vcs_url

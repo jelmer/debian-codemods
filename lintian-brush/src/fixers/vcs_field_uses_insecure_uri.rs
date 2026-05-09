@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -82,6 +82,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "vcs-field-uses-insecure-uri",
+            Visibility::Info,
             vec![format!("{} {}", field, url)],
         );
         diagnostics.push(Diagnostic::with_actions(

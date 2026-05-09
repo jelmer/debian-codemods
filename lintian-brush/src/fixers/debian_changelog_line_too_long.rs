@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::textwrap::try_rewrap_changes;
 use std::path::PathBuf;
 
@@ -56,6 +56,7 @@ pub fn detect(
                 let line_no = line_numbers.get(idx).copied().unwrap_or(0) + 1;
                 let issue = LintianIssue::source_with_info(
                     "debian-changelog-line-too-long",
+                    Visibility::Warning,
                     vec![format!(
                         "[usr/share/doc/{}/changelog.Debian.gz:{}]",
                         &package, line_no

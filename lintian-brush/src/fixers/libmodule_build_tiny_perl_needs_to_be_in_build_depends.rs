@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const PACKAGE: &str = "libmodule-build-tiny-perl";
@@ -26,7 +26,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let issue = LintianIssue::source_with_info(TAG, vec![]);
+    let issue = LintianIssue::source_with_info(TAG, Visibility::Error, vec![]);
     Ok(vec![Diagnostic::with_actions(
         issue,
         format!(

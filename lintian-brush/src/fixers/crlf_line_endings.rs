@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const CONTROL_REL: &str = "debian/control";
@@ -21,8 +21,11 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let issue =
-        LintianIssue::source_with_info("carriage-return-line-feed", vec![CONTROL_REL.to_string()]);
+    let issue = LintianIssue::source_with_info(
+        "carriage-return-line-feed",
+        Visibility::Error,
+        vec![CONTROL_REL.to_string()],
+    );
     Ok(vec![Diagnostic::with_actions(
         issue,
         "debian/control uses CRLF line endings.",

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -68,6 +68,7 @@ pub fn detect(
         let line_num = entry.line();
         let issue = LintianIssue::source_with_info(
             "obsolete-field-in-dep5-copyright",
+            Visibility::Warning,
             vec![format!(
                 "{} {} [debian/copyright:{}]",
                 old_name, new_name, line_num

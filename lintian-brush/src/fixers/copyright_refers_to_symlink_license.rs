@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use regex::Regex;
 use std::collections::HashSet;
@@ -57,10 +57,12 @@ pub fn detect(
             let path_without_slash = path_str.trim_start_matches('/').to_string();
             issues.push(LintianIssue::source_with_info(
                 "copyright-refers-to-symlink-license",
+                Visibility::Pedantic,
                 vec![path_without_slash.clone()],
             ));
             issues.push(LintianIssue::source_with_info(
                 "copyright-refers-to-versionless-license-file",
+                Visibility::Warning,
                 vec![path_without_slash],
             ));
             changed = true;

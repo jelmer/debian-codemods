@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 fn textwrap_description(text: &str) -> Vec<String> {
@@ -143,7 +143,7 @@ pub fn detect(
         let Some(new_description) =
             guess_description(base_path, binary_count, summary_ref, preferences)
         else {
-            let issue = LintianIssue::binary_with_info(&name, tag, info);
+            let issue = LintianIssue::binary_with_info(&name, tag, Visibility::Error, info);
             diagnostics.push(
                 Diagnostic::with_actions(
                     issue,
@@ -159,7 +159,7 @@ pub fn detect(
             continue;
         }
 
-        let issue = LintianIssue::binary_with_info(&name, tag, info);
+        let issue = LintianIssue::binary_with_info(&name, tag, Visibility::Error, info);
         updated.push(name.clone());
         // DEP-5 mandates a single-space continuation indent for
         // Description; the deb822 default would left-align to the

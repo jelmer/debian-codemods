@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -37,6 +37,7 @@ pub fn detect(
             if hp == source_hp {
                 let issue = LintianIssue::source_with_info(
                     "homepage-in-binary-package",
+                    Visibility::Info,
                     vec![name.clone()],
                 );
                 diagnostics.push(Diagnostic::with_actions(
@@ -92,6 +93,7 @@ pub fn detect(
             for (name, _) in &binaries_with_homepage {
                 let issue = LintianIssue::source_with_info(
                     "homepage-in-binary-package",
+                    Visibility::Info,
                     vec![name.clone()],
                 );
                 diagnostics.push(Diagnostic::with_actions(

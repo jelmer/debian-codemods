@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -134,8 +134,11 @@ pub fn detect(
         return Ok(Vec::new());
     };
 
-    let issue =
-        LintianIssue::source_with_info("homepage-field-uses-insecure-uri", vec![homepage.clone()]);
+    let issue = LintianIssue::source_with_info(
+        "homepage-field-uses-insecure-uri",
+        Visibility::Pedantic,
+        vec![homepage.clone()],
+    );
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Homepage field uses insecure URI.",

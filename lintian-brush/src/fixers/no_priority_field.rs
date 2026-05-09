@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -42,6 +42,7 @@ pub fn detect(
                 // Remove redundant Priority: optional from source stanza
                 let issue = LintianIssue::source_with_info(
                     "redundant-field",
+                    Visibility::Info,
                     vec!["debian/control Source Priority".to_string()],
                 );
                 let plans = vec![ActionPlan {
@@ -127,6 +128,7 @@ pub fn detect(
                 let issue = if !missing_priorities.is_empty() {
                     Some(LintianIssue::source_with_info(
                         "recommended-field",
+                        Visibility::Warning,
                         vec![format!("debian/control Priority")],
                     ))
                 } else {
@@ -158,6 +160,7 @@ pub fn detect(
         for package_name in missing_priorities {
             let issue = LintianIssue::source_with_info(
                 "recommended-field",
+                Visibility::Warning,
                 vec!["debian/control Priority".to_string()],
             );
             let plans = vec![ActionPlan {

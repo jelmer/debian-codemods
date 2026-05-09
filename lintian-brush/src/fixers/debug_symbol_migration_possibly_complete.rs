@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_control::lossless::relations::Relations;
 use regex::bytes::Regex;
 use std::path::PathBuf;
@@ -241,6 +241,7 @@ fn eliminate_dbgsym_migration(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Pedantic),
         tag: Some("debug-symbol-migration-possibly-complete".to_string()),
         info: Some(format!(
             "{} [debian/rules:{}]",

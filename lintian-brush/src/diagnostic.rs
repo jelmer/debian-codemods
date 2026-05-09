@@ -6,7 +6,7 @@
 //!
 //! Actions are `serde`-serialisable so they can be sent over an LSP wire.
 
-use crate::{Certainty, LintianIssue, PackageType};
+use crate::{Certainty, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 /// A single issue found by a detector, together with the actions that would
@@ -1340,7 +1340,7 @@ mod tests {
     #[test]
     fn diagnostic_with_actions_builds_single_default_plan() {
         let diag = Diagnostic::with_actions(
-            LintianIssue::source("recommended-field"),
+            LintianIssue::source("recommended-field", Visibility::Warning),
             "Priority field is missing.",
             "Set Priority to optional.",
             vec![Action::Deb822(Deb822Action::SetField {

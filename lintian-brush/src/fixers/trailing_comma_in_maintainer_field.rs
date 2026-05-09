@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -31,6 +31,7 @@ pub fn detect(
 
     let mut issue = LintianIssue::source_with_info(
         "trailing-comma-in-maintainer-field",
+        Visibility::Error,
         vec![maintainer.clone()],
     );
     if let Some(package) = ws.package() {

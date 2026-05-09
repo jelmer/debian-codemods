@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -46,6 +46,7 @@ pub fn detect(
         issues.push(LintianIssue {
             package: Some(name.clone()),
             package_type: Some(PackageType::Binary),
+            visibility: Some(Visibility::Info),
             tag: Some("debian-control-has-obsolete-dbg-package".to_string()),
             info: Some(format!(
                 "(in section for {}) Package [debian/control:{}]",

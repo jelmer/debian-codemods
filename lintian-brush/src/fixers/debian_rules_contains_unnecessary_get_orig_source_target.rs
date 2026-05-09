@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -46,6 +46,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "debian-rules-contains-unnecessary-get-orig-source-target",
+        Visibility::Info,
         vec!["[debian/rules]".to_string()],
     );
 

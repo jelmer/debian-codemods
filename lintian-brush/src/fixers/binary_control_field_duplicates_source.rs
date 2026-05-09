@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -52,6 +52,7 @@ pub fn detect(
             let issue = LintianIssue {
                 package: Some(package_name.clone()),
                 package_type: Some(PackageType::Binary),
+                visibility: Some(Visibility::Info),
                 tag: Some("installable-field-mirrors-source".to_string()),
                 info: Some(format!("{} [debian/control:{}]", key, line_no)),
             };

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -54,6 +54,7 @@ pub fn detect(
         let line_no = entry.line() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-watch-file-uses-deprecated-githubredir",
+            Visibility::Error,
             vec![format!("{} {} [debian/watch:{}]", url, matching, line_no)],
         );
         diagnostics.push(

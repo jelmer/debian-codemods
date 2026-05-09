@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
@@ -28,6 +28,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "debian-rules-calls-pwd",
+        Visibility::Warning,
         vec!["[debian/rules]".to_string()],
     );
 

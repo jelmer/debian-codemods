@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::LintianOverrides;
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -115,8 +115,11 @@ pub fn detect(
                     })
                 })
                 .collect();
-            let mut issue =
-                LintianIssue::source_with_info("duplicate-override-context", info_parts);
+            let mut issue = LintianIssue::source_with_info(
+                "duplicate-override-context",
+                Visibility::Warning,
+                info_parts,
+            );
             issue.package = package.clone();
             diagnostics.push(
                 Diagnostic::with_actions(

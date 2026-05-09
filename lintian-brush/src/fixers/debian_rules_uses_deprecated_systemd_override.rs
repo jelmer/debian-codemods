@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::{compat_level, FixerWorkspace};
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DEPRECATED_OVERRIDES: &[&str] = &["override_dh_systemd_enable", "override_dh_systemd_start"];
@@ -41,6 +41,7 @@ pub fn detect(
             }
             let issue = LintianIssue::source_with_info(
                 "debian-rules-uses-deprecated-systemd-override",
+                Visibility::Error,
                 vec![trimmed.clone()],
             );
             diagnostics.push(Diagnostic::with_actions(

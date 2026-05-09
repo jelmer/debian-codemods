@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
 use std::io::Cursor;
@@ -65,6 +65,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "patch-file-present-but-not-mentioned-in-series",
+            Visibility::Warning,
             vec![format!("[debian/patches/{}]", name)],
         );
         // Removing the file is destructive — in plenty of packages the

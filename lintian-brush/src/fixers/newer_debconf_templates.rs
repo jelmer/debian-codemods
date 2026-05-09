@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, RunCommandAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -19,7 +19,8 @@ pub fn detect(
     } else {
         vec![]
     };
-    let issue = LintianIssue::source_with_info("newer-debconf-templates", info);
+    let issue =
+        LintianIssue::source_with_info("newer-debconf-templates", Visibility::Warning, info);
 
     // If a deterministic timestamp is requested, run debconf-updatepo and
     // rewrite POT-Creation-Date in any .po file it touched. We delegate

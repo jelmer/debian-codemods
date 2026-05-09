@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 fn extract_email_address(address_str: &str) -> String {
@@ -40,6 +40,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "uploaders-in-orphan",
+        Visibility::Error,
         vec!["[debian/changelog:1]".to_string()],
     );
     Ok(vec![Diagnostic::with_actions(

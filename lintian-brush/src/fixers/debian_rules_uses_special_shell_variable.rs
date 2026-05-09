@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -22,6 +22,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "debian-rules-uses-special-shell-variable",
+        Visibility::Warning,
         vec!["[debian/rules]".to_string()],
     );
 

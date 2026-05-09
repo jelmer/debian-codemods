@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -102,6 +102,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             &package_name,
             "wrong-section-according-to-package-name",
+            Visibility::Info,
             vec![format!("{} => {}", current_section, expected_section)],
         );
 
