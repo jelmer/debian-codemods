@@ -127,7 +127,8 @@ fn action_file(action: &Action) -> &Path {
             | Dep3Action::RenameField { file, .. } => file,
         },
         Action::LintianOverrides(a) => match a {
-            LintianOverridesAction::DropLine { file, .. }
+            LintianOverridesAction::AddLine { file, .. }
+            | LintianOverridesAction::DropLine { file, .. }
             | LintianOverridesAction::RenameTag { file, .. }
             | LintianOverridesAction::SetLineInfo { file, .. } => file,
         },
@@ -2693,11 +2694,23 @@ fn apply_lintian_overrides_group(
     group: &[&Action],
 ) -> Result<bool, FixerError> {
     let abs = base.join(rel);
-    if !abs.exists() {
+
+    // AddLine can create the file; all other actions require it to exist.
+    let has_add_line = group.iter().any(|a| {
+        matches!(
+            a,
+            Action::LintianOverrides(LintianOverridesAction::AddLine { .. })
+        )
+    });
+    if !abs.exists() && !has_add_line {
         return Ok(false);
     }
 
-    let content = std::fs::read_to_string(&abs)?;
+    let content = if abs.exists() {
+        std::fs::read_to_string(&abs)?
+    } else {
+        String::new()
+    };
     let parsed = lintian_overrides::LintianOverrides::parse(&content);
     let mut overrides = parsed.ok().map_err(|errs| {
         FixerError::Other(format!(
@@ -2713,6 +2726,53 @@ fn apply_lintian_overrides_group(
             unreachable!("apply_lintian_overrides_group called with non-overrides action");
         };
         match a {
+            LintianOverridesAction::AddLine {
+                package, tag, info, ..
+            } => {
+                let already_present = overrides.lines().any(|line| {
+                    if line.is_comment() || line.is_empty() {
+                        return false;
+                    }
+                    let line_tag = match line.tag() {
+                        Some(t) => t.text().to_string(),
+                        None => return false,
+                    };
+                    if line_tag != *tag {
+                        return false;
+                    }
+                    let line_pkg = line.package_spec().as_ref().and_then(|s| s.package_name());
+                    if line_pkg.as_deref() != package.as_deref() {
+                        return false;
+                    }
+                    line.info().as_deref() == info.as_deref()
+                });
+                if !already_present {
+                    // Append the new line to the existing text and re-parse.
+                    let mut new_text = overrides.text();
+                    if !new_text.ends_with('\n') && !new_text.is_empty() {
+                        new_text.push('\n');
+                    }
+                    if let Some(pkg) = package {
+                        new_text.push_str(pkg);
+                        new_text.push(':');
+                        new_text.push(' ');
+                    }
+                    new_text.push_str(tag);
+                    if let Some(i) = info {
+                        new_text.push(' ');
+                        new_text.push_str(i);
+                    }
+                    new_text.push('\n');
+                    let parsed = lintian_overrides::LintianOverrides::parse(&new_text);
+                    overrides = parsed.ok().map_err(|errs| {
+                        FixerError::Other(format!(
+                            "Failed to re-parse {}: {}",
+                            rel.display(),
+                            errs.join(", ")
+                        ))
+                    })?;
+                }
+            }
             LintianOverridesAction::DropLine { selector, .. } => {
                 let mut dropped = false;
                 overrides = lintian_overrides::filter_overrides(&overrides, |line| {
@@ -2776,6 +2836,9 @@ fn apply_lintian_overrides_group(
     if !has_content {
         std::fs::remove_file(&abs)?;
     } else {
+        if let Some(parent) = abs.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(&abs, new_content)?;
     }
     Ok(true)
