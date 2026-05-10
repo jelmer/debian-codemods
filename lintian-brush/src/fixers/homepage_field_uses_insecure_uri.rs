@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
@@ -112,6 +112,38 @@ pub fn detect(
     ws: &dyn FixerWorkspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    let net_access_allowed = preferences.net_access.unwrap_or(false);
+
+    if let Some(doc) = ws.parsed_debcargo()? {
+        let Some(homepage) = doc
+            .get("source")
+            .and_then(|s| s.as_table())
+            .and_then(|s| s.get("homepage"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+        else {
+            return Ok(Vec::new());
+        };
+        let Some(new_homepage) = fix_homepage_url(&homepage, net_access_allowed) else {
+            return Ok(Vec::new());
+        };
+        let issue = LintianIssue::source_with_info(
+            "homepage-field-uses-insecure-uri",
+            Visibility::Pedantic,
+            vec![homepage],
+        );
+        return Ok(vec![Diagnostic::with_actions(
+            issue,
+            "Homepage field uses insecure URI.",
+            "Use secure URI in Homepage field.",
+            vec![Action::Debcargo(DebcargoAction::SetSourceField {
+                file: PathBuf::from("debian/debcargo.toml"),
+                field: "homepage".into(),
+                value: new_homepage,
+            })],
+        )]);
+    }
+
     let control = match ws.parsed_control() {
         Ok(c) => c,
         Err(FixerError::NoChanges) => return Ok(Vec::new()),
@@ -129,7 +161,6 @@ pub fn detect(
         return Ok(Vec::new());
     };
 
-    let net_access_allowed = preferences.net_access.unwrap_or(false);
     let Some(new_homepage) = fix_homepage_url(&homepage, net_access_allowed) else {
         return Ok(Vec::new());
     };
@@ -161,6 +192,7 @@ declare_detector! {
             paragraph_key: "Source",
             field: "Homepage",
         },
+        crate::workspace::Trigger::DebcargoField("source.homepage"),
     ],
     cost: crate::workspace::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
