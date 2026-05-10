@@ -41,18 +41,8 @@ pub fn detect(
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let debcargo_rel = PathBuf::from("debian/debcargo.toml");
     let control_rel = PathBuf::from("debian/control");
-    let debcargo_bytes = ws.read_file(&debcargo_rel)?;
-    let control_bytes = ws.read_file(&control_rel)?;
 
-    if debcargo_bytes.is_some() && control_bytes.is_none() {
-        // Debcargo branch — fields live in [source] under TOML keys
-        // vcs_git / vcs_browser. We canonicalize whichever is set.
-        let bytes = debcargo_bytes.unwrap();
-        let toml_text = std::str::from_utf8(&bytes)
-            .map_err(|e| FixerError::Other(format!("Failed to read debcargo.toml: {}", e)))?;
-        let doc: toml_edit::DocumentMut = toml_text
-            .parse()
-            .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+    if let Some(doc) = ws.parsed_debcargo()? {
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
         let candidates: &[(&str, &str)] = &[("vcs_git", "Git"), ("vcs_browser", "Browser")];
         if let Some(source) = doc.get("source").and_then(|s| s.as_table()) {
@@ -83,10 +73,6 @@ pub fn detect(
             }
         }
         return Ok(diagnostics);
-    }
-
-    if control_bytes.is_none() {
-        return Ok(Vec::new());
     }
 
     let control = match ws.parsed_control() {

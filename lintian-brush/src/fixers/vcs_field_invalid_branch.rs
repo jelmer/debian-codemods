@@ -124,27 +124,18 @@ pub async fn detect_async(
 
     let debcargo_rel = PathBuf::from("debian/debcargo.toml");
     let control_rel = PathBuf::from("debian/control");
-    let debcargo_bytes = ws.read_file(&debcargo_rel)?;
-    let control_bytes = ws.read_file(&control_rel)?;
-    let is_debcargo = debcargo_bytes.is_some() && control_bytes.is_none();
+
+    let debcargo_doc = ws.parsed_debcargo()?;
+    let is_debcargo = debcargo_doc.is_some();
 
     // Read the current Vcs-Git URL.
-    let vcs_git: Option<String> = if is_debcargo {
-        let bytes = debcargo_bytes.unwrap();
-        let toml_text = std::str::from_utf8(&bytes)
-            .map_err(|e| FixerError::Other(format!("Failed to read debcargo.toml: {}", e)))?;
-        let doc: toml_edit::DocumentMut = toml_text
-            .parse()
-            .map_err(|e| FixerError::Other(format!("Failed to parse debcargo.toml: {}", e)))?;
+    let vcs_git: Option<String> = if let Some(ref doc) = debcargo_doc {
         doc.get("source")
             .and_then(|s| s.as_table())
             .and_then(|s| s.get("vcs_git"))
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
+            .map(str::to_string)
     } else {
-        if control_bytes.is_none() {
-            return Ok(Vec::new());
-        }
         let control = match ws.parsed_control() {
             Ok(c) => c,
             Err(FixerError::NoChanges) => return Ok(Vec::new()),
