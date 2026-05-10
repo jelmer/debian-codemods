@@ -15,6 +15,7 @@ use std::path::PathBuf;
 pub mod action;
 pub mod dummy_transitional;
 pub mod package_checker;
+pub mod remove_annotations;
 use package_checker::{PackageChecker, UddPackageChecker};
 
 /// Represents a field change: (field_name, actions, description)

@@ -4596,6 +4596,7 @@ version = "0.176.0"
 dependencies = [
  "async-trait",
  "breezyshim",
+ "chrono",
  "clap",
  "deb822-lossless",
  "debian-analyzer",
