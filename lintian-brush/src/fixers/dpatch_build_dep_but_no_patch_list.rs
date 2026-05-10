@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const STUB_CONTENT: &[u8] =
@@ -50,7 +50,11 @@ pub fn detect(
         }
     }
 
-    let issue = LintianIssue::source_with_info("dpatch-build-dep-but-no-patch-list", vec![]);
+    let issue = LintianIssue::source_with_info(
+        "dpatch-build-dep-but-no-patch-list",
+        Visibility::Warning,
+        vec![],
+    );
 
     Ok(vec![Diagnostic::with_actions(
         issue,

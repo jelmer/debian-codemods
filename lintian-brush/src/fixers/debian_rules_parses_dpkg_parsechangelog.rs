@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
@@ -76,6 +76,7 @@ pub fn detect(
         }
         issues.push(LintianIssue::source_with_info(
             "debian-rules-parses-dpkg-parsechangelog",
+            Visibility::Info,
             vec![format!("{} [debian/rules]", name)],
         ));
         actions.push(Action::Makefile(MakefileAction::RemoveVariable {

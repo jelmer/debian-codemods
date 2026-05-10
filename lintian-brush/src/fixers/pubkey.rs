@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, WatchAction};
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_watch::{mangle, Release};
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
@@ -500,6 +500,7 @@ pub fn detect(
 
             let issue = LintianIssue::source_with_info(
                 "debian-watch-does-not-check-openpgp-signature",
+                Visibility::Pedantic,
                 vec!["[debian/watch]".to_string()],
             );
             watch_actions.extend(entry_actions.iter().cloned());
@@ -569,6 +570,7 @@ pub fn detect(
         if !fetch_failed && !keyfile_content.is_empty() {
             let issue = LintianIssue::source_with_info(
                 "debian-watch-file-pubkey-file-is-missing",
+                Visibility::Error,
                 vec!["[debian/watch]".to_string()],
             );
             let key_desc = format!(

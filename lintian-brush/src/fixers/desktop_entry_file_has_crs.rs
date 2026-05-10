@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -35,6 +35,7 @@ pub fn detect(
             }
             let issue = LintianIssue::source_with_info(
                 "desktop-entry-file-has-crs",
+                Visibility::Warning,
                 vec![format!("[{}:{}]", installed_path, line_idx + 1)],
             );
             diagnostics.push(

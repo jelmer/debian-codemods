@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const KNOWN_SECURE_HOSTS: &[&str] = &["code.launchpad.net", "launchpad.net", "ftp.gnu.org"];
@@ -41,6 +41,7 @@ pub fn detect(
         let line_number = entry.line() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-watch-uses-insecure-uri",
+            Visibility::Info,
             vec![format!("{} [debian/watch:{}]", url, line_number)],
         );
 

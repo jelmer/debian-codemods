@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -31,8 +31,12 @@ pub fn detect(
             continue;
         }
 
-        let issue =
-            LintianIssue::binary_with_info(&package, "font-package-not-multi-arch-foreign", vec![]);
+        let issue = LintianIssue::binary_with_info(
+            &package,
+            "font-package-not-multi-arch-foreign",
+            Visibility::Warning,
+            vec![],
+        );
         diagnostics.push(Diagnostic::with_actions(
             issue,
             format!("Font package {} is not Multi-Arch: foreign.", package),

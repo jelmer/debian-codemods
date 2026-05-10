@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::wnpp::{BugId, BugKind};
 use std::path::PathBuf;
 
@@ -70,7 +70,7 @@ pub fn detect(
     bug_kinds.sort();
     bug_kinds.dedup();
 
-    let issue = LintianIssue::source("initial-upload-closes-no-bugs");
+    let issue = LintianIssue::source("initial-upload-closes-no-bugs", Visibility::Warning);
     Ok(vec![Diagnostic::with_actions(
         issue,
         "Initial upload closes no bugs.",

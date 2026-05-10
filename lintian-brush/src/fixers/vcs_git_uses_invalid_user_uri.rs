@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -39,6 +39,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("vcs-git-uses-invalid-user-uri".to_string()),
         info: Some(vcs_git),
     };

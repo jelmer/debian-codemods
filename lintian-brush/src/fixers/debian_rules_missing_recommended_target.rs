@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use makefile_lossless::{Makefile, Parse};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -93,6 +93,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source_with_info(
                 "debian-rules-missing-recommended-target",
+                Visibility::Warning,
                 vec!["build-indep [debian/rules]".to_string()],
             ),
             "debian/rules is missing recommended target build-indep.",
@@ -121,6 +122,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source_with_info(
                 "debian-rules-missing-recommended-target",
+                Visibility::Warning,
                 vec!["build-arch [debian/rules]".to_string()],
             ),
             "debian/rules is missing recommended target build-arch.",

@@ -2939,9 +2939,9 @@ dependencies = [
 
 [[package]]
 name = "lintian-overrides"
-version = "0.1.1"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7ed8407c405896d3f56a1537f9073e19c0132f813e6641c6258ba3f40e80063"
+checksum = "7612be64e27dd0d1310694bc16e38544b9465f44450a34f930125faeda46684b"
 dependencies = [
  "lazy_static",
  "regex",

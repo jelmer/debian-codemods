@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_copyright::lossless::Copyright;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -79,6 +79,7 @@ pub fn detect(
             } else {
                 Some(LintianIssue::source_with_info(
                     "field-name-typo-in-dep5-copyright",
+                    Visibility::Warning,
                     vec![rename.old.clone()],
                 ))
             };

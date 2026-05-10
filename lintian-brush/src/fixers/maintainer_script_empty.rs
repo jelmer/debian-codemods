@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq)]
@@ -108,12 +108,14 @@ pub fn detect(
                 let issue = if package == "source" {
                     LintianIssue::source_with_info(
                         "maintainer-script-empty",
+                        Visibility::Warning,
                         vec![format!("[{}]", script)],
                     )
                 } else {
                     LintianIssue::binary_with_info(
                         &package,
                         "maintainer-script-empty",
+                        Visibility::Warning,
                         vec![format!("[{}]", script)],
                     )
                 };

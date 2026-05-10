@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -23,6 +23,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             package_name,
             "package-contains-linda-override",
+            Visibility::Warning,
             vec![format!("usr/share/linda/overrides/{}", package_name)],
         );
 

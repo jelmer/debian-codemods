@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use chrono::Datelike;
 use rowan::ast::AstNode;
 use std::path::PathBuf;
@@ -65,6 +65,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "debian-changelog-has-wrong-day-of-week",
+            Visibility::Warning,
             vec![format!(
                 "{:04}-{:02}-{:02} is a {}",
                 parsed_date.year(),

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_analyzer::rules::dh_invoke_add_with;
 use std::path::PathBuf;
 
@@ -29,6 +29,7 @@ pub fn detect(
         let issue = LintianIssue {
             package: Some(name.clone()),
             package_type: Some(PackageType::Binary),
+            visibility: Some(Visibility::Info),
             tag: Some("obsolete-vim-addon-manager".to_string()),
             info: None,
         };

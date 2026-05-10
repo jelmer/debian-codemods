@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const KEY_BLOCK_START: &[u8] = b"-----BEGIN PGP PUBLIC KEY BLOCK-----";
@@ -180,6 +180,7 @@ pub fn detect(
                         signatures_removed_here = true;
                         issues_here.push(LintianIssue::source_with_info(
                             "public-upstream-key-not-minimal",
+                            Visibility::Info,
                             vec![format!(
                                 "has {} extra signature(s) for keyid {} [{}]",
                                 count, keyid, path_str

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_analyzer::debhelper::get_sequences;
 use std::path::{Path, PathBuf};
 
@@ -37,6 +37,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: source.as_deb822().get("Source").map(|s| s.to_string()),
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("pkg-js-tools-test-is-missing".to_string()),
         info: Some("debian/tests/pkg-js/test".to_string()),
     };

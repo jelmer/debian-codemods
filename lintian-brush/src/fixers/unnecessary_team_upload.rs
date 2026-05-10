@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::iter_changes_by_author;
 use std::path::PathBuf;
 
@@ -78,6 +78,7 @@ pub fn detect(
                 .unwrap_or(1);
             let issue = LintianIssue::source_with_info(
                 "unnecessary-team-upload",
+                Visibility::Warning,
                 vec![format!("[debian/changelog:{}]", line_num)],
             );
             let Some(version) = last_version.as_ref() else {

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 const OLD_REL: &str = "debian/tests/control.autodep8";
@@ -24,6 +24,7 @@ pub fn detect(
     let issue_obsolete = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("debian-tests-control-autodep8-is-obsolete".to_string()),
         info: Some(OLD_REL.to_string()),
     };
@@ -58,6 +59,7 @@ pub fn detect(
     let issue_merge = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("debian-tests-control-and-control-autodep8".to_string()),
         info: Some(format!("{} {}", OLD_REL, NEW_REL)),
     };

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -19,6 +19,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "debian-pyversions-is-obsolete",
+        Visibility::Info,
         vec!["debian/pyversions".to_string()],
     );
 

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const DESCRIPTION: &str = "Remove .git suffix from Homepage URL.";
@@ -62,7 +62,8 @@ pub fn detect(
         return Ok(Vec::new());
     };
 
-    let issue = LintianIssue::source_with_info(tag, vec![format!("[{}]", homepage)]);
+    let issue =
+        LintianIssue::source_with_info(tag, Visibility::Info, vec![format!("[{}]", homepage)]);
     Ok(vec![Diagnostic::with_actions(
         issue,
         DESCRIPTION,

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -72,6 +72,7 @@ pub fn detect(
             let issue = LintianIssue::binary_with_info(
                 &binary_name,
                 "built-using-field-on-arch-all-package",
+                Visibility::Warning,
                 vec![format!(
                     "(in section for {}) [debian/control:{}]",
                     binary_name, line_no
@@ -103,6 +104,7 @@ pub fn detect(
                 let issue = LintianIssue::binary_with_info(
                     &binary_name,
                     "missing-built-using-field-for-golang-package",
+                    Visibility::Info,
                     vec![format!(
                         "(in section for {}) [debian/control:{}]",
                         binary_name, line_no
@@ -132,6 +134,7 @@ pub fn detect(
                 let issue = LintianIssue::binary_with_info(
                     &binary_name,
                     "missing-static-built-using-field-for-golang-package",
+                    Visibility::Info,
                     vec![format!(
                         "(in section for {}) [debian/control:{}]",
                         binary_name, line_no

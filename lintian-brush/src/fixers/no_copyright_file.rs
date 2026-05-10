@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 mod decopy {
@@ -277,7 +277,7 @@ pub fn detect(
         license_para.set_comment("Add the corresponding license text here");
     }
 
-    let issue = LintianIssue::source_with_info("no-copyright-file", vec![]);
+    let issue = LintianIssue::source_with_info("no-copyright-file", Visibility::Error, vec![]);
     Ok(vec![Diagnostic::with_actions(
         issue,
         "debian/copyright file is missing.",

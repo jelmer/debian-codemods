@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -41,6 +41,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             &package_name,
             "excessive-priority-for-library-package",
+            Visibility::Warning,
             vec![effective_priority.clone()],
         );
 

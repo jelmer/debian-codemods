@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -76,6 +76,7 @@ pub fn detect(
         if let Some(new_name) = typos.get(&name) {
             issues.push(LintianIssue::source_with_info(
                 "invalid-short-name-in-dep5-copyright",
+                Visibility::Warning,
                 vec![format!("{} [debian/copyright:{}]", name, line_no)],
             ));
             if !renames.iter().any(|(o, _)| o == &name) {

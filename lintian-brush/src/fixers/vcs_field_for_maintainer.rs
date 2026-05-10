@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
 use std::path::PathBuf;
 
@@ -78,7 +78,8 @@ pub fn detect(
         }
 
         let vcs_type = field_name.strip_prefix("Vcs-").unwrap_or(&field_name);
-        let issue = LintianIssue::source_with_info(tag, vec![vcs_type.to_string()]);
+        let issue =
+            LintianIssue::source_with_info(tag, Visibility::Warning, vec![vcs_type.to_string()]);
 
         diagnostics.push(Diagnostic::with_actions(
             issue,

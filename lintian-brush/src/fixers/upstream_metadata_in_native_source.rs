@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -28,6 +28,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "upstream-metadata-in-native-source",
+        Visibility::Warning,
         vec!["[debian/upstream/metadata]".to_string()],
     );
     Ok(vec![Diagnostic::with_actions(

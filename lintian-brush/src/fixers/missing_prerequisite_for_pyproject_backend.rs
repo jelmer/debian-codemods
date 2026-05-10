@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -66,6 +66,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: source.as_deb822().get("Source").map(|s| s.to_string()),
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Info),
         tag: Some("missing-prerequisite-for-pyproject-backend".to_string()),
         info: Some(format!(
             "{} (does not satisfy {})",

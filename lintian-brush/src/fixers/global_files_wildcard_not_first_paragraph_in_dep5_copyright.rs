@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use debian_copyright::{pattern_depth, pattern_sort_key};
 use std::path::PathBuf;
@@ -55,6 +55,7 @@ pub fn detect(
             let line = files_info[pos].2;
             let issue = LintianIssue::source_with_info(
                 "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
+                Visibility::Warning,
                 vec![format!("[debian/copyright:{}]", line)],
             );
             diagnostics.push(Diagnostic::with_actions(
@@ -73,6 +74,7 @@ pub fn detect(
             if files_info[j].1 < files_info[i].1 {
                 let issue = LintianIssue::source_with_info(
                     "globbing-patterns-out-of-order",
+                    Visibility::Warning,
                     vec![format!(
                         "{} {} [debian/copyright:{}]",
                         files_info[i].0, files_info[j].0, files_info[j].2

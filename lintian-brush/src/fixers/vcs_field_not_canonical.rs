@@ -3,7 +3,7 @@ use crate::diagnostic::{
     Action, ActionPlan, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector,
 };
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -66,6 +66,7 @@ pub fn detect(
                 }
                 let issue = LintianIssue::source_with_info(
                     "vcs-field-not-canonical",
+                    Visibility::Info,
                     vec![format!("{} {} {}", vcs_type, url, new_value)],
                 );
                 let field_name = format!("Vcs-{}", vcs_type);
@@ -110,6 +111,7 @@ pub fn detect(
         }
         let issue = LintianIssue::source_with_info(
             "vcs-field-not-canonical",
+            Visibility::Info,
             vec![format!("{} {} {}", vcs_type, url, new_value)],
         );
         diagnostics.push(Diagnostic::with_actions(

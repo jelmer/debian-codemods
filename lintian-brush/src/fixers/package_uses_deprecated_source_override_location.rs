@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -28,6 +28,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "old-source-override-location",
+        Visibility::Pedantic,
         vec!["debian/source.lintian-overrides".to_string()],
     );
 

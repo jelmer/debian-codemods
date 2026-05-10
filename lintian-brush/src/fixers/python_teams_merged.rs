@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const NEW_MAINTAINER: &str = "Debian Python Team <team+python@tracker.debian.org>";
@@ -50,7 +50,11 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let issue = LintianIssue::source_with_info("python-teams-merged", vec![email.to_string()]);
+    let issue = LintianIssue::source_with_info(
+        "python-teams-merged",
+        Visibility::Warning,
+        vec![email.to_string()],
+    );
 
     // Use ByKey selector so the generic deb822 path keeps the
     // Maintainer field at its current position; the typed control

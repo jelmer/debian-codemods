@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 // Include the generated obsolete sites definitions
@@ -36,6 +36,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "obsolete-url-in-packaging",
+        Visibility::Warning,
         vec![format!("{} [debian/control]", homepage.trim())],
     );
     Ok(vec![Diagnostic::with_actions(

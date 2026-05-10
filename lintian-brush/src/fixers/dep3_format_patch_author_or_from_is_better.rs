@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Dep3Action, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::path::{Path, PathBuf};
@@ -46,6 +46,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "dep3-format-patch-author-or-from-is-better",
+            Visibility::Info,
             vec![format!("[debian/patches/{}]", name)],
         );
         let patch_rel = patches_rel.join(name);
@@ -104,6 +105,7 @@ mod tests {
     use crate::workspace::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
