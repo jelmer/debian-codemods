@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
@@ -30,7 +30,7 @@ struct Edit {
 }
 
 fn collect_edits(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rel_path: &Path,
     relative_path: &str,
     strip_tabs: bool,
@@ -109,7 +109,7 @@ fn collect_edits(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -216,10 +216,10 @@ declare_detector! {
     name: "file-contains-trailing-whitespace",
     tags: ["trailing-whitespace"],
     triggers: [
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::File("debian/control"),
-        crate::workspace::Trigger::Glob("debian/control.*"),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Body),
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/control"),
+        debian_workspace::Trigger::Glob("debian/control.*"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -227,7 +227,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

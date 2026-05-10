@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let old_rel = PathBuf::from("debian/source.lintian-overrides");
@@ -51,8 +51,8 @@ declare_detector! {
     name: "package-uses-deprecated-source-override-location",
     tags: ["old-source-override-location"],
     triggers: [
-        crate::workspace::Trigger::File("debian/source.lintian-overrides"),
-        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
+        debian_workspace::Trigger::File("debian/source.lintian-overrides"),
+        debian_workspace::Trigger::File("debian/source/lintian-overrides"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -60,7 +60,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

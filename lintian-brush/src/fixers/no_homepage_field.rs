@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use url::Url;
@@ -55,13 +55,13 @@ fn guess_homepage(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
@@ -156,13 +156,13 @@ declare_detector! {
     name: "no-homepage-field",
     tags: ["no-homepage-field", "pypi-homepage", "rubygem-homepage"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Homepage",
         },
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -170,7 +170,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

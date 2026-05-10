@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
@@ -41,14 +41,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-uses-special-shell-variable",
     tags: ["debian-rules-uses-special-shell-variable"],
-    triggers: [crate::workspace::Trigger::File("debian/rules")],
+    triggers: [debian_workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

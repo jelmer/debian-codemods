@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
@@ -8,13 +8,13 @@ const DESCRIPTION: &str = "Replace XC-Package-Type with Package-Type.";
 const LABEL: &str = "Replace XC-Package-Type with Package-Type.";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let mut diagnostics = Vec::new();
 
@@ -90,12 +90,12 @@ declare_detector! {
     name: "xc-package-type-in-debian-control",
     tags: ["adopted-extended-field"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "XC-Package-Type",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "XC-Package-Type",
@@ -107,7 +107,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

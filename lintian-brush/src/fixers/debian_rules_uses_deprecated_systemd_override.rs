@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::{compat_level, FixerWorkspace};
+use debian_workspace::{compat_level, Workspace};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
@@ -8,14 +8,14 @@ const DEPRECATED_OVERRIDES: &[&str] = &["override_dh_systemd_enable", "override_
 const NEW_TARGET: &str = "override_dh_installsystemd";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     // Issue only applies to compat level >= 11.
@@ -83,14 +83,14 @@ declare_detector! {
     name: "debian-rules-uses-deprecated-systemd-override",
     tags: ["debian-rules-uses-deprecated-systemd-override"],
     triggers: [
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "X-DH-Compat",
@@ -102,7 +102,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

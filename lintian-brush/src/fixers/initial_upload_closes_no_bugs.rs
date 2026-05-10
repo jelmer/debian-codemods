@@ -1,12 +1,12 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::wnpp::{BugId, BugKind};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if !preferences.net_access.unwrap_or(false) {
@@ -15,8 +15,8 @@ pub fn detect(
 
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(last_entry) = changelog.iter().last() else {
@@ -104,17 +104,17 @@ declare_detector! {
     name: "initial-upload-closes-no-bugs",
     tags: ["initial-upload-closes-no-bugs"],
     triggers: [
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Body),
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

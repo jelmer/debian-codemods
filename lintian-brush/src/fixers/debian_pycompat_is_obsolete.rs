@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let pycompat = PathBuf::from("debian/pycompat");
@@ -33,14 +33,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-pycompat-is-obsolete",
     tags: ["debian-pycompat-is-obsolete"],
-    triggers: [crate::workspace::Trigger::File("debian/pycompat")],
+    triggers: [debian_workspace::Trigger::File("debian/pycompat")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use debian_workspace::{DetectorAdapter, TreeWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
@@ -53,7 +53,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = TreeFixerWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = TreeWorkspace::new(base, "test", "1.0".parse().unwrap());
         detect(&ws, &FixerPreferences::default())
     }
 

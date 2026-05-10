@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::collections::BTreeSet;
@@ -44,14 +44,14 @@ fn perl_modules_in(value: &str) -> BTreeSet<String> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     // Skip the perl source package itself: perl-modules is a real,
@@ -143,77 +143,77 @@ declare_detector! {
     name: "package-relation-with-perl-modules",
     tags: ["package-relation-with-perl-modules"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Source",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends-Indep",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends-Arch",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Conflicts",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Conflicts-Indep",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Conflicts-Arch",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Package",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Pre-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Recommends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Suggests",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Enhances",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Breaks",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Conflicts",
@@ -225,7 +225,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

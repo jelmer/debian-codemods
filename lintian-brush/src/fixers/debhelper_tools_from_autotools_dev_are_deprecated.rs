@@ -1,21 +1,21 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::rules::drop_dh_with_argument;
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const MIN_DEBHELPER_VERSION: &str = "9.20160114";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut issues: Vec<LintianIssue> = Vec::new();
@@ -127,8 +127,8 @@ declare_detector! {
     name: "debhelper-tools-from-autotools-dev-are-deprecated",
     tags: ["debhelper-tools-from-autotools-dev-are-deprecated"],
     triggers: [
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
@@ -140,7 +140,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

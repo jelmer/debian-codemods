@@ -1,20 +1,20 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use strsim::levenshtein;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/upstream/metadata");
     let yaml = match ws.parsed_upstream_metadata() {
         Ok(y) => y,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let Some(doc) = yaml.documents().next() else {
@@ -159,7 +159,7 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "field-name-typo-in-upstream-metadata",
     tags: [],
-    triggers: [crate::workspace::Trigger::UpstreamMetadataField("*")],
+    triggers: [debian_workspace::Trigger::UpstreamMetadataField("*")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -167,7 +167,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::{compat_level, FixerWorkspace};
+use debian_workspace::{compat_level, Workspace};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ fn has_misc_pre_depends(field_value: &str) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     match compat_level(ws)? {
@@ -25,8 +25,8 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut diagnostics = Vec::new();
@@ -102,20 +102,20 @@ declare_detector! {
     name: "skip-systemd-native-flag-missing-pre-depends",
     tags: ["skip-systemd-native-flag-missing-pre-depends"],
     triggers: [
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Pre-Depends",
         },
-        crate::workspace::Trigger::Glob("debian/*.init"),
-        crate::workspace::Trigger::Glob("debian/*.service"),
-        crate::workspace::Trigger::Glob("debian/*.upstart"),
+        debian_workspace::Trigger::Glob("debian/*.init"),
+        debian_workspace::Trigger::Glob("debian/*.service"),
+        debian_workspace::Trigger::Glob("debian/*.upstart"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -124,7 +124,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

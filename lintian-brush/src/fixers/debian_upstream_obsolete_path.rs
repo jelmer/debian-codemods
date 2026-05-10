@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if ws.list_dir(Path::new("debian"))?.is_none() {
@@ -83,9 +83,9 @@ declare_detector! {
     name: "debian-upstream-obsolete-path",
     tags: ["debian-upstream-obsolete-path"],
     triggers: [
-        crate::workspace::Trigger::File("debian/upstream"),
-        crate::workspace::Trigger::File("debian/upstream-metadata"),
-        crate::workspace::Trigger::File("debian/upstream-metadata.yaml"),
+        debian_workspace::Trigger::File("debian/upstream"),
+        debian_workspace::Trigger::File("debian/upstream-metadata"),
+        debian_workspace::Trigger::File("debian/upstream-metadata.yaml"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -93,7 +93,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

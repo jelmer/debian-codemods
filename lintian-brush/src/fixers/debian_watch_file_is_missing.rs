@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use breezyshim::branch::Branch;
 use std::path::{Path, PathBuf};
@@ -495,7 +495,7 @@ fn candidates_from_upstream_metadata(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let Some(version) = ws.current_version() else {
@@ -558,19 +558,19 @@ declare_detector! {
     name: "debian-watch-file-is-missing",
     tags: ["debian-watch-file-is-missing"],
     triggers: [
-        crate::workspace::Trigger::File("debian/watch"),
-        crate::workspace::Trigger::File("debian/upstream/metadata"),
-        crate::workspace::Trigger::File("setup.py"),
-        crate::workspace::Trigger::Glob("*.cabal"),
+        debian_workspace::Trigger::File("debian/watch"),
+        debian_workspace::Trigger::File("debian/upstream/metadata"),
+        debian_workspace::Trigger::File("setup.py"),
+        debian_workspace::Trigger::Glob("*.cabal"),
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use debversion::Version;
     use std::fs;
     use tempfile::TempDir;

@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
 use std::collections::HashMap;
@@ -360,13 +360,13 @@ async fn find_new_urls(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
@@ -505,30 +505,30 @@ declare_detector! {
     tags: ["vcs-obsolete-in-debian-infrastructure", "vcs-field-bitrotted"],
     before: ["vcs-broken-uri"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Source",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Maintainer",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Vcs-*",
         },
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

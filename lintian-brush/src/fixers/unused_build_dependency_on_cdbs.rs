@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::{Path, PathBuf};
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep"];
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_content = match ws.read_file(Path::new("debian/rules"))? {
@@ -25,8 +25,8 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -83,13 +83,13 @@ declare_detector! {
     name: "unused-build-dependency-on-cdbs",
     tags: ["unused-build-dependency-on-cdbs"],
     triggers: [
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends-Indep",
@@ -101,7 +101,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

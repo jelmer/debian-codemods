@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let pyversions = PathBuf::from("debian/pyversions");
@@ -36,14 +36,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-pyversions-is-obsolete",
     tags: ["debian-pyversions-is-obsolete"],
-    triggers: [crate::workspace::Trigger::File("debian/pyversions")],
+    triggers: [debian_workspace::Trigger::File("debian/pyversions")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

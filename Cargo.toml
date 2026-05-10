@@ -1,7 +1,7 @@
 [workspace]
 # With resolve set to "2", dependent projects can't find debian-analyzer anymore.
 resolver = "1"
-members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize"]
+members = ["lintian-brush", "multiarch-hints", "scrub-obsolete", "transition-apply", "import-uncommitted", "debianize", "debian-workspace"]
 
 [workspace.package]
 version = "0.176.0"
@@ -26,6 +26,7 @@ url = "2"
 debian-copyright = "0.1.48"
 debian-changelog = "0.2.13"
 debian-control = ">=0.3.6,<0.4"
+debian-workspace = { path = "debian-workspace", version = "0.1.0" }
 deb822-lossless = "0.5.15"
 pyo3-log = ">=0.12,<0.14"
 maplit = "1"

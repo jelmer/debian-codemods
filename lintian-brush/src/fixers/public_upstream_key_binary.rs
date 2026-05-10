@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use std::path::PathBuf;
 
@@ -21,7 +21,7 @@ fn convert_key_to_armor(binary_key: &[u8]) -> Result<String, Box<dyn std::error:
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let pgp_rel = PathBuf::from("debian/upstream/signing-key.pgp");
@@ -51,7 +51,7 @@ declare_detector! {
     name: "public-upstream-key-binary",
     tags: [],
     triggers: [
-        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.pgp"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -59,7 +59,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

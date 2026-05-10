@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
@@ -68,7 +68,7 @@ fn compute_insertion(content: &[u8]) -> Option<(usize, String)> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics = Vec::new();
@@ -118,11 +118,11 @@ declare_detector! {
     name: "maintainer-script-without-set-e",
     tags: ["maintainer-script-without-set-e"],
     triggers: [
-        crate::workspace::Trigger::File("debian/preinst"),
-        crate::workspace::Trigger::File("debian/prerm"),
-        crate::workspace::Trigger::File("debian/postinst"),
-        crate::workspace::Trigger::File("debian/config"),
-        crate::workspace::Trigger::File("debian/postrm"),
+        debian_workspace::Trigger::File("debian/preinst"),
+        debian_workspace::Trigger::File("debian/prerm"),
+        debian_workspace::Trigger::File("debian/postinst"),
+        debian_workspace::Trigger::File("debian/config"),
+        debian_workspace::Trigger::File("debian/postrm"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -130,7 +130,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
@@ -52,14 +52,14 @@ pub fn detect(
 declare_detector! {
     name: "executable-desktop-file",
     tags: ["executable-desktop-file"],
-    triggers: [crate::workspace::Trigger::Glob("debian/*.desktop")],
+    triggers: [debian_workspace::Trigger::Glob("debian/*.desktop")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
