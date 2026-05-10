@@ -25,10 +25,19 @@ override_dh_auto_build:
 override_dh_auto_test:
 	make testsuite
 
+CRATE_VERSION = $(shell cargo metadata --manifest-path lintian-brush/Cargo.toml --no-deps --format-version 1 | python3 -c "import json,sys; pkgs=json.load(sys.stdin)['packages']; print(next(p['version'] for p in pkgs if p['name']=='lintian-brush'))")
+CRATE_REGISTRY_DIR = debian/librust-lintian-brush-dev/usr/share/cargo/registry/lintian-brush-$(CRATE_VERSION)
+
 execute_after_dh_auto_install:
 	mkdir -p debian/lintian-brush/$(ZSH_COMPDIR)
 	install -m644 debian/lintian-brush.zsh-completion \
 	    debian/lintian-brush/$(ZSH_COMPDIR)/_lintian-brush
+	mkdir -p $(CRATE_REGISTRY_DIR)
+	cp -r lintian-brush/src lintian-brush/build.rs lintian-brush/Cargo.toml \
+	    lintian-brush/spdx.json lintian-brush/renamed-tags.json \
+	    $(CRATE_REGISTRY_DIR)/
+	cp debian/cargo-checksum.json $(CRATE_REGISTRY_DIR)/.cargo-checksum.json
+	touch -d@$(SOURCE_DATE_EPOCH) $(CRATE_REGISTRY_DIR)/Cargo.toml
 
 override_dh_auto_clean:
 	if test -f Cargo.lock.upstream; then mv Cargo.lock.upstream Cargo.lock; fi
