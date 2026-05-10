@@ -1,4 +1,4 @@
-debian-codemods (0.177) UNRELEASED; urgency=medium
+debian-codemods (0.177) unstable; urgency=medium
 
   * Add LintianIssue::Visibility
   * scrub-obsolete: Implement the scrub-annotations spec.
