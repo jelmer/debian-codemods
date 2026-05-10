@@ -1,18 +1,18 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
     let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     if watch_file.version() != 5 {
@@ -82,8 +82,8 @@ declare_detector! {
     name: "debian-watch-use-templates",
     tags: [],
     triggers: [
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Source),
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::MatchingPattern),
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Source),
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::MatchingPattern),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -91,7 +91,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

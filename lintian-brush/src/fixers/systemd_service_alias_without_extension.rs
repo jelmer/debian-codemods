@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -24,7 +24,7 @@ fn fix_alias(alias: &str) -> Option<String> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
@@ -107,14 +107,14 @@ pub fn detect(
 declare_detector! {
     name: "systemd-service-alias-without-extension",
     tags: ["systemd-service-alias-without-extension"],
-    triggers: [crate::workspace::Trigger::Glob("debian/*.service")],
+    triggers: [debian_workspace::Trigger::Glob("debian/*.service")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, YamlAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 const ADDON_ONLY_FIELDS: &[&str] = &["Archive"];
 
 /// Extract upstream fields from debian/copyright (Name, Contact).
-fn upstream_fields_in_copyright(ws: &dyn FixerWorkspace) -> HashMap<String, String> {
+fn upstream_fields_in_copyright(ws: &dyn Workspace) -> HashMap<String, String> {
     let mut result = HashMap::new();
     let Ok(copyright) = ws.parsed_copyright() else {
         return result;
@@ -40,13 +40,13 @@ fn split_sep_chars(value: &str) -> Vec<String> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let metadata_rel = PathBuf::from("debian/upstream/metadata");
     let yaml_file = match ws.parsed_upstream_metadata() {
         Ok(y) => y,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let Some(doc) = yaml_file.document() else {
@@ -171,14 +171,14 @@ declare_detector! {
     name: "upstream-metadata-has-obsolete-field",
     tags: [],
     triggers: [
-        crate::workspace::Trigger::UpstreamMetadataField("Name"),
-        crate::workspace::Trigger::UpstreamMetadataField("Contact"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::UpstreamMetadataField("Name"),
+        debian_workspace::Trigger::UpstreamMetadataField("Contact"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Format",
             field: "Upstream-Name",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Format",
             field: "Upstream-Contact",
@@ -190,7 +190,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

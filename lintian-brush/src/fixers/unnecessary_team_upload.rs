@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::iter_changes_by_author;
 use std::path::PathBuf;
@@ -8,13 +8,13 @@ use std::path::PathBuf;
 const TEAM_UPLOAD_LINE: &str = "  * Team upload.";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let changelog_rel = PathBuf::from("debian/changelog");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let uploaders_str = control
@@ -31,8 +31,8 @@ pub fn detect(
 
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(last_entry) = changelog.iter().next() else {
@@ -106,13 +106,13 @@ declare_detector! {
     name: "unnecessary-team-upload",
     tags: ["unnecessary-team-upload"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Uploaders",
         },
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Body),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Maintainer),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Body),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Maintainer),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -120,7 +120,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

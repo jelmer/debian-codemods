@@ -1,4 +1,4 @@
-//! Driver glue between [`Detector`](crate::workspace::Detector)s and
+//! Driver glue between [`Detector`](crate::detector::Detector)s and
 //! the public [`crate::Fixer`] trait.
 //!
 //! This module owns:
@@ -9,8 +9,8 @@
 //!   [`crate::appliers::apply_actions`].
 //! * [`default_describe`] — the default commit message generator.
 //! * [`get_builtin_fixers`] — collects every registered
-//!   [`Detector`](crate::workspace::Detector), wraps it in a
-//!   [`DetectorAdapter`](crate::workspace::DetectorAdapter), and sorts
+//!   [`Detector`](crate::detector::Detector), wraps it in a
+//!   [`DetectorAdapter`](crate::detector::DetectorAdapter), and sorts
 //!   the result by `after`/`before` declarations.
 
 use super::*;
@@ -121,7 +121,7 @@ pub fn apply_diagnostics_with(
         return Err(FixerError::NoChanges);
     }
 
-    let changed = crate::appliers::apply_actions(basedir, &all_actions)?;
+    let changed = debian_workspace::appliers::apply_actions(basedir, &all_actions)?;
     if changed.is_empty() {
         // Detector said there was something to fix but applying produced no
         // observable change. Treat as NoChanges to avoid an empty commit.
@@ -156,11 +156,11 @@ pub fn apply_diagnostics_with(
 /// Panics if a circular dependency is detected, or if a registration
 /// references a non-existent detector.
 fn topologically_sort_detectors<'a>(
-    registrations: Vec<&'a crate::workspace::DetectorRegistration>,
-) -> Vec<&'a crate::workspace::DetectorRegistration> {
+    registrations: Vec<&'a crate::detector::DetectorRegistration>,
+) -> Vec<&'a crate::detector::DetectorRegistration> {
     use std::collections::{HashMap, HashSet, VecDeque};
 
-    let name_to_reg: HashMap<&str, &'a crate::workspace::DetectorRegistration> =
+    let name_to_reg: HashMap<&str, &'a crate::detector::DetectorRegistration> =
         registrations.iter().map(|reg| (reg.name, *reg)).collect();
 
     for reg in &registrations {
@@ -277,20 +277,20 @@ fn topologically_sort_detectors<'a>(
 
 /// Get all registered builtin fixers.
 ///
-/// Iterates every [`Detector`](crate::workspace::Detector) registered via
+/// Iterates every [`Detector`](crate::detector::Detector) registered via
 /// [`declare_detector!`](crate::declare_detector), wraps each in a
-/// [`DetectorAdapter`](crate::workspace::DetectorAdapter), and sorts the
+/// [`DetectorAdapter`](crate::detector::DetectorAdapter), and sorts the
 /// result by `after` / `before` declarations.
 pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
-    let registrations: Vec<&'static crate::workspace::DetectorRegistration> =
-        inventory::iter::<crate::workspace::DetectorRegistration>
+    let registrations: Vec<&'static crate::detector::DetectorRegistration> =
+        inventory::iter::<crate::detector::DetectorRegistration>
             .into_iter()
             .collect();
     let sorted = topologically_sort_detectors(registrations);
     sorted
         .into_iter()
         .map(|reg| {
-            let adapter = crate::workspace::DetectorAdapter::new((reg.create)());
+            let adapter = crate::detector::DetectorAdapter::new((reg.create)());
             Box::new(adapter) as Box<dyn Fixer>
         })
         .collect()
@@ -309,8 +309,8 @@ mod tests {
         // 3. All registered fixers are kept in the sorted output.
         //
         // The topological sort panics on (1) or (2); we assert (3).
-        let registrations: Vec<&'static crate::workspace::DetectorRegistration> =
-            inventory::iter::<crate::workspace::DetectorRegistration>
+        let registrations: Vec<&'static crate::detector::DetectorRegistration> =
+            inventory::iter::<crate::detector::DetectorRegistration>
                 .into_iter()
                 .collect();
         let original_count = registrations.len();
@@ -390,8 +390,9 @@ mod tests {
     }
 
     use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-    use crate::workspace::{Detector, DetectorAdapter, DetectorRegistration, FixerWorkspace};
-    use crate::{Fixer, Visibility};
+    use crate::detector::{Detector, DetectorAdapter, DetectorRegistration};
+    use debian_workspace::workspace::Workspace;
+    use crate::Fixer;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::TempDir;
@@ -411,7 +412,7 @@ mod tests {
         }
         fn detect(
             &self,
-            _ws: &dyn FixerWorkspace,
+            _ws: &dyn Workspace,
             _preferences: &FixerPreferences,
         ) -> Result<Vec<Diagnostic>, FixerError> {
             Ok(Vec::new())
@@ -461,7 +462,7 @@ mod tests {
             after,
             before,
             triggers: &[],
-            cost: crate::workspace::DetectorCost::Cheap,
+            cost: crate::detector::DetectorCost::Cheap,
         }
     }
 
@@ -578,7 +579,7 @@ mod tests {
         }
         fn detect(
             &self,
-            _ws: &dyn FixerWorkspace,
+            _ws: &dyn Workspace,
             _preferences: &FixerPreferences,
         ) -> Result<Vec<Diagnostic>, FixerError> {
             Ok(self.diagnostics.clone())
@@ -735,7 +736,7 @@ mod tests {
         }
         fn detect(
             &self,
-            _ws: &dyn FixerWorkspace,
+            _ws: &dyn Workspace,
             _preferences: &FixerPreferences,
         ) -> Result<Vec<Diagnostic>, FixerError> {
             panic!("Test panic from detector");

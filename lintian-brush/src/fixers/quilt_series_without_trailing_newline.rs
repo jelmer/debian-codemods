@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/patches/series");
@@ -46,7 +46,7 @@ declare_detector! {
     name: "quilt-series-without-trailing-newline",
     tags: ["quilt-series-without-trailing-newline"],
     triggers: [
-        crate::workspace::Trigger::File("debian/patches/series"),
+        debian_workspace::Trigger::File("debian/patches/series"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -54,7 +54,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

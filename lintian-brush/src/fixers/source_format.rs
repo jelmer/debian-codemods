@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
@@ -9,11 +9,11 @@ use std::path::{Path, PathBuf};
 const TAG_MISSING: char = 'M';
 const TAG_OLDER: char = 'O';
 
-fn find_patches_directory(ws: &dyn FixerWorkspace) -> Result<Option<PathBuf>, FixerError> {
+fn find_patches_directory(ws: &dyn Workspace) -> Result<Option<PathBuf>, FixerError> {
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(None),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(None),
+        Err(e) => return Err(e.into()),
     };
     Ok(debian_analyzer::patches::rules_find_patches_directory(
         &makefile,
@@ -21,7 +21,7 @@ fn find_patches_directory(ws: &dyn FixerWorkspace) -> Result<Option<PathBuf>, Fi
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if ws.read_file(Path::new("debian/debcargo.toml"))?.is_some() {
@@ -108,9 +108,9 @@ declare_detector! {
     name: "source-format",
     tags: ["missing-debian-source-format", "older-source-format"],
     triggers: [
-        crate::workspace::Trigger::File("debian/debcargo.toml"),
-        crate::workspace::Trigger::File("debian/source/format"),
-        crate::workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/debcargo.toml"),
+        debian_workspace::Trigger::File("debian/source/format"),
+        debian_workspace::Trigger::File("debian/rules"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -119,7 +119,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use debversion::Version;
     use std::fs;
     use tempfile::TempDir;

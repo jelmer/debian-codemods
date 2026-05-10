@@ -1,13 +1,13 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const CONTROL_REL: &str = "debian/control";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let bytes = match ws.read_file(Path::new(CONTROL_REL))? {
@@ -41,14 +41,14 @@ declare_detector! {
     tags: ["carriage-return-line-feed"],
     // Must normalize line endings before whitespace cleanup to avoid corrupting content.
     before: ["file-contains-trailing-whitespace"],
-    triggers: [crate::workspace::Trigger::File("debian/control")],
+    triggers: [debian_workspace::Trigger::File("debian/control")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use debian_workspace::{DetectorAdapter, TreeWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::tempdir;
@@ -60,7 +60,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = TreeFixerWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = TreeWorkspace::new(base, "test", "1.0".parse().unwrap());
         detect(&ws, &FixerPreferences::default())
     }
 

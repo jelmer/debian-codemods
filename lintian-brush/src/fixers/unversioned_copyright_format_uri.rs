@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -9,7 +9,7 @@ const CORRECT_FORMAT_URI: &str =
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
@@ -81,7 +81,7 @@ declare_detector! {
     after: ["copyright-format-uri"],
     before: ["out-of-date-copyright-format-uri"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Format",
             field: "Format",
@@ -93,7 +93,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

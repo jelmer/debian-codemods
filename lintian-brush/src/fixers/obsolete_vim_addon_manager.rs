@@ -1,19 +1,19 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use debian_analyzer::rules::dh_invoke_add_with;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut drop_actions: Vec<Action> = Vec::new();
@@ -96,12 +96,12 @@ declare_detector! {
     name: "obsolete-vim-addon-manager",
     tags: ["obsolete-vim-addon-manager"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Depends",
         },
-        crate::workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/rules"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -109,7 +109,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

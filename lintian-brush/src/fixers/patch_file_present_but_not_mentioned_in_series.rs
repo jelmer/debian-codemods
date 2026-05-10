@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
@@ -23,7 +23,7 @@ fn mentioned_in_comments(series: &Series) -> HashSet<String> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let series_rel = PathBuf::from("debian/patches/series");
@@ -114,8 +114,8 @@ declare_detector! {
     name: "patch-file-present-but-not-mentioned-in-series",
     tags: ["patch-file-present-but-not-mentioned-in-series"],
     triggers: [
-        crate::workspace::Trigger::File("debian/patches/series"),
-        crate::workspace::Trigger::Glob("debian/patches/*"),
+        debian_workspace::Trigger::File("debian/patches/series"),
+        debian_workspace::Trigger::Glob("debian/patches/*"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -124,7 +124,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

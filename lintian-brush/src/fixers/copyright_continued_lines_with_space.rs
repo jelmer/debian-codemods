@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
@@ -64,7 +64,7 @@ fn join_bytes(parts: Vec<Vec<u8>>, separator: &[u8]) -> Vec<u8> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
@@ -218,14 +218,14 @@ pub fn detect(
 declare_detector! {
     name: "copyright-continued-lines-with-space",
     tags: ["tab-in-license-text"],
-    triggers: [crate::workspace::Trigger::File("debian/copyright")],
+    triggers: [debian_workspace::Trigger::File("debian/copyright")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
@@ -8,20 +8,20 @@ const REPACK_REGEX: &str = r"(dfsg|debian|ds|repack)";
 const DVERSIONMANGLE: &str = r"s/\+(dfsg|ds|debian|repack)(\d*)$//";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
     let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(first_entry) = changelog.iter().next() else {
         return Ok(Vec::new());
@@ -70,13 +70,13 @@ declare_detector! {
     name: "debian-watch-not-mangling-version",
     tags: ["debian-watch-not-mangling-version", "debian-watch-file-should-mangle-version"],
     triggers: [
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Option(
             "dversionmangle",
         )),
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Option(
             "uversionmangle",
         )),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -84,7 +84,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

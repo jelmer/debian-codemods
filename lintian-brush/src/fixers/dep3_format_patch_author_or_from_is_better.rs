@@ -1,13 +1,13 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Dep3Action, Diagnostic};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let patches_rel = PathBuf::from("debian/patches");
@@ -93,8 +93,8 @@ declare_detector! {
     name: "dep3-format-patch-author-or-from-is-better",
     tags: ["dep3-format-patch-author-or-from-is-better"],
     triggers: [
-        crate::workspace::Trigger::File("debian/patches/series"),
-        crate::workspace::Trigger::Glob("debian/patches/*"),
+        debian_workspace::Trigger::File("debian/patches/series"),
+        debian_workspace::Trigger::Glob("debian/patches/*"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -102,7 +102,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

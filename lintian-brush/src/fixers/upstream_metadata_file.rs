@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, YamlAction};
 use crate::upstream_metadata::DEP12_FIELD_ORDER;
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -30,7 +30,7 @@ fn is_valid_dep12_field(field_name: &str) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Most of this fixer's work — guess_upstream_metadata_items, the
@@ -734,31 +734,31 @@ declare_detector! {
         "upstream-metadata-missing-repository"
     ],
     triggers: [
-        crate::workspace::Trigger::UpstreamMetadataField("Name"),
-        crate::workspace::Trigger::UpstreamMetadataField("Contact"),
-        crate::workspace::Trigger::UpstreamMetadataField("Repository"),
-        crate::workspace::Trigger::UpstreamMetadataField("Repository-Browse"),
-        crate::workspace::Trigger::UpstreamMetadataField("Bug-*"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::UpstreamMetadataField("Name"),
+        debian_workspace::Trigger::UpstreamMetadataField("Contact"),
+        debian_workspace::Trigger::UpstreamMetadataField("Repository"),
+        debian_workspace::Trigger::UpstreamMetadataField("Repository-Browse"),
+        debian_workspace::Trigger::UpstreamMetadataField("Bug-*"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Format",
             field: "Upstream-Name",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Format",
             field: "Upstream-Contact",
         },
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

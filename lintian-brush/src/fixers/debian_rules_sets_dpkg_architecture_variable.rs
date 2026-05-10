@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -45,7 +45,7 @@ fn is_standard_dpkg_arch_call(name: &str, value: &str) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let opinionated = preferences.opinionated.unwrap_or(false);
@@ -53,8 +53,8 @@ pub fn detect(
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let already_included = makefile.included_files().any(|f| f == ARCHITECTURE_MK_PATH);
@@ -194,14 +194,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-sets-dpkg-architecture-variable",
     tags: ["debian-rules-sets-dpkg-architecture-variable"],
-    triggers: [crate::workspace::Trigger::File("debian/rules")],
+    triggers: [debian_workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/patches/series");
@@ -36,14 +36,14 @@ pub fn detect(
 declare_detector! {
     name: "empty-debian-patches-series",
     tags: [],
-    triggers: [crate::workspace::Trigger::File("debian/patches/series")],
+    triggers: [debian_workspace::Trigger::File("debian/patches/series")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

@@ -1,13 +1,13 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, DesktopIniAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use desktop_edit::Desktop;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
@@ -108,7 +108,7 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "desktop-entry-contains-encoding-key",
     tags: ["desktop-entry-contains-encoding-key"],
-    triggers: [crate::workspace::Trigger::Glob("debian/*.desktop")],
+    triggers: [debian_workspace::Trigger::Glob("debian/*.desktop")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -116,7 +116,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

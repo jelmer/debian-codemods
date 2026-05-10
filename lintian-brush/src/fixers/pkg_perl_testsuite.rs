@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use debian_changelog::parseaddr;
 use std::path::{Path, PathBuf};
 
@@ -9,7 +9,7 @@ const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";
 const TESTSUITE_VALUE: &str = "autopkgtest-pkg-perl";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // If debian/tests/control exists, the Testsuite header is redundant.
@@ -20,8 +20,8 @@ pub fn detect(
 
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -65,22 +65,22 @@ declare_detector! {
     name: "pkg-perl-testsuite",
     tags: ["team/pkg-perl/testsuite/no-testsuite-header"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Tests",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Test-Command",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Maintainer",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Testsuite",
@@ -92,7 +92,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

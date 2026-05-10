@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
@@ -59,7 +59,7 @@ declare_detector! {
     name: "package-contains-linda-override",
     tags: ["package-contains-linda-override"],
     triggers: [
-        crate::workspace::Trigger::Glob("debian/*.linda-overrides"),
+        debian_workspace::Trigger::Glob("debian/*.linda-overrides"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -68,7 +68,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

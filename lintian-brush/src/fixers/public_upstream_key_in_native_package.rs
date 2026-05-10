@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let Some(current_version) = ws.current_version() else {
@@ -47,8 +47,8 @@ declare_detector! {
     name: "public-upstream-key-in-native-package",
     tags: ["public-upstream-key-in-native-package"],
     triggers: [
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
-        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.asc"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -56,7 +56,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

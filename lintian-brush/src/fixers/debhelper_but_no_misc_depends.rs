@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::{compat_level, FixerWorkspace};
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::{compat_level, Workspace};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -27,7 +27,7 @@ fn has_misc_depends(field_value: &str) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
@@ -42,8 +42,8 @@ pub fn detect(
 
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let uses_dh = control
@@ -129,28 +129,28 @@ declare_detector! {
     name: "debhelper-but-no-misc-depends",
     tags: ["debhelper-but-no-misc-depends"],
     triggers: [
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "X-DH-Compat",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Package",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Pre-Depends",
@@ -163,7 +163,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

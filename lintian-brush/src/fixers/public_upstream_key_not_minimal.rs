@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
@@ -126,7 +126,7 @@ fn minimize_key_block(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let opinionated = preferences.opinionated.unwrap_or(false);
@@ -251,9 +251,9 @@ declare_detector! {
     name: "public-upstream-key-not-minimal",
     tags: ["public-upstream-key-not-minimal"],
     triggers: [
-        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
-        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
-        crate::workspace::Trigger::File("debian/upstream-signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream-signing-key.pgp"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -261,7 +261,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

@@ -1,14 +1,14 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use debian_analyzer::lintian::StandardsVersion;
 use std::path::PathBuf;
 
 const SEP: char = '\t';
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let standards_versions_iter = match debian_analyzer::lintian::iter_standards_versions_opt() {
@@ -25,7 +25,7 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let Some(source) = control.source() else {
@@ -126,7 +126,7 @@ declare_detector! {
     name: "invalid-standards-version",
     tags: ["invalid-standards-version"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Standards-Version",
@@ -139,7 +139,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

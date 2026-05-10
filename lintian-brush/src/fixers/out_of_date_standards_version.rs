@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
@@ -39,7 +39,7 @@ enum UpgradeCheckResult {
     Unable { section: String, reason: String },
 }
 
-fn check_4_1_1(_ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
+fn check_4_1_1(_ws: &dyn Workspace, base_path: &Path) -> UpgradeCheckResult {
     let changelog_path = base_path.join("debian/changelog");
     if !changelog_path.exists() {
         return UpgradeCheckResult::Failure {
@@ -66,7 +66,7 @@ fn has_debhelper_compat_in_control(control: &Control) -> bool {
     }
 }
 
-fn check_4_4_0(ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
+fn check_4_4_0(ws: &dyn Workspace, base_path: &Path) -> UpgradeCheckResult {
     // Check that the package uses debhelper
     if base_path.join("debian/compat").exists() {
         return UpgradeCheckResult::Success(vec!["package uses debhelper".to_string()]);
@@ -102,12 +102,12 @@ fn count_vcs_fields(source: &debian_control::lossless::Source) -> usize {
 }
 
 fn check_copyright_files_not_directories(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     base_path: &Path,
 ) -> Result<(), String> {
     let copyright = match ws.parsed_copyright() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(()),
+        Err(debian_workspace::Error::NotFound) => return Ok(()),
         Err(_) => return Err("not machine-readable".to_string()),
     };
 
@@ -125,7 +125,7 @@ fn check_copyright_files_not_directories(
     Ok(())
 }
 
-fn check_4_4_1(ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult {
+fn check_4_4_1(ws: &dyn Workspace, base_path: &Path) -> UpgradeCheckResult {
     let mut results = Vec::new();
 
     // Check that there is only one Vcs field
@@ -160,7 +160,7 @@ fn check_4_4_1(ws: &dyn FixerWorkspace, base_path: &Path) -> UpgradeCheckResult 
     UpgradeCheckResult::Success(results)
 }
 
-fn check_changelog_epoch_changes(ws: &dyn FixerWorkspace) -> bool {
+fn check_changelog_epoch_changes(ws: &dyn Workspace) -> bool {
     let Ok(cl) = ws.parsed_changelog() else {
         return false;
     };
@@ -177,7 +177,7 @@ fn check_changelog_epoch_changes(ws: &dyn FixerWorkspace) -> bool {
     epochs.len() > 1
 }
 
-fn check_4_1_5(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_1_5(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     if check_changelog_epoch_changes(ws) {
         return UpgradeCheckResult::Unable {
             section: "5.6.12".to_string(),
@@ -188,14 +188,14 @@ fn check_4_1_5(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(vec!["Package did not recently introduce epoch".to_string()])
 }
 
-fn poor_grep(ws: &dyn FixerWorkspace, rel: &Path, needle: &[u8]) -> bool {
+fn poor_grep(ws: &dyn Workspace, rel: &Path, needle: &[u8]) -> bool {
     let Ok(Some(content)) = ws.read_file(rel) else {
         return false;
     };
     content.windows(needle.len()).any(|window| window == needle)
 }
 
-fn check_maintainer_scripts_for_users(ws: &dyn FixerWorkspace) -> Result<bool, UpgradeCheckResult> {
+fn check_maintainer_scripts_for_users(ws: &dyn Workspace) -> Result<bool, UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(false);
     };
@@ -222,7 +222,7 @@ fn check_maintainer_scripts_for_users(ws: &dyn FixerWorkspace) -> Result<bool, U
 }
 
 fn check_init_files_have_systemd_units(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     uses_update_rc_d: bool,
 ) -> Result<(), UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
@@ -255,7 +255,7 @@ fn check_init_files_have_systemd_units(
     Ok(())
 }
 
-fn check_4_5_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_5_0(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not create users".to_string(),
@@ -286,7 +286,7 @@ fn check_4_5_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(results)
 }
 
-fn check_4_5_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_5_1(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian/patches")) else {
         return UpgradeCheckResult::Success(vec!["Package does not have any patches".to_string()]);
     };
@@ -303,11 +303,11 @@ fn check_4_5_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     ])
 }
 
-fn check_4_2_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_2_1(_ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_for_lib64_references(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+fn check_for_lib64_references(ws: &dyn Workspace) -> Result<(), UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
@@ -325,7 +325,7 @@ fn check_for_lib64_references(ws: &dyn FixerWorkspace) -> Result<(), UpgradeChec
     Ok(())
 }
 
-fn check_4_6_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_0(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not contain any references to lib64".to_string(),
@@ -341,14 +341,14 @@ fn check_4_6_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     ])
 }
 
-fn check_4_6_1(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_1(_ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 9.1.1: Restore permission for packages for non-64-bit architectures to
     // install files to /usr/lib64/.
     // -> No need to check anything.
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_for_x_window_manager(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+fn check_for_x_window_manager(ws: &dyn Workspace) -> Result<(), UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
@@ -366,7 +366,7 @@ fn check_for_x_window_manager(ws: &dyn FixerWorkspace) -> Result<(), UpgradeChec
     Ok(())
 }
 
-fn check_4_6_2(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_6_2(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
             "Package does not provide x-window-manager alternative".to_string(),
@@ -382,7 +382,7 @@ fn check_4_6_2(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     ])
 }
 
-fn check_for_dpkg_divert(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+fn check_for_dpkg_divert(ws: &dyn Workspace) -> Result<(), UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
@@ -407,7 +407,7 @@ fn check_for_dpkg_divert(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResu
     Ok(())
 }
 
-fn check_4_7_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_0(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 3.9: maintainer scripts should prefer native mechanisms over dpkg-divert;
     // must not divert systemd configuration files
     if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
@@ -421,7 +421,7 @@ fn check_4_7_0(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(vec!["Package does not use dpkg-divert".to_string()])
 }
 
-fn check_for_non_usr_paths(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckResult> {
+fn check_for_non_usr_paths(ws: &dyn Workspace) -> Result<(), UpgradeCheckResult> {
     let Ok(Some(entries)) = ws.list_dir(Path::new("debian")) else {
         return Ok(());
     };
@@ -469,7 +469,7 @@ fn check_for_non_usr_paths(ws: &dyn FixerWorkspace) -> Result<(), UpgradeCheckRe
     Ok(())
 }
 
-fn check_4_7_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_1(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 10.1: packages must not install files to /bin, /lib, /lib*, /sbin
     if !matches!(ws.list_dir(Path::new("debian")), Ok(Some(_))) {
         return UpgradeCheckResult::Success(vec![
@@ -486,20 +486,20 @@ fn check_4_7_1(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     ])
 }
 
-fn check_4_7_2(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_2(_ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 10.1: Relaxation of previous restrictions for /usr/games.
     // No new requirements to check.
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_4_7_3(_ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_3(_ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 5.6.6: Priority field no longer recommended; dpkg defaults to optional.
     // 5.6.32 & 5.6.33: New documentation for Git-Tag-Tagger and Git-Tag-Info fields.
     // No new requirements to check.
     UpgradeCheckResult::Success(vec![])
 }
 
-fn check_4_7_4(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult {
+fn check_4_7_4(ws: &dyn Workspace, _base_path: &Path) -> UpgradeCheckResult {
     // 8.4: *.so files in shared library development packages may be linker scripts
     //      instead of symbolic links. (Relaxation, no check needed.)
     // 12.5: The requirement to explain in the copyright file why the package is not
@@ -525,7 +525,7 @@ fn check_4_7_4(ws: &dyn FixerWorkspace, _base_path: &Path) -> UpgradeCheckResult
     UpgradeCheckResult::Success(vec!["Package is not in non-free-firmware".to_string()])
 }
 
-fn get_check_fn(version: &str) -> Option<fn(&dyn FixerWorkspace, &Path) -> UpgradeCheckResult> {
+fn get_check_fn(version: &str) -> Option<fn(&dyn Workspace, &Path) -> UpgradeCheckResult> {
     match version {
         "4.1.1" => Some(check_4_1_1),
         "4.2.1" => Some(check_4_2_1),
@@ -547,7 +547,7 @@ fn get_check_fn(version: &str) -> Option<fn(&dyn FixerWorkspace, &Path) -> Upgra
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Debcargo packages manage their own control file — skip.
@@ -566,8 +566,8 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(source) = control.source() else {
@@ -751,20 +751,20 @@ declare_detector! {
         "missing-vcs-browser-field"
     ],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Standards-Version",
         },
         // Upgrade-checklist callbacks read these too.
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Files",
             field: "Files",
         },
-        crate::workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::File("debian/compat"),
     ],
-    cost: crate::workspace::DetectorCost::Filesystem,
+    cost: crate::detector::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
 }

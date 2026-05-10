@@ -1,12 +1,12 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let compat_bytes = match ws.read_file(Path::new("debian/compat"))? {
@@ -23,8 +23,8 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -66,8 +66,8 @@ declare_detector! {
     name: "package-needs-versioned-debhelper-build-depends",
     tags: ["no-versioned-debhelper-prerequisite"],
     triggers: [
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
@@ -79,7 +79,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

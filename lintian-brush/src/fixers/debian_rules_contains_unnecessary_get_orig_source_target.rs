@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Skip when not opinionated and the source tree is just the debian/
@@ -22,8 +22,8 @@ pub fn detect(
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(rule) = makefile
@@ -71,14 +71,14 @@ pub fn detect(
 declare_detector! {
     name: "debian-rules-contains-unnecessary-get-orig-source-target",
     tags: ["debian-rules-contains-unnecessary-get-orig-source-target"],
-    triggers: [crate::workspace::Trigger::File("debian/rules")],
+    triggers: [debian_workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

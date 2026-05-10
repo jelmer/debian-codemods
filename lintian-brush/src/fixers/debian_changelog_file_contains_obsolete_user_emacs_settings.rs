@@ -1,12 +1,12 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::Regex;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/changelog");
@@ -63,8 +63,8 @@ pub fn detect(
 declare_detector! {
     name: "debian-changelog-file-contains-obsolete-user-emacs-settings",
     tags: ["debian-changelog-file-contains-obsolete-user-emacs-settings"],
-    triggers: [crate::workspace::Trigger::Changelog(
-        crate::workspace::ChangelogAspect::Body,
+    triggers: [debian_workspace::Trigger::Changelog(
+        debian_workspace::ChangelogAspect::Body,
     )],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -72,7 +72,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

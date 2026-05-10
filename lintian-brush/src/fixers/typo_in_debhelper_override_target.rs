@@ -1,6 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
+use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -39,14 +39,14 @@ const JAVAHELPER_COMMANDS: &[&str] = &[
 ];
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let known_dh_commands = match get_dh_commands() {
@@ -169,14 +169,14 @@ fn get_dh_commands() -> Result<Vec<String>, FixerError> {
 declare_detector! {
     name: "typo-in-debhelper-override-target",
     tags: ["typo-in-debhelper-override-target"],
-    triggers: [crate::workspace::Trigger::File("debian/rules")],
+    triggers: [debian_workspace::Trigger::File("debian/rules")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

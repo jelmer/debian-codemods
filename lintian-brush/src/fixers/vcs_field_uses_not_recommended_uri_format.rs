@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use std::path::PathBuf;
 
 const FIXABLE_HOSTS: &[&str] = &[
@@ -12,13 +12,13 @@ const FIXABLE_HOSTS: &[&str] = &[
 ];
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -73,7 +73,7 @@ declare_detector! {
     after: ["vcs-field-uses-insecure-uri"],
     before: ["missing-vcs-browser-field"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Vcs-Git",
@@ -85,7 +85,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
