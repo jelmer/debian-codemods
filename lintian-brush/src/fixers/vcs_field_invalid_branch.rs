@@ -260,7 +260,7 @@ declare_detector! {
     name: "vcs-field-invalid-branch",
     tags: ["vcs-field-invalid-branch"],
     triggers: [
-        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::DebcargoField("source.vcs_git"),
         crate::workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
