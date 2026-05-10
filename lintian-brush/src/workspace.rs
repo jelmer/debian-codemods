@@ -656,6 +656,13 @@ pub enum Trigger {
     /// `Bug-Database` and `Bug-Submit`), and a bare `"*"` matches any
     /// top-level field.
     UpstreamMetadataField(&'static str),
+    /// Detector cares about a specific key inside `debian/debcargo.toml`.
+    ///
+    /// `path` is a dot-separated TOML key path from the document root,
+    /// e.g. `"source.homepage"` or `"source.vcs_git"`. A bare `"*"`
+    /// matches any top-level key; a trailing `".*"` matches all keys
+    /// within a table (e.g. `"source.*"`).
+    DebcargoField(&'static str),
 }
 
 /// What a [`Trigger::Changelog`] detector reads from `debian/changelog`.
