@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 /// Tag for the diagnostic message; used to assemble the final
@@ -58,6 +58,7 @@ pub fn detect(
         diagnostics.push(Diagnostic::with_actions(
             LintianIssue::source_with_info(
                 "missing-debian-source-format",
+                Visibility::Warning,
                 vec![target_format.to_string()],
             ),
             format!("{}{}", TAG_MISSING, target_format),
@@ -66,7 +67,11 @@ pub fn detect(
         ));
     }
     diagnostics.push(Diagnostic::with_actions(
-        LintianIssue::source_with_info("older-source-format", vec!["1.0".to_string()]),
+        LintianIssue::source_with_info(
+            "older-source-format",
+            Visibility::Info,
+            vec!["1.0".to_string()],
+        ),
         format!("{}{}", TAG_OLDER, target_format),
         format!("Upgrade to newer source format {}.", target_format),
         Vec::new(),

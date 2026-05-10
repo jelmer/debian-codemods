@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -38,6 +38,7 @@ pub fn detect(
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(Visibility::Warning),
         tag: Some("new-package-uses-date-based-version-number".to_string()),
         info: None,
     };

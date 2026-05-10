@@ -3,7 +3,7 @@ use crate::diagnostic::{
     Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector, TextRange,
 };
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 
@@ -95,6 +95,7 @@ pub fn detect(
     let first_line = matches[0].line_number;
     let issue = LintianIssue::source_with_info(
         "autotools-pkg-config-macro-not-cross-compilation-safe",
+        Visibility::Warning,
         vec![format!("AC_PATH_PROG [{}:{}]", file_name, first_line)],
     );
     let label = format!(

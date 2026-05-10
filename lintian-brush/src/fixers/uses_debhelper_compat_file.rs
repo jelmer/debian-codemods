@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::highest_stable_compat_level;
 use debian_analyzer::relations::is_relation_implied;
 use debian_control::lossless::Entry;
@@ -61,6 +61,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "uses-debhelper-compat-file",
+        Visibility::Warning,
         vec!["[debian/compat]".to_string()],
     );
 

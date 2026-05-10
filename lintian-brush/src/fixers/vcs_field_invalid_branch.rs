@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::vcs::ParsedVcs;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -206,7 +206,7 @@ pub async fn detect_async(
         debian_analyzer::vcs::determine_browser_url("git", &new_vcs_git, preferences.net_access)
             .map(|u| u.to_string());
 
-    let issue = LintianIssue::source("vcs-field-invalid-branch");
+    let issue = LintianIssue::source("vcs-field-invalid-branch", Visibility::Warning);
     let mut actions: Vec<Action> = Vec::new();
 
     if is_debcargo {

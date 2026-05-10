@@ -2,7 +2,7 @@ use crate::debhelper::detect_debhelper_buildsystem;
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
     read_debhelper_compat_file,
@@ -962,6 +962,7 @@ pub fn detect(
         LintianIssue {
             package: None,
             package_type: Some(crate::PackageType::Source),
+            visibility: Some(Visibility::Warning),
             tag: Some("package-uses-deprecated-debhelper-compat-version".to_string()),
             info: Some(current_debhelper_compat_version.to_string()),
         }
@@ -969,6 +970,7 @@ pub fn detect(
         LintianIssue {
             package: None,
             package_type: Some(crate::PackageType::Source),
+            visibility: Some(Visibility::Warning),
             tag: Some("package-uses-old-debhelper-compat-version".to_string()),
             info: Some(current_debhelper_compat_version.to_string()),
         }

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -118,6 +118,7 @@ pub fn detect(
             };
             let issue = LintianIssue::source_with_info(
                 "obsolete-runtime-tests-restriction",
+                Visibility::Warning,
                 vec![format!(
                     "{} [debian/tests/control:{}]",
                     restriction, line_num

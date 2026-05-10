@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::rules::dh_invoke_get_with;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -200,6 +200,7 @@ pub fn detect(
             if let Some(dep) = command_to_dep.get(&executable) {
                 let issue = LintianIssue::source_with_info(
                     "missing-build-dependency-for-dh_-command",
+                    Visibility::Error,
                     vec![format!(
                         "{} (does not satisfy {}) [debian/rules]",
                         executable, dep
@@ -214,6 +215,7 @@ pub fn detect(
                     if let Some(dep) = addon_to_dep.get(&addon) {
                         let issue = LintianIssue::source_with_info(
                             "missing-build-dependency-for-dh-addon",
+                            Visibility::Error,
                             vec![format!(
                                 "{} (does not satisfy {}) [debian/rules]",
                                 addon, dep

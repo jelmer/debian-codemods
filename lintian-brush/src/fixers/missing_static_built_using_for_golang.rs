@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 fn is_go_package(source: &debian_control::lossless::Source) -> bool {
@@ -73,6 +73,7 @@ pub fn detect(
         let issue = LintianIssue {
             package: Some(binary_name.clone()),
             package_type: Some(PackageType::Binary),
+            visibility: Some(Visibility::Info),
             tag: Some("missing-static-built-using-field-for-golang-package".to_string()),
             info: Some(format!(
                 "(in section for {}) [debian/control:{}]",

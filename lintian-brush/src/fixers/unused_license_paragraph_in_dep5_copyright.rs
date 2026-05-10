@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -179,6 +179,7 @@ pub fn detect(
         let line_number = paragraph.line() + 1;
         let issue = LintianIssue::source_with_info(
             "unused-license-paragraph-in-dep5-copyright",
+            Visibility::Info,
             vec![format!("{} [debian/copyright:{}]", name, line_number)],
         );
 

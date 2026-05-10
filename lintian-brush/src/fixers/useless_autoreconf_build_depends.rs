@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::rules::dh_invoke_drop_with;
 use std::path::PathBuf;
 
@@ -66,6 +66,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "useless-autoreconf-build-depends",
+        Visibility::Warning,
         vec!["(does not need to satisfy dh-autoreconf:any)".to_string()],
     );
     Ok(vec![Diagnostic::with_actions(

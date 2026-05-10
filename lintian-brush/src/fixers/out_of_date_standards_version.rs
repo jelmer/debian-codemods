@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
 use std::collections::HashMap;
@@ -664,7 +664,7 @@ pub fn detect(
     }
     let info_str = info_parts.join(" ");
 
-    let issue = LintianIssue::source_with_info(tag, vec![info_str]);
+    let issue = LintianIssue::source_with_info(tag, Visibility::Info, vec![info_str]);
 
     // Now try to upgrade through the path
     let mut current = current_version_str.clone();

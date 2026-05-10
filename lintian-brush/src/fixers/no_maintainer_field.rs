@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::get_maintainer_from_env;
 use std::path::PathBuf;
 
@@ -31,6 +31,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "required-field",
+        Visibility::Error,
         vec!["debian/control Maintainer".to_string()],
     );
     Ok(vec![Diagnostic::with_actions(

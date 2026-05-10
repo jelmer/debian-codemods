@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -50,6 +50,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "quilt-series-but-no-build-dep",
+        Visibility::Warning,
         vec!["[debian/patches/series]".to_string()],
     );
 

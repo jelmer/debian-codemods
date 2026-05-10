@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 /// Length of trailing whitespace (excluding the newline) on a line ending
@@ -52,6 +52,7 @@ fn collect_edits(
             let nl_offset = offset + line.len() - 1; // position of '\n'
             let issue = LintianIssue::source_with_info(
                 "trailing-whitespace",
+                Visibility::Pedantic,
                 vec![format!("[{}:{}]", relative_path, line_idx + 1)],
             );
             // If stripping leaves an empty line and we're asked to drop
@@ -90,6 +91,7 @@ fn collect_edits(
             }
             let issue = LintianIssue::source_with_info(
                 "trailing-whitespace",
+                Visibility::Pedantic,
                 vec![format!("[{}:EOF]", relative_path)],
             );
             edits.push(Edit {

@@ -391,7 +391,7 @@ mod tests {
 
     use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
     use crate::workspace::{Detector, DetectorAdapter, DetectorRegistration, FixerWorkspace};
-    use crate::Fixer;
+    use crate::{Fixer, Visibility};
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::TempDir;
@@ -600,7 +600,7 @@ mod tests {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
-                LintianIssue::source("recommended-field"),
+                LintianIssue::source("recommended-field", Visibility::Warning),
                 "Set Priority on source",
                 "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {
@@ -658,7 +658,7 @@ mod tests {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
-                LintianIssue::source("recommended-field"),
+                LintianIssue::source("recommended-field", Visibility::Warning),
                 "Priority field is missing on source.",
                 "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {
@@ -696,7 +696,7 @@ mod tests {
             name: "set-priority",
             tags: &["recommended-field"],
             diagnostics: vec![Diagnostic::with_actions(
-                LintianIssue::source("recommended-field"),
+                LintianIssue::source("recommended-field", Visibility::Warning),
                 "Priority field is missing on source.",
                 "Set Priority on source",
                 vec![Action::Deb822(Deb822Action::SetField {

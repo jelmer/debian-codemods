@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const REPACK_REGEX: &str = r"(dfsg|debian|ds|repack)";
@@ -44,6 +44,7 @@ pub fn detect(
         let line_number = entry.line() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-watch-not-mangling-version",
+            Visibility::Warning,
             vec![format!("{} [debian/watch]", line_number)],
         );
         diagnostics.push(

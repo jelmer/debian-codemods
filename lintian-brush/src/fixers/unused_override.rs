@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::LintianOverrides;
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::{Path, PathBuf};
 
 const INTERMITTENT_LINTIAN_TAGS: &[&str] = &["rc-version-greater-than-expected-version"];
@@ -158,6 +158,7 @@ pub fn detect_with_unused_overrides(
                 let file_location = format!("[{}:{}]", rel.display(), lineno + 1);
                 let issue = LintianIssue::source_with_info(
                     "unused-override",
+                    Visibility::Info,
                     vec![format!("{} {}", override_text, file_location)],
                 );
                 tags_collected.insert(tag.to_string());

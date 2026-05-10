@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
 use std::path::PathBuf;
 
@@ -33,6 +33,7 @@ pub fn detect(
     let name = name_opt.unwrap_or("Debian QA");
     let issue = LintianIssue::source_with_info(
         "faulty-debian-qa-group-phrase",
+        Visibility::Error,
         vec![format!("Maintainer {} -> Debian QA Group", name)],
     );
 

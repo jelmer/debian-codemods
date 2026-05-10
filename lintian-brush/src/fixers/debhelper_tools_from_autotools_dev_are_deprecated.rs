@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
 use crate::rules::drop_dh_with_argument;
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const MIN_DEBHELPER_VERSION: &str = "9.20160114";
@@ -34,6 +34,7 @@ pub fn detect(
                 let indent: String = recipe.chars().take_while(|c| c.is_whitespace()).collect();
                 issues.push(LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
+                    Visibility::Warning,
                     vec![format!(
                         "dh_autotools-dev_updateconfig [debian/rules:{}]",
                         line_no
@@ -51,6 +52,7 @@ pub fn detect(
             if trimmed == "dh_autotools-dev_restoreconfig" {
                 issues.push(LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
+                    Visibility::Warning,
                     vec![format!(
                         "dh_autotools-dev_restoreconfig [debian/rules:{}]",
                         line_no
@@ -70,6 +72,7 @@ pub fn detect(
             if stripped != recipe {
                 issues.push(LintianIssue::source_with_info(
                     "debhelper-tools-from-autotools-dev-are-deprecated",
+                    Visibility::Warning,
                     vec![format!(
                         "dh ... --with autotools_dev [debian/rules:{}]",
                         line_no

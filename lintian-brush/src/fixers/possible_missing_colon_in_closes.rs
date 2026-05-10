@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_regex::{regex, Regex};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -164,15 +164,17 @@ pub fn detect(
             });
 
             for (idx, (kind, matched_text, bug_certainty)) in to_emit.into_iter().enumerate() {
-                let (tag_name, description, label) = if kind == TAG_COLON {
+                let (tag_name, tag_visibility, description, label) = if kind == TAG_COLON {
                     (
                         "possible-missing-colon-in-closes",
+                        Visibility::Error,
                         "Closes line is missing a colon.",
                         "Add missing colon in closes line.",
                     )
                 } else {
                     (
                         "misspelled-closes-bug",
+                        Visibility::Warning,
                         "Closes line uses misspelled keyword.",
                         "Fix misspelling of Close ⇒ Closes.",
                     )
@@ -181,7 +183,7 @@ pub fn detect(
                     "{} [usr/share/doc/{}/changelog.Debian.gz:{}]",
                     matched_text, package, line_num
                 );
-                let issue = LintianIssue::source_with_info(tag_name, vec![info]);
+                let issue = LintianIssue::source_with_info(tag_name, tag_visibility, vec![info]);
                 let diag = Diagnostic::with_actions(
                     issue,
                     description,

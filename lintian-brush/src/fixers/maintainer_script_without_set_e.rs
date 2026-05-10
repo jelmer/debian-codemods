@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 const SCRIPTS: &[&str] = &["preinst", "prerm", "postinst", "config", "postrm"];
@@ -83,6 +83,7 @@ pub fn detect(
 
         let issue = LintianIssue::source_with_info(
             "maintainer-script-without-set-e",
+            Visibility::Pedantic,
             vec![format!("[{}]", script_name)],
         );
         diagnostics.push(Diagnostic::with_actions(

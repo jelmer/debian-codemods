@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
 use crate::licenses::{COMMON_LICENSES_DIR, FULL_LICENSE_NAME};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use lazy_static::lazy_static;
@@ -294,23 +294,27 @@ pub fn detect(
                 if license_matched == "Apache-2.0" {
                     issues.push(LintianIssue::source_with_info(
                         "copyright-file-contains-full-apache-2-license",
+                        Visibility::Error,
                         vec![license_matched.clone()],
                     ));
                 }
                 if license_matched.starts_with("GFDL-") {
                     issues.push(LintianIssue::source_with_info(
                         "copyright-file-contains-full-gfdl-license",
+                        Visibility::Error,
                         vec![license_matched.clone()],
                     ));
                 }
                 if license_matched.starts_with("GPL-") {
                     issues.push(LintianIssue::source_with_info(
                         "copyright-file-contains-full-gpl-license",
+                        Visibility::Error,
                         vec![license_matched.clone()],
                     ));
                 }
                 issues.push(LintianIssue::source_with_info(
                     "copyright-does-not-refer-to-common-license-file",
+                    Visibility::Warning,
                     vec![license_matched.clone()],
                 ));
                 let specific_tag = if license_matched.starts_with("Apache-2") {
@@ -327,6 +331,7 @@ pub fn detect(
                 if let Some(tag) = specific_tag {
                     issues.push(LintianIssue::source_with_info(
                         tag,
+                        Visibility::Error,
                         vec![license_matched.clone()],
                     ));
                 }
@@ -408,6 +413,7 @@ pub fn detect(
             let mut issues: Vec<LintianIssue> = Vec::new();
             issues.push(LintianIssue::source_with_info(
                 "copyright-does-not-refer-to-common-license-file",
+                Visibility::Warning,
                 vec![common_license.clone()],
             ));
             let specific_tag = if common_license.starts_with("Apache-2") {
@@ -424,6 +430,7 @@ pub fn detect(
             if let Some(tag) = specific_tag {
                 issues.push(LintianIssue::source_with_info(
                     tag,
+                    Visibility::Error,
                     vec![common_license.clone()],
                 ));
             }

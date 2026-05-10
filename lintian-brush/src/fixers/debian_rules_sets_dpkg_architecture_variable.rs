@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
@@ -88,6 +88,7 @@ pub fn detect(
         let line_num = var_def.line() + 1;
         let issue = LintianIssue::source_with_info(
             "debian-rules-sets-dpkg-architecture-variable",
+            Visibility::Warning,
             vec![format!("{} [debian/rules:{}]", name, line_num)],
         );
 

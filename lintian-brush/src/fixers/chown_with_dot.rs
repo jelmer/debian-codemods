@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
@@ -50,11 +50,16 @@ pub fn detect(
         }
 
         let issue = if package == "source" {
-            LintianIssue::source_with_info("chown-with-dot", vec![format!("[{}]", script)])
+            LintianIssue::source_with_info(
+                "chown-with-dot",
+                Visibility::Pedantic,
+                vec![format!("[{}]", script)],
+            )
         } else {
             LintianIssue::binary_with_info(
                 &package,
                 "chown-with-dot",
+                Visibility::Pedantic,
                 vec![format!("[{}]", script)],
             )
         };

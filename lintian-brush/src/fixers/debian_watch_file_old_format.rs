@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use std::path::PathBuf;
 
 const OBSOLETE_WATCH_FILE_FORMAT: u32 = 2;
@@ -34,14 +34,15 @@ pub fn detect(
         debian_watch::parse::ParsedWatchFile::Deb822(_) => return Ok(Vec::new()),
     };
 
-    let tag = if version <= OBSOLETE_WATCH_FILE_FORMAT {
-        "obsolete-debian-watch-file-standard"
+    let (tag, tag_visibility) = if version <= OBSOLETE_WATCH_FILE_FORMAT {
+        ("obsolete-debian-watch-file-standard", Visibility::Warning)
     } else {
-        "older-debian-watch-file-standard"
+        ("older-debian-watch-file-standard", Visibility::Info)
     };
     let issue = LintianIssue {
         package: None,
         package_type: Some(PackageType::Source),
+        visibility: Some(tag_visibility),
         tag: Some(tag.to_string()),
         info: Some(version.to_string()),
     };

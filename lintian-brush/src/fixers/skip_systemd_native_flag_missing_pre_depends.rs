@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::{compat_level, FixerWorkspace};
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::relations::Relations;
 use std::path::PathBuf;
 
@@ -56,6 +56,7 @@ pub fn detect(
         let issue = LintianIssue::binary_with_info(
             &package_name,
             "skip-systemd-native-flag-missing-pre-depends",
+            Visibility::Warning,
             vec![package_name.clone()],
         );
         diagnostics.push(Diagnostic::with_actions(

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use lazy_regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -150,6 +150,7 @@ pub fn detect(
                 let issue = LintianIssue::binary_with_info(
                     &b.package,
                     "recommended-field",
+                    Visibility::Warning,
                     vec![format!(
                         "(in section for {}) Section [debian/control:{}]",
                         b.package, b.line_no
@@ -194,6 +195,7 @@ pub fn detect(
         }
         let issue = LintianIssue::source_with_info(
             "recommended-field",
+            Visibility::Warning,
             vec![format!(
                 "(in section for source) Section [debian/control:{}]",
                 source_line
@@ -216,6 +218,7 @@ pub fn detect(
             let issue = LintianIssue::binary_with_info(
                 &b.package,
                 "recommended-field",
+                Visibility::Warning,
                 vec![format!(
                     "(in section for {}) Section [debian/control:{}]",
                     b.package, b.line_no

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::path::PathBuf;
 
 pub fn detect(
@@ -29,6 +29,7 @@ pub fn detect(
 
     let issue = LintianIssue::source_with_info(
         "unnecessary-testsuite-autopkgtest-field",
+        Visibility::Warning,
         vec![format!("[debian/control:{}]", line_number)],
     );
 

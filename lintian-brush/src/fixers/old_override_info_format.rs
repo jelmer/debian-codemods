@@ -2,7 +2,7 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::{fix_override_info, LintianOverrides};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -104,6 +104,7 @@ pub fn detect(
             let original_text = line.text().trim().to_string();
             let issue = LintianIssue::source_with_info(
                 "mismatched-override",
+                Visibility::Warning,
                 vec![format!("{} [{}:{}]", original_text, rel.display(), lineno)],
             );
             let package = line.package_spec().and_then(|s| s.package_name());

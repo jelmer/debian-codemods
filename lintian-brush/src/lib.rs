@@ -55,6 +55,50 @@ pub use fixers::get_renamed_tags;
 // Re-export inventory for macros
 pub use inventory;
 
+/// Lintian tag visibility level (matches lintian's own classification)
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, serde::Serialize, serde::Deserialize,
+)]
+pub enum Visibility {
+    /// Pedantic tags: issues that are very minor or a matter of style
+    #[serde(rename = "pedantic")]
+    Pedantic,
+    /// Info tags: informational, not necessarily a problem
+    #[serde(rename = "info")]
+    Info,
+    /// Warning tags: likely a problem
+    #[serde(rename = "warning")]
+    Warning,
+    /// Error tags: definitely a problem
+    #[serde(rename = "error")]
+    Error,
+}
+
+impl std::fmt::Display for Visibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Visibility::Pedantic => write!(f, "pedantic"),
+            Visibility::Info => write!(f, "info"),
+            Visibility::Warning => write!(f, "warning"),
+            Visibility::Error => write!(f, "error"),
+        }
+    }
+}
+
+impl FromStr for Visibility {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "pedantic" => Ok(Visibility::Pedantic),
+            "info" => Ok(Visibility::Info),
+            "warning" => Ok(Visibility::Warning),
+            "error" => Ok(Visibility::Error),
+            _ => Err(format!("Invalid visibility: {}", value)),
+        }
+    }
+}
+
 /// Type of Debian package
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PackageType {
@@ -87,14 +131,15 @@ impl std::fmt::Display for PackageType {
     }
 }
 
-/// Represents a Lintian issue
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 /// A Lintian issue
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct LintianIssue {
     /// Package name
     pub package: Option<String>,
     /// Package type
     pub package_type: Option<PackageType>,
+    /// Tag visibility level
+    pub visibility: Option<Visibility>,
     /// Lintian tag
     pub tag: Option<String>,
     /// Additional information
@@ -131,6 +176,7 @@ impl LintianIssue {
         serde_json::json!({
             "package": self.package,
             "package_type": self.package_type.as_ref().map(|t| t.to_string()),
+            "visibility": self.visibility.as_ref().map(|v| v.to_string()),
             "tag": self.tag,
             "info": self.info,
         })
@@ -146,27 +192,34 @@ impl LintianIssue {
         Self {
             package: None,
             package_type: None,
+            visibility: None,
             tag: Some(tag),
             info: None,
         }
     }
 
     /// Create a source package issue with a tag
-    pub fn source(tag: impl Into<String>) -> Self {
+    pub fn source(tag: impl Into<String>, visibility: Visibility) -> Self {
         Self {
             package: None,
             package_type: Some(PackageType::Source),
+            visibility: Some(visibility),
             tag: Some(tag.into()),
             info: None,
         }
     }
 
     /// Create a source package issue with a tag and info
-    pub fn source_with_info(tag: impl Into<String>, info: Vec<String>) -> Self {
+    pub fn source_with_info(
+        tag: impl Into<String>,
+        visibility: Visibility,
+        info: Vec<String>,
+    ) -> Self {
         let joined = info.join(" ");
         Self {
             package: None,
             package_type: Some(PackageType::Source),
+            visibility: Some(visibility),
             tag: Some(tag.into()),
             info: if joined.is_empty() {
                 None
@@ -180,12 +233,14 @@ impl LintianIssue {
     pub fn binary_with_info(
         package: impl Into<String>,
         tag: impl Into<String>,
+        visibility: Visibility,
         info: Vec<String>,
     ) -> Self {
         let joined = info.join(" ");
         Self {
             package: Some(package.into()),
             package_type: Some(PackageType::Binary),
+            visibility: Some(visibility),
             tag: Some(tag.into()),
             info: if joined.is_empty() {
                 None
@@ -305,6 +360,7 @@ impl TryFrom<&str> for LintianIssue {
         Ok(Self {
             package,
             package_type,
+            visibility: None,
             tag,
             info,
         })
@@ -1750,6 +1806,7 @@ mod tests {
             let trailers = render_lintian_trailers(&[LintianIssue {
                 package: Some("blah".to_string()),
                 package_type: Some(PackageType::Source),
+                visibility: None,
                 tag: Some("some-tag".to_string()),
                 info: None,
             }]);
@@ -1765,6 +1822,7 @@ mod tests {
             let trailers = render_lintian_trailers(&[LintianIssue {
                 package: None,
                 package_type: Some(PackageType::Source),
+                visibility: None,
                 tag: Some("globbing-patterns-out-of-order".to_string()),
                 info: Some("debian/*".to_string()),
             }]);
@@ -1780,6 +1838,7 @@ mod tests {
             let issue = |info: &str| LintianIssue {
                 package: None,
                 package_type: Some(PackageType::Source),
+                visibility: None,
                 tag: Some("globbing-patterns-out-of-order".to_string()),
                 info: Some(info.to_string()),
             };
@@ -1800,12 +1859,14 @@ mod tests {
                 LintianIssue {
                     package: None,
                     package_type: Some(PackageType::Source),
+                    visibility: None,
                     tag: Some("tag-a".to_string()),
                     info: None,
                 },
                 LintianIssue {
                     package: None,
                     package_type: Some(PackageType::Source),
+                    visibility: None,
                     tag: Some("tag-b".to_string()),
                     info: None,
                 },
@@ -1824,6 +1885,7 @@ mod tests {
             let issue = |tag: &str, info: &str| LintianIssue {
                 package: None,
                 package_type: Some(PackageType::Source),
+                visibility: None,
                 tag: Some(tag.to_string()),
                 info: Some(info.to_string()),
             };
@@ -1850,6 +1912,7 @@ mod tests {
             let trailers = render_lintian_trailers(&[LintianIssue {
                 package: Some("libfoo".to_string()),
                 package_type: Some(PackageType::Binary),
+                visibility: None,
                 tag: Some("some-binary-tag".to_string()),
                 info: Some("/usr/bin/foo".to_string()),
             }]);
@@ -1865,6 +1928,7 @@ mod tests {
             let trailers = render_lintian_trailers(&[LintianIssue {
                 package: None,
                 package_type: Some(PackageType::Source),
+                visibility: None,
                 tag: None,
                 info: Some("orphaned".to_string()),
             }]);
@@ -1924,6 +1988,7 @@ mod tests {
                         package: Some(package.to_string()),
                         info: None,
                         package_type: Some(PackageType::Source),
+                        visibility: None,
                     }],
                     overridden_lintian_issues: vec![],
                     revision_id: None,
@@ -2122,6 +2187,7 @@ Arch: all
                         package: Some("blah".to_string()),
                         info: None,
                         package_type: Some(PackageType::Source),
+                        visibility: None,
                     }],
                     None,
                 ),
@@ -2392,6 +2458,7 @@ Arch: all
                             package: Some(package.to_string()),
                             info: None,
                             package_type: Some(PackageType::Source),
+                            visibility: None,
                         }],
                         overridden_lintian_issues: vec![],
                         revision_id: None,

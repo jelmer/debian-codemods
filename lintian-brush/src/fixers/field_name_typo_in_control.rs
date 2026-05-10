@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::workspace::FixerWorkspace;
-use crate::{FixerError, FixerPreferences, LintianIssue};
+use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -54,6 +54,7 @@ pub fn detect(
                 if valid_field.eq_ignore_ascii_case(&field) {
                     let issue = LintianIssue::source_with_info(
                         "cute-field",
+                        Visibility::Pedantic,
                         vec![format!("{} vs {}", field, valid_field)],
                     );
                     diagnostics.push(Diagnostic::with_actions(
@@ -91,6 +92,7 @@ pub fn detect(
                     let issue = LintianIssue::binary_with_info(
                         &package_name,
                         "cute-field",
+                        Visibility::Pedantic,
                         vec![format!("{} vs {}", field, valid_field)],
                     );
                     diagnostics.push(Diagnostic::with_actions(
