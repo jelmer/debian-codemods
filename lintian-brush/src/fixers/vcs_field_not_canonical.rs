@@ -148,7 +148,8 @@ declare_detector! {
     after: ["vcs-field-mismatch"],
     before: ["vcs-field-uses-insecure-uri"],
     triggers: [
-        crate::workspace::Trigger::File("debian/debcargo.toml"),
+        crate::workspace::Trigger::DebcargoField("source.vcs_git"),
+        crate::workspace::Trigger::DebcargoField("source.vcs_browser"),
         crate::workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
