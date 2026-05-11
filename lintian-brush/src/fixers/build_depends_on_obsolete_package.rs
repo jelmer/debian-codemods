@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const MINIMUM_DEBHELPER_VERSION: &str = "9.20160709";

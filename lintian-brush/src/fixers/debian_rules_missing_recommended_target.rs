@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use makefile_lossless::{Makefile, Parse};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

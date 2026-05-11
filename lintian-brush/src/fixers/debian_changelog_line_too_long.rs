@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::textwrap::try_rewrap_changes;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const WIDTH: usize = 80;

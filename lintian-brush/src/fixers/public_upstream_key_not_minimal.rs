@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 const KEY_BLOCK_START: &[u8] = b"-----BEGIN PGP PUBLIC KEY BLOCK-----";

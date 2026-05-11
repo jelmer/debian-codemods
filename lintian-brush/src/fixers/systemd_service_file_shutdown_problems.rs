@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, SystemdAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 

@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction};
 use crate::lintian_overrides::LintianOverrides;
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/renamed_tags.rs"));

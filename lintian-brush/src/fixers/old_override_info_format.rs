@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::{fix_override_info, LintianOverrides};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

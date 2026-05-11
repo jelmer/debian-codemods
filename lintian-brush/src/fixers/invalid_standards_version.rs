@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_analyzer::lintian::StandardsVersion;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const SEP: char = '\t';

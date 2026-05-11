@@ -1,13 +1,13 @@
 use crate::debhelper::detect_debhelper_buildsystem;
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
     read_debhelper_compat_file,
 };
 use debian_control::lossless::relations::Relations;
+use debian_workspace::Workspace;
 use debversion::Version;
 use makefile_lossless::{Makefile, Rule};
 use std::collections::HashSet;

@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_copyright::lossless::Copyright;
+use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
 

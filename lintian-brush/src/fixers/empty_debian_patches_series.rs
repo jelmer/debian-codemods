@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(

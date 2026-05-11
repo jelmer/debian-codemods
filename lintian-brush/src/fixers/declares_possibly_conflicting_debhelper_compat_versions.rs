@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, MakefileAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::Control;
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 fn read_compat(ws: &dyn Workspace) -> Result<Option<u32>, FixerError> {

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Dep3Action, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use dep3::lossless::PatchHeader;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::path::PathBuf;

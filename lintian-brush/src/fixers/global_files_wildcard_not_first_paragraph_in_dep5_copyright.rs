@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use debian_copyright::{pattern_depth, pattern_sort_key};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 use std::str::FromStr;
 

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use debian_workspace::{compat_level, Workspace};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::{compat_level, Workspace};
 use std::path::PathBuf;
 
 const DEPRECATED_OVERRIDES: &[&str] = &["override_dh_systemd_enable", "override_dh_systemd_start"];

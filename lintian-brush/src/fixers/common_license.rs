@@ -1,10 +1,10 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
 use crate::licenses::{COMMON_LICENSES_DIR, FULL_LICENSE_NAME};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
+use debian_workspace::Workspace;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};

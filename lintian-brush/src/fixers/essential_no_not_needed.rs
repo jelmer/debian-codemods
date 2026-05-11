@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(
@@ -68,8 +68,8 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;

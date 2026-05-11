@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 

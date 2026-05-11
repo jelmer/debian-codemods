@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use lazy_regex::{regex, Regex};
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use debian_changelog::iter_changes_by_author;
+use debian_workspace::Workspace;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

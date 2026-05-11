@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 fn convert_key_to_armor(binary_key: &[u8]) -> Result<String, Box<dyn std::error::Error>> {

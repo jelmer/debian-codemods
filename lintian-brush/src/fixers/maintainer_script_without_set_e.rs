@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const SCRIPTS: &[&str] = &["preinst", "prerm", "postinst", "config", "postrm"];

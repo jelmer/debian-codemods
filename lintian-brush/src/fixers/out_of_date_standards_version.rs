@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::lintian::StandardsVersion;
 use debian_control::lossless::Control;
+use debian_workspace::Workspace;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

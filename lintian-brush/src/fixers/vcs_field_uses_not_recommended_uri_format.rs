@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_workspace::Workspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use std::path::PathBuf;
 
 const FIXABLE_HOSTS: &[&str] = &[

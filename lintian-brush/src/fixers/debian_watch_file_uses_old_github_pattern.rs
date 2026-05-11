@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const MESSAGE: &str = "Update pattern for GitHub archive URLs from /<org>/<repo>/tags page/<org>/<repo>/archive/<tag> → /<org>/<repo>/archive/refs/tags/<tag>.";

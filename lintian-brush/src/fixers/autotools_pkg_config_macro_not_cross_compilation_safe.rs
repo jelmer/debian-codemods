@@ -2,8 +2,8 @@ use crate::declare_detector;
 use crate::diagnostic::{
     Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector, TextRange,
 };
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 

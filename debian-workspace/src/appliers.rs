@@ -6,13 +6,13 @@
 //! detector that emits e.g. one `RemoveField` per binary plus a `SetField`
 //! on the source produces a single rewrite of `debian/control`.
 
+use crate::Error as FixerError;
 use crate::action::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
     FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
     OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
     YamlAction, YamlPathComponent,
 };
-use crate::Error as FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -2033,7 +2033,7 @@ fn navigate_yaml_mapping(
 }
 
 fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
-    use debian_changelog::{iter_changes_by_author, ChangeLog};
+    use debian_changelog::{ChangeLog, iter_changes_by_author};
 
     let abs = base.join(rel);
     let content = std::fs::read_to_string(&abs)?;

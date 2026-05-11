@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use sequoia_openpgp::armor::{Kind, Writer};
 use sequoia_openpgp::cert::Cert;
 use sequoia_openpgp::parse::Parse;
