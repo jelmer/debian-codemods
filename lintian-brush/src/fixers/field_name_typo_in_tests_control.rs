@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use deb822_lossless::Deb822;
+use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;

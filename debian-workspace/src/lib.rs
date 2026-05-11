@@ -19,7 +19,7 @@ pub mod trigger;
 
 pub use debversion::Version;
 pub use trigger::{ChangelogAspect, Trigger, WatchAspect};
-pub use workspace::{compat_level, Workspace};
+pub use workspace::{Workspace, compat_level};
 
 /// Errors that can occur while reading or writing workspace files.
 #[derive(Debug)]
@@ -61,9 +61,7 @@ impl From<debian_analyzer::editor::EditorError> for Error {
     fn from(e: debian_analyzer::editor::EditorError) -> Self {
         match e {
             debian_analyzer::editor::EditorError::IoError(e) => Error::Io(e),
-            debian_analyzer::editor::EditorError::BrzError(e) => {
-                Error::Other(e.to_string())
-            }
+            debian_analyzer::editor::EditorError::BrzError(e) => Error::Other(e.to_string()),
             debian_analyzer::editor::EditorError::GeneratedFile(p, _) => {
                 Error::Other(format!("generated file: {}", p.display()))
             }

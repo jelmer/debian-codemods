@@ -389,10 +389,10 @@ mod tests {
         );
     }
 
-    use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
     use crate::detector::{Detector, DetectorAdapter, DetectorRegistration};
-    use debian_workspace::workspace::Workspace;
+    use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
     use crate::Fixer;
+    use debian_workspace::workspace::Workspace;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::TempDir;

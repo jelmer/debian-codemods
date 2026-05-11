@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const REPLACEMENTS: &[(&str, &str, &[(&str, &str)])] = &[

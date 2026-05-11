@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_changelog::parseaddr;
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 const PKG_PERL_EMAIL: &str = "pkg-perl-maintainers@lists.alioth.debian.org";

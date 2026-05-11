@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction, TextRange};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_workspace::Workspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use std::path::PathBuf;
 
 const OLD_REL: &str = "debian/tests/control.autodep8";

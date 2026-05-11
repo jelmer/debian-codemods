@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use chrono::Datelike;
+use debian_workspace::Workspace;
 use rowan::ast::AstNode;
 use std::path::PathBuf;
 
@@ -111,8 +111,8 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;

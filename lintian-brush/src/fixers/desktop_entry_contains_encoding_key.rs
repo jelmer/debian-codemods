@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, DesktopIniAction, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use desktop_edit::Desktop;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;

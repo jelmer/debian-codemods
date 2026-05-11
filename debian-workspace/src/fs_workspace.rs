@@ -1,7 +1,7 @@
 /// A `Workspace` implementation that operates on a directory on disk.
 use crate::Error;
 use crate::Version;
-use crate::workspace::{Editor,Workspace};
+use crate::workspace::{Editor, Workspace};
 use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
 use debian_copyright::lossless::Copyright;

@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use debian_workspace::Workspace;
-use crate::{FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
+use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_analyzer::rules::dh_invoke_add_with;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(

@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 const CONTROL_REL: &str = "debian/control";
@@ -48,8 +48,8 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use std::fs;
     use tempfile::tempdir;
 

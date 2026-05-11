@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::LintianOverrides;
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 const INTERMITTENT_LINTIAN_TAGS: &[&str] = &["rc-version-greater-than-expected-version"];
@@ -277,8 +277,8 @@ declare_detector! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::apply_diagnostics;
-    use debian_workspace::FsWorkspace;
     use crate::Version;
+    use debian_workspace::FsWorkspace;
     use std::fs;
     use tempfile::TempDir;
 

@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::wnpp::{BugId, BugKind};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(

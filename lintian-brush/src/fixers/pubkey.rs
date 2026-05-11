@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, WatchAction};
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
-use debian_workspace::Workspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_watch::{mangle, Release};
+use debian_workspace::Workspace;
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

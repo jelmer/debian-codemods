@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::rules::dh_invoke_get_with;
+use debian_workspace::Workspace;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;

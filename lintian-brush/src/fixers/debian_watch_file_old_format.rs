@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_workspace::Workspace;
-use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility, PackageType};
 use std::path::PathBuf;
 
 const OBSOLETE_WATCH_FILE_FORMAT: u32 = 2;

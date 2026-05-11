@@ -1,10 +1,10 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, MaintscriptAction};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
 use debian_analyzer::maintscripts::{Entry, Maintscript};
 use debian_changelog::ChangeLog;
+use debian_workspace::Workspace;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
 use std::path::{Path, PathBuf};
@@ -48,9 +48,7 @@ fn get_date_threshold(upgrade_release: Option<&str>) -> Result<NaiveDate, FixerE
     Ok(threshold)
 }
 
-fn parse_changelog_dates(
-    ws: &dyn Workspace,
-) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
+fn parse_changelog_dates(ws: &dyn Workspace) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
     let bytes = match ws.read_file(Path::new("debian/changelog"))? {
         Some(b) => b,
         None => return Ok(vec![]),

@@ -2,8 +2,8 @@ use crate::declare_detector;
 use crate::diagnostic::{
     Action, ActionPlan, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector,
 };
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 

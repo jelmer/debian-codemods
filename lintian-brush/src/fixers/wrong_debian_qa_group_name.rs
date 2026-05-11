@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use debian_workspace::Workspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::parseaddr;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const QA_EMAIL: &str = "packages@qa.debian.org";
@@ -66,8 +66,8 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
