@@ -197,6 +197,247 @@ format: blah
         );
         assert!(hints.is_err());
     }
+
+    fn make_hint(binary: &str, kind: &str, description: &str) -> Hint {
+        Hint {
+            binary: binary.to_string(),
+            description: description.to_string(),
+            link: format!("https://wiki.debian.org/MultiArch/Hints#{}", kind),
+            severity: Severity::Normal,
+            version: None,
+            source: "src".to_string(),
+        }
+    }
+
+    fn setup_ws(
+        control: &str,
+    ) -> (
+        tempfile::TempDir,
+        debian_workspace::fs_workspace::FsWorkspace,
+    ) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        std::fs::create_dir_all(&debian).unwrap();
+        std::fs::write(debian.join("control"), control).unwrap();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            "src",
+            "1.0".parse().unwrap(),
+        );
+        (tmp, ws)
+    }
+
+    fn detect_one(
+        ws: &debian_workspace::fs_workspace::FsWorkspace,
+        hints_list: &[Hint],
+    ) -> Vec<(Change, ActionPlan)> {
+        let by_binary = multiarch_hints_by_binary(hints_list);
+        detect_multiarch_hints(ws, &by_binary, Certainty::Possible).unwrap()
+    }
+
+    fn apply_and_read(
+        ws: &debian_workspace::fs_workspace::FsWorkspace,
+        plans: &[ActionPlan],
+    ) -> String {
+        let actions: Vec<_> = plans
+            .iter()
+            .flat_map(|p| p.actions.iter().cloned())
+            .collect();
+        debian_workspace::appliers::apply_actions(ws.base_path(), &actions).unwrap();
+        std::fs::read_to_string(ws.base_path().join("debian/control")).unwrap()
+    }
+
+    #[test]
+    fn detect_ma_foreign() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\n");
+        let hints = vec![make_hint("foo", "ma-foreign", "foo could be MA: foreign")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0.binary, "foo");
+        assert_eq!(results[0].0.description, "Add Multi-Arch: foreign.");
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(control.contains("Multi-Arch: foreign"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_ma_foreign_noop_when_already_set() {
+        let (_tmp, ws) =
+            setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\nMulti-Arch: foreign\n");
+        let hints = vec![make_hint("foo", "ma-foreign", "foo could be MA: foreign")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn detect_ma_foreign_library() {
+        let (_tmp, ws) =
+            setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\nMulti-Arch: foreign\n");
+        let hints = vec![make_hint(
+            "foo",
+            "ma-foreign-library",
+            "foo should not be MA: foreign",
+        )];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0.description, "Drop Multi-Arch: foreign.");
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(!control.contains("Multi-Arch"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_file_conflict() {
+        let (_tmp, ws) =
+            setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\nMulti-Arch: same\n");
+        let hints = vec![make_hint("foo", "file-conflict", "foo conflicts")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0.description, "Drop Multi-Arch: same.");
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(!control.contains("Multi-Arch"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_ma_same() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\n");
+        let hints = vec![make_hint("foo", "ma-same", "foo should be MA: same")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0.description, "Add Multi-Arch: same.");
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(control.contains("Multi-Arch: same"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_arch_all() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\n");
+        let hints = vec![make_hint("foo", "arch-all", "foo should be arch:all")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0.description, "Make package Architecture: all.");
+        assert_eq!(results[0].0.certainty, Certainty::Possible);
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(control.contains("Architecture: all"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_arch_all_noop_when_already_all() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: all\n");
+        let hints = vec![make_hint("foo", "arch-all", "foo should be arch:all")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn detect_dep_any() {
+        let (_tmp, ws) =
+            setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\nDepends: libbar (>= 1.0)\n");
+        let hints = vec![make_hint(
+            "foo",
+            "dep-any",
+            "foo could have its dependency on libbar annotated with :any",
+        )];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].0.description,
+            "Add :any qualifier for libbar dependency."
+        );
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(control.contains("libbar:any"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_dep_any_noop_when_already_annotated() {
+        let (_tmp, ws) = setup_ws(
+            "Source: src\n\nPackage: foo\nArchitecture: any\nDepends: libbar:any (>= 1.0)\n",
+        );
+        let hints = vec![make_hint(
+            "foo",
+            "dep-any",
+            "foo could have its dependency on libbar annotated with :any",
+        )];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn detect_ma_workaround() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: all\n");
+        let hints = vec![make_hint(
+            "foo",
+            "ma-workaround",
+            "foo should be Architecture: any + Multi-Arch: same",
+        )];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].0.description,
+            "Add Multi-Arch: same and set Architecture: any."
+        );
+
+        let control = apply_and_read(
+            &ws,
+            &results.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>(),
+        );
+        assert!(control.contains("Multi-Arch: same"), "got: {}", control);
+        assert!(control.contains("Architecture: any"), "got: {}", control);
+    }
+
+    #[test]
+    fn detect_skips_unknown_binary() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\n");
+        let hints = vec![make_hint("bar", "ma-foreign", "bar could be MA: foreign")];
+        let results = detect_one(&ws, &hints);
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn detect_skips_below_minimum_certainty() {
+        let (_tmp, ws) = setup_ws("Source: src\n\nPackage: foo\nArchitecture: any\n");
+        let hints = vec![make_hint("foo", "arch-all", "foo should be arch:all")];
+        let by_binary = multiarch_hints_by_binary(&hints);
+        // arch-all is Possible; requesting Certain should skip it.
+        let results = detect_multiarch_hints(&ws, &by_binary, Certainty::Certain).unwrap();
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn detect_no_control_file() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            "src",
+            "1.0".parse().unwrap(),
+        );
+        let hints = vec![make_hint("foo", "ma-foreign", "foo could be MA: foreign")];
+        let by_binary = multiarch_hints_by_binary(&hints);
+        let results = detect_multiarch_hints(&ws, &by_binary, Certainty::Possible).unwrap();
+        assert_eq!(results.len(), 0);
+    }
 }
 
 pub fn cache_download_multiarch_hints(
@@ -699,8 +940,7 @@ pub fn apply_multiarch_hints(
                 .iter()
                 .flat_map(|(_, plan)| plan.actions.iter().cloned())
                 .collect();
-            apply_actions(path, &all_actions)
-                .map_err(|e| OverallError::Other(e.to_string()))?;
+            apply_actions(path, &all_actions).map_err(|e| OverallError::Other(e.to_string()))?;
 
             Ok(detected.into_iter().map(|(change, _)| change).collect())
         },
