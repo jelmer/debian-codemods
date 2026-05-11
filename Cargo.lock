@@ -3230,6 +3230,7 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-workspace",
  "debversion",
  "env_logger",
  "lazy-regex",

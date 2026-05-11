@@ -2,13 +2,14 @@ use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::WorkingTree;
 use breezyshim::workingtree::GenericWorkingTree;
-use debian_analyzer::control::TemplatedControlEditor;
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
     Certainty, ChangelogError,
 };
-use debian_control::control::Binary;
 use debian_control::fields::MultiArch;
+use debian_workspace::action::{Action, ActionPlan, Deb822Action, ParagraphSelector};
+use debian_workspace::appliers::apply_actions;
+use debian_workspace::workspace::Workspace;
 use debversion::Version;
 use lazy_regex::regex_captures;
 use lazy_static::lazy_static;
@@ -285,154 +286,291 @@ impl OverallResult {
     }
 }
 
-fn apply_hint_ma_foreign(binary: &mut Binary, _hint: &Hint) -> Option<String> {
-    if binary.multi_arch() != Some(MultiArch::Foreign) {
-        binary.set_multi_arch(Some(MultiArch::Foreign));
-        Some("Add Multi-Arch: foreign.".to_string())
-    } else {
-        None
-    }
+fn control_file() -> std::path::PathBuf {
+    std::path::PathBuf::from("debian/control")
 }
 
-fn apply_hint_ma_foreign_lib(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+fn detect_hint_ma_foreign(
+    binary: &debian_control::lossless::control::Binary,
+    _hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
     if binary.multi_arch() == Some(MultiArch::Foreign) {
-        binary.set_multi_arch(None);
-        Some("Drop Multi-Arch: foreign.".to_string())
-    } else {
-        None
+        return None;
     }
+    let pkg = binary.name()?;
+    Some((
+        "Add Multi-Arch: foreign.".to_string(),
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Multi-Arch".to_string(),
+            value: "foreign".to_string(),
+        })],
+    ))
 }
 
-fn apply_hint_file_conflict(binary: &mut Binary, _hint: &Hint) -> Option<String> {
-    if binary.multi_arch() == Some(MultiArch::Same) {
-        binary.set_multi_arch(None);
-        Some("Drop Multi-Arch: same.".to_string())
-    } else {
-        None
+fn detect_hint_ma_foreign_lib(
+    binary: &debian_control::lossless::control::Binary,
+    _hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
+    if binary.multi_arch() != Some(MultiArch::Foreign) {
+        return None;
     }
+    let pkg = binary.name()?;
+    Some((
+        "Drop Multi-Arch: foreign.".to_string(),
+        vec![Action::Deb822(Deb822Action::RemoveField {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Multi-Arch".to_string(),
+        })],
+    ))
 }
 
-fn apply_hint_ma_same(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+fn detect_hint_file_conflict(
+    binary: &debian_control::lossless::control::Binary,
+    _hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
+    if binary.multi_arch() != Some(MultiArch::Same) {
+        return None;
+    }
+    let pkg = binary.name()?;
+    Some((
+        "Drop Multi-Arch: same.".to_string(),
+        vec![Action::Deb822(Deb822Action::RemoveField {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Multi-Arch".to_string(),
+        })],
+    ))
+}
+
+fn detect_hint_ma_same(
+    binary: &debian_control::lossless::control::Binary,
+    _hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
     if binary.multi_arch() == Some(MultiArch::Same) {
         return None;
     }
-    binary.set_multi_arch(Some(MultiArch::Same));
-    Some("Add Multi-Arch: same.".to_string())
+    let pkg = binary.name()?;
+    Some((
+        "Add Multi-Arch: same.".to_string(),
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Multi-Arch".to_string(),
+            value: "same".to_string(),
+        })],
+    ))
 }
 
-fn apply_hint_arch_all(binary: &mut Binary, _hint: &Hint) -> Option<String> {
+fn detect_hint_arch_all(
+    binary: &debian_control::lossless::control::Binary,
+    _hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
     if binary.architecture().as_deref() == Some("all") {
         return None;
     }
-    binary.set_architecture(Some("all"));
-    Some("Make package Architecture: all.".to_string())
+    let pkg = binary.name()?;
+    Some((
+        "Make package Architecture: all.".to_string(),
+        vec![Action::Deb822(Deb822Action::SetField {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Architecture".to_string(),
+            value: "all".to_string(),
+        })],
+    ))
 }
 
-fn apply_hint_dep_any(binary: &mut Binary, hint: &Hint) -> Option<String> {
-    if let Some((_whole, binary_package, dep)) = regex_captures!(
+fn detect_hint_dep_any(
+    binary: &debian_control::lossless::control::Binary,
+    hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
+    let Some((_whole, binary_package, dep)) = regex_captures!(
         r"(.*) could have its dependency on (.*) annotated with :any",
         hint.description.as_str()
-    ) {
-        assert_eq!(binary_package, binary.name().unwrap());
+    ) else {
+        log::warn!("Unable to parse dep-any hint: {:?}", hint.description);
+        return None;
+    };
+    assert_eq!(binary_package, binary.name().unwrap());
 
-        let mut changed = false;
-        if let Some(depends) = binary.depends() {
-            for entry in depends.entries() {
-                for mut r in entry.relations() {
-                    if r.try_name().as_deref() == Some(dep)
-                        && r.archqual().as_deref() != Some("any")
-                    {
-                        r.set_archqual("any");
-                        changed = true;
-                    }
-                }
-            }
-            if changed {
-                binary.set_depends(Some(&depends));
-                Some(format!("Add :any qualifier for {} dependency.", dep))
+    let depends = binary.depends()?;
+    let entry_text = depends.entries().find_map(|entry| {
+        entry.relations().find_map(|r| {
+            if r.try_name().as_deref() == Some(dep) && r.archqual().as_deref() != Some("any") {
+                // Re-serialise the entry with :any added. We rebuild it from
+                // the entry's display form to preserve version constraints.
+                Some(entry.to_string().replacen(dep, &format!("{}:any", dep), 1))
             } else {
                 None
             }
-        } else {
-            None
-        }
-    } else {
-        log::warn!("Unable to parse dep-any hint: {:?}", hint.description);
-        None
-    }
+        })
+    })?;
+
+    let pkg = binary.name()?;
+    Some((
+        format!("Add :any qualifier for {} dependency.", dep),
+        vec![Action::Deb822(Deb822Action::ReplaceRelation {
+            file: control_file(),
+            paragraph: ParagraphSelector::Binary { package: pkg },
+            field: "Depends".to_string(),
+            from_package: dep.to_string(),
+            to_entry: entry_text,
+        })],
+    ))
 }
 
-fn apply_hint_ma_workaround(binary: &mut Binary, hint: &Hint) -> Option<String> {
-    if let Some((_whole, binary_package)) = regex_captures!(
+fn detect_hint_ma_workaround(
+    binary: &debian_control::lossless::control::Binary,
+    hint: &Hint,
+) -> Option<(String, Vec<Action>)> {
+    let Some((_whole, binary_package)) = regex_captures!(
         r"(.*) should be Architecture: any \+ Multi-Arch: same",
         hint.description.as_str()
-    ) {
-        assert_eq!(binary_package, binary.name().unwrap());
-        binary.set_multi_arch(Some(MultiArch::Same));
-        binary.set_architecture(Some("any"));
-        Some("Add Multi-Arch: same and set Architecture: any.".to_string())
-    } else {
+    ) else {
         log::warn!("Unable to parse ma-workaround hint: {:?}", hint.description);
-        None
-    }
+        return None;
+    };
+    assert_eq!(binary_package, binary.name().unwrap());
+    let pkg = binary.name()?;
+    Some((
+        "Add Multi-Arch: same and set Architecture: any.".to_string(),
+        vec![
+            Action::Deb822(Deb822Action::SetField {
+                file: control_file(),
+                paragraph: ParagraphSelector::Binary {
+                    package: pkg.clone(),
+                },
+                field: "Multi-Arch".to_string(),
+                value: "same".to_string(),
+            }),
+            Action::Deb822(Deb822Action::SetField {
+                file: control_file(),
+                paragraph: ParagraphSelector::Binary { package: pkg },
+                field: "Architecture".to_string(),
+                value: "any".to_string(),
+            }),
+        ],
+    ))
 }
 
-struct Applier {
+type DetectorFn =
+    fn(&debian_control::lossless::control::Binary, &Hint) -> Option<(String, Vec<Action>)>;
+
+struct Detector {
     kind: &'static str,
     certainty: Certainty,
-    cb: fn(&mut Binary, &Hint) -> Option<String>,
+    cb: DetectorFn,
 }
 
 lazy_static! {
-    static ref APPLIERS: Vec<Applier> = vec![
-        Applier {
+    static ref DETECTORS: Vec<Detector> = vec![
+        Detector {
             kind: "ma-foreign",
             certainty: Certainty::Certain,
-            cb: apply_hint_ma_foreign,
+            cb: detect_hint_ma_foreign,
         },
-        Applier {
+        Detector {
             kind: "file-conflict",
             certainty: Certainty::Certain,
-            cb: apply_hint_file_conflict,
+            cb: detect_hint_file_conflict,
         },
-        Applier {
+        Detector {
             kind: "ma-foreign-library",
             certainty: Certainty::Certain,
-            cb: apply_hint_ma_foreign_lib,
+            cb: detect_hint_ma_foreign_lib,
         },
-        Applier {
+        Detector {
             kind: "dep-any",
             certainty: Certainty::Certain,
-            cb: apply_hint_dep_any,
+            cb: detect_hint_dep_any,
         },
-        Applier {
+        Detector {
             kind: "ma-same",
             certainty: Certainty::Certain,
-            cb: apply_hint_ma_same,
+            cb: detect_hint_ma_same,
         },
-        Applier {
+        Detector {
             kind: "arch-all",
             certainty: Certainty::Possible,
-            cb: apply_hint_arch_all,
+            cb: detect_hint_arch_all,
         },
-        Applier {
+        Detector {
             kind: "ma-workaround",
             certainty: Certainty::Certain,
-            cb: apply_hint_ma_workaround,
+            cb: detect_hint_ma_workaround,
         },
     ];
 }
 
-fn find_applier(kind: &str) -> Option<&'static Applier> {
-    APPLIERS.iter().find(|x| x.kind == kind)
+fn find_detector(kind: &str) -> Option<&'static Detector> {
+    DETECTORS.iter().find(|x| x.kind == kind)
+}
+
+/// Detect which multiarch hints apply to the given workspace.
+///
+/// Returns one `(Change, ActionPlan)` per applicable hint. The `Change`
+/// describes what would change (for commit messages / logging); the
+/// `ActionPlan` carries the file edits to apply via `apply_actions`.
+pub fn detect_multiarch_hints(
+    ws: &dyn Workspace,
+    hints: &HashMap<&str, Vec<&Hint>>,
+    minimum_certainty: Certainty,
+) -> Result<Vec<(Change, ActionPlan)>, debian_workspace::Error> {
+    let control = match ws.parsed_control() {
+        Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+
+    let mut results = Vec::new();
+    for binary in control.binaries() {
+        let Some(package) = binary.name() else {
+            continue;
+        };
+        let Some(package_hints) = hints.get(package.as_str()) else {
+            continue;
+        };
+        for hint in package_hints {
+            let kind = hint.kind();
+            let detector = match find_detector(kind) {
+                Some(d) => d,
+                None => {
+                    log::warn!("Unknown hint kind: {}", kind);
+                    continue;
+                }
+            };
+            if !certainty_sufficient(detector.certainty, Some(minimum_certainty)) {
+                continue;
+            }
+            if let Some((description, actions)) = (detector.cb)(&binary, hint) {
+                results.push((
+                    Change {
+                        binary: package.clone(),
+                        hint: (*hint).clone(),
+                        description: description.clone(),
+                        certainty: detector.certainty,
+                    },
+                    ActionPlan {
+                        label: description,
+                        opinionated: false,
+                        actions,
+                    },
+                ));
+            }
+        }
+    }
+    Ok(results)
 }
 
 fn changes_by_description(changes: &[Change]) -> HashMap<String, Vec<String>> {
-    let mut by_description = HashMap::new();
+    let mut by_description: HashMap<String, Vec<String>> = HashMap::new();
     for change in changes {
         by_description
             .entry(change.description.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(change.binary.clone());
     }
     by_description
@@ -545,42 +683,26 @@ pub fn apply_multiarch_hints(
         &basis_tree,
         dirty_tracker,
         |path| -> Result<Vec<Change>, OverallError> {
-            let mut changes: Vec<Change> = vec![];
-
-            let control_path = path.join("debian/control");
-
-            let editor = TemplatedControlEditor::open(control_path.as_path())
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                path,
+                "",
+                "0".parse::<debversion::Version>().unwrap(),
+            );
+            let detected = detect_multiarch_hints(&ws, hints, minimum_certainty)
                 .map_err(|e| OverallError::Other(e.to_string()))?;
 
-            for mut binary in editor.binaries() {
-                let package = binary.name().unwrap();
-                if let Some(hints) = hints.get(package.as_str()) {
-                    for hint in hints {
-                        let kind = hint.kind();
-                        let applier = match find_applier(kind) {
-                            Some(applier) => applier,
-                            None => {
-                                log::warn!("Unknown hint kind: {}", kind);
-                                continue;
-                            }
-                        };
-                        if !certainty_sufficient(applier.certainty, Some(minimum_certainty)) {
-                            continue;
-                        }
-                        if let Some(description) = (applier.cb)(&mut binary, hint) {
-                            changes.push(Change {
-                                binary: binary.name().unwrap(),
-                                hint: (*hint).clone(),
-                                description,
-                                certainty: applier.certainty,
-                            });
-                        }
-                    }
-                }
+            if detected.is_empty() {
+                return Ok(Vec::new());
             }
 
-            editor.commit()?;
-            Ok(changes)
+            let all_actions: Vec<_> = detected
+                .iter()
+                .flat_map(|(_, plan)| plan.actions.iter().cloned())
+                .collect();
+            apply_actions(path, &all_actions)
+                .map_err(|e| OverallError::Other(e.to_string()))?;
+
+            Ok(detected.into_iter().map(|(change, _)| change).collect())
         },
     ) {
         Ok(r) => r,
