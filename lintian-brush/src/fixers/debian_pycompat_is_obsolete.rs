@@ -40,7 +40,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, TreeWorkspace};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
@@ -53,7 +53,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = TreeWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(base, "test", "1.0".parse().unwrap());
         detect(&ws, &FixerPreferences::default())
     }
 

@@ -68,7 +68,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use debian_workspace::{DetectorAdapter, TreeWorkspace};
+    use debian_workspace::{DetectorAdapter, FsWorkspace};
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
@@ -82,7 +82,7 @@ mod tests {
 
     fn run_detect(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let ws = TreeWorkspace::new(base, "test", version);
+        let ws = FsWorkspace::new(base, "test", version);
         detect(&ws, &FixerPreferences::default())
     }
 
