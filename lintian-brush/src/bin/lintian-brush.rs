@@ -841,18 +841,18 @@ fn main() -> Result<(), i32> {
     Ok(())
 }
 
-/// Build a [`TreeWorkspace`] + [`FixerPreferences`] pair for the
+/// Build a [`FsWorkspace`] + [`FixerPreferences`] pair for the
 /// detector-only entry points (`--detect-only`, `--interactive`). Falls
 /// back to a placeholder package / version when the changelog isn't
 /// readable so the entry points work against partial trees.
 fn detector_runtime(
     args: &Args,
 ) -> (
-    debian_workspace::workspace::TreeWorkspace,
+    debian_workspace::fs_workspace::FsWorkspace,
     lintian_brush::FixerPreferences,
 ) {
     use debian_changelog::ChangeLog;
-    use debian_workspace::workspace::TreeWorkspace;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use lintian_brush::FixerPreferences;
 
     let base_path = args.output.directory.clone();
@@ -885,7 +885,7 @@ fn detector_runtime(
         ..Default::default()
     };
 
-    let ws = TreeWorkspace::new(base_path, package, version);
+    let ws = FsWorkspace::new(base_path, package, version);
     (ws, preferences)
 }
 

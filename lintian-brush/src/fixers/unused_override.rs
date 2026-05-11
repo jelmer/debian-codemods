@@ -277,7 +277,7 @@ declare_detector! {
 mod tests {
     use super::*;
     use crate::builtin_fixers::apply_diagnostics;
-    use debian_workspace::TreeWorkspace;
+    use debian_workspace::FsWorkspace;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -287,7 +287,7 @@ mod tests {
         unused_overrides: &[UnusedOverride],
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let ws = TreeWorkspace::new(base.to_path_buf(), "test", version);
+        let ws = FsWorkspace::new(base.to_path_buf(), "test", version);
         let diagnostics = detect_with_unused_overrides(&ws, unused_overrides)?;
         apply_diagnostics(base, &diagnostics, &FixerPreferences::default())
     }

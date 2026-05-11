@@ -1,8 +1,8 @@
 use crate::FixerError;
+use debian_workspace::fs_workspace::FsWorkspace;
 use debian_workspace::{Trigger, Workspace};
-use debian_workspace::workspace::TreeWorkspace;
-use std::path::Path;
 use debversion::Version;
+use std::path::Path;
 
 /// Rough indication of a detector's runtime cost.
 ///
@@ -37,7 +37,7 @@ pub enum DetectorCost {
 ///
 /// Detectors carry no `basedir`/`package`/`current_version` arguments —
 /// those are reachable through the workspace — so the same detector
-/// works in the lintian-brush CLI (with a [`TreeWorkspace`]) and in
+/// works in the lintian-brush CLI (with a [`FsWorkspace`]) and in
 /// an LSP host that has no on-disk basedir for the open buffer.
 ///
 /// Each registered detector is wrapped in a [`DetectorAdapter`] at
@@ -194,7 +194,7 @@ pub fn select_detectors(
 /// Bridge a [`Detector`] into the public [`crate::Fixer`] trait so the CLI
 /// driver picks it up via [`crate::builtin_fixers::get_builtin_fixers`].
 ///
-/// Constructs a [`TreeWorkspace`] from the on-disk `basedir`, runs the
+/// Constructs a [`FsWorkspace`] from the on-disk `basedir`, runs the
 /// detector, then applies the resulting actions through
 /// [`crate::appliers::apply_actions`].
 pub struct DetectorAdapter {
@@ -228,7 +228,7 @@ impl DetectorAdapter {
         current_version: &Version,
         preferences: &crate::FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
-        let ws = TreeWorkspace::new(basedir, package, current_version.clone());
+        let ws = FsWorkspace::new(basedir, package, current_version.clone());
         let diagnostics = self.detector.detect(&ws, preferences)?;
         crate::builtin_fixers::apply_diagnostics_with(
             basedir,

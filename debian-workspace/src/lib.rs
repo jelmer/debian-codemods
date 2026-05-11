@@ -11,6 +11,9 @@ pub mod appliers;
 /// Operate on a Debian package.
 pub mod workspace;
 
+/// A workspace implementation on a filesystem.
+pub mod fs_workspace;
+
 /// Allow notification on certain events.
 pub mod trigger;
 
