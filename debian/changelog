@@ -1,8 +1,9 @@
 debian-codemods (0.178) UNRELEASED; urgency=medium
 
   * Add fixer for build-depends-on-1-revision.
+  * Add fixer for bugs-field-does-not-refer-to-debian-infrastructure.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 13 May 2026 10:23:42 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 May 2026 16:45:35 +0100
 
 debian-codemods (0.177) unstable; urgency=medium
 
