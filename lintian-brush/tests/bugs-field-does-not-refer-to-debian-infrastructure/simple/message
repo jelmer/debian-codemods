@@ -1,0 +1,3 @@
+Remove Bugs field not pointing to Debian infrastructure.
+Fixed-Lintian-Issues:
+ source: bugs-field-does-not-refer-to-debian-infrastructure https://github.com/example/foo/issues
