@@ -969,6 +969,17 @@ pub enum DebcargoAction {
         /// New string value.
         value: String,
     },
+    /// Set a boolean field at the top level of the file. Creates the field if
+    /// absent. Overwrites any existing value.
+    SetTopLevelBool {
+        /// File to edit, relative to the package root. Almost always
+        /// `debian/debcargo.toml`.
+        file: PathBuf,
+        /// Top-level key (e.g. `collapse_features`).
+        field: String,
+        /// New boolean value.
+        value: bool,
+    },
 }
 
 /// Run an external command that mutates the working tree.
