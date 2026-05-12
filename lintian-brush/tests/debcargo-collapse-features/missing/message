@@ -1,0 +1,2 @@
+Set collapse_features = true in debian/debcargo.toml.
+Certainty: certain
