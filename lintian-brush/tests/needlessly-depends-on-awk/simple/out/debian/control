@@ -1,0 +1,6 @@
+Source: foo
+
+Package: foo
+Depends: libfoo
+Description: Foo package
+ A simple foo package.

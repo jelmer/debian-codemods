@@ -1,0 +1,6 @@
+Source: foo
+
+Package: foo
+Depends: awk, libfoo
+Description: Foo package
+ A simple foo package.

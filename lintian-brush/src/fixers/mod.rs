@@ -93,6 +93,7 @@ mod missing_build_dependency_for_dh_command;
 mod missing_prerequisite_for_pyproject_backend;
 mod missing_static_built_using_for_golang;
 mod missing_vcs_browser_field;
+mod needlessly_depends_on_awk;
 mod new_package_uses_date_based_version_number;
 mod newer_debconf_templates;
 mod no_copyright_file;
