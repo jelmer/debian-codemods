@@ -1226,7 +1226,8 @@
     Replace obsolete package name in Depends with its modern
     replacement. Requires a mapping of old -> new package names.
 - tag: depends-on-old-emacs
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace old versioned emacs dependency (e.g. emacs23) with
