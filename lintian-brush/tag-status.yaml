@@ -361,7 +361,8 @@
   detector: false
   status: build-stage
 - tag: bugs-field-does-not-refer-to-debian-infrastructure
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove or fix the Bugs field in debian/control to point to the
