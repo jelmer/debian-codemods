@@ -1,0 +1,6 @@
+Source: foo
+
+Package: foo
+Depends: emacs23, libfoo
+Description: Foo package
+ A simple foo package.
