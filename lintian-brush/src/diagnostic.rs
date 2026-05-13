@@ -1306,6 +1306,7 @@ pub struct TextRange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Visibility;
 
     #[test]
     fn action_serializes_with_kind_tag() {
