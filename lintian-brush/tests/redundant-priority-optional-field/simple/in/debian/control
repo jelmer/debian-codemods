@@ -1,0 +1,6 @@
+Source: foo
+Priority: optional
+
+Package: foo
+Description: Foo package
+ A simple foo package.

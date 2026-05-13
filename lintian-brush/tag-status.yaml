@@ -3543,7 +3543,8 @@
     Remove unnecessary libservlet-java from Suggests/Recommends
     in debian/control.
 - tag: needlessly-depends-on-awk
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove awk from Depends in debian/control since awk is
@@ -4731,11 +4732,14 @@
     Remove the redundant Origin field from debian/control when it is
     "debian". Uses TemplatedControlEditor.
 - tag: redundant-priority-optional-field
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Remove redundant Priority: optional from binary stanzas in debian/control
-    when source stanza already specifies it. Uses TemplatedControlEditor.
+    Remove redundant Priority: optional from source and binary stanzas
+    in debian/control. Lintian emits the tag because Priority: optional
+    is now the default; the binary case is also gated on the source
+    stanza's effective Priority being optional (or unset).
 - tag: relative-conffile
   detector: false
   status: build-stage
