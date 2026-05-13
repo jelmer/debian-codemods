@@ -14,6 +14,7 @@ mod copyright_continued_lines_with_space;
 mod copyright_format_uri;
 mod copyright_has_crs;
 mod copyright_missing_upstream_info;
+mod copyright_refers_to_old_directory;
 mod copyright_refers_to_symlink_license;
 mod crlf_line_endings;
 mod debhelper_but_no_misc_depends;

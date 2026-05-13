@@ -1,3 +1,9 @@
+debian-codemods (0.178) UNRELEASED; urgency=medium
+
+  * Add fixer for copyright-refers-to-old-directory.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 13 May 2026 12:03:59 +0100
+
 debian-codemods (0.177) unstable; urgency=medium
 
   * Add LintianIssue::Visibility
