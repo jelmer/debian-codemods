@@ -75,6 +75,7 @@ mod file_contains_trailing_whitespace;
 mod font_package_not_multi_arch_foreign;
 mod global_files_wildcard_not_first_paragraph_in_dep5_copyright;
 mod homepage_field_uses_insecure_uri;
+mod homepage_for_cpan_package_contains_version;
 mod homepage_in_binary_package;
 mod homepage_url_ends_with_dot_git;
 mod initial_upload_closes_no_bugs;
