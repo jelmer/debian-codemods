@@ -1,0 +1,3 @@
+Replace python-sphinx with python3-sphinx in Build-Depends.
+Fixed-Lintian-Issues:
+ source: build-depends-on-python-sphinx-only Build-Depends
