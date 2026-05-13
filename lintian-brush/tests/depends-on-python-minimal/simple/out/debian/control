@@ -1,0 +1,6 @@
+Source: foo
+
+Package: foo
+Depends: python3, libfoo
+Description: Foo package
+ A simple foo package.

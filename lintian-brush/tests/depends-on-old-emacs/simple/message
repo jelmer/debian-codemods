@@ -1,0 +1,3 @@
+Replace emacs23 with emacs in foo.
+Fixed-Lintian-Issues:
+ foo binary: depends-on-old-emacs Depends: emacs23
