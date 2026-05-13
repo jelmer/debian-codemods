@@ -355,10 +355,6 @@ pub fn detect(
                     renames.insert(synopsis.clone(), license_matched.clone());
                 }
                 continue;
-            } else if SPDX_RENAMES.contains_key(synopsis.as_str()) {
-                let new_name = SPDX_RENAMES[synopsis.as_str()];
-                renames.insert(synopsis.clone(), new_name.to_string());
-                continue;
             } else {
                 tracing::debug!(
                     "Found full license text for {}, but unknown synopsis {} ({})",
@@ -367,6 +363,11 @@ pub fn detect(
                     canonical_id
                 );
             }
+        }
+
+        // Check for SPDX renames even when no full text match
+        if let Some(&new_name) = SPDX_RENAMES.get(synopsis.as_str()) {
+            renames.insert(synopsis.clone(), new_name.to_string());
         } else {
             let common_license_path = Path::new(COMMON_LICENSES_DIR).join(&synopsis);
             if common_license_path.exists() {

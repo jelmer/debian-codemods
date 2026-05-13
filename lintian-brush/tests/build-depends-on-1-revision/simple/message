@@ -1,0 +1,3 @@
+Drop -1 revision from libfoo build dependency.
+Fixed-Lintian-Issues:
+ source: build-depends-on-1-revision Build-Depends: libfoo
