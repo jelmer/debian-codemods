@@ -1,0 +1,3 @@
+Strip version from CPAN Homepage URL.
+Fixed-Lintian-Issues:
+ source: homepage-for-cpan-package-contains-version https://metacpan.org/release/SAMTREGAR/HTML-Template-2.9
