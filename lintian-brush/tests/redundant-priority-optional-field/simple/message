@@ -1,0 +1,3 @@
+Remove redundant Priority: optional from source stanza.
+Fixed-Lintian-Issues:
+ source: redundant-priority-optional-field

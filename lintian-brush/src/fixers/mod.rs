@@ -130,6 +130,7 @@ mod python_teams_merged;
 mod quilt_series_but_no_build_dep;
 mod quilt_series_without_trailing_newline;
 mod redundant_installation_prerequisite;
+mod redundant_priority_optional_field;
 mod renamed_tag;
 #[doc = "Get the mapping of old lintian tag names to their current names."]
 pub use renamed_tag::get_renamed_tags;
