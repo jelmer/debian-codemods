@@ -278,7 +278,7 @@ mod tests {
     use super::*;
     use crate::builtin_fixers::apply_diagnostics;
     use crate::Version;
-    use debian_workspace::FsWorkspace;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use tempfile::TempDir;
 

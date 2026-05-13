@@ -265,7 +265,7 @@ declare_detector! {
 mod tests {
     use super::*;
     use crate::Version;
-    use debian_workspace::FsWorkspace;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use std::str::FromStr;

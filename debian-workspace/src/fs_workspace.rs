@@ -359,11 +359,11 @@ mod tests {
     }
 
     #[test]
-    fn tree_workspace_missing_control_is_no_changes() {
+    fn tree_workspace_missing_control_is_not_found() {
         let tmp = TempDir::new().unwrap();
         // Don't make_pkg — no debian/ at all.
         let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
-        assert!(matches!(ws.control(), Err(FixerError::NoChanges)));
+        assert!(matches!(ws.control(), Err(Error::NotFound)));
     }
 
     #[test]

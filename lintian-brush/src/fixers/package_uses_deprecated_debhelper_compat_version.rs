@@ -1112,9 +1112,9 @@ mod tests {
         ));
     }
 
-    fn make_ws(base_path: &Path) -> debian_workspace::FsWorkspace {
+    fn make_ws(base_path: &Path) -> debian_workspace::fs_workspace::FsWorkspace {
         let v: DebVersion = "1.0-1".parse().unwrap();
-        debian_workspace::FsWorkspace::new(base_path.to_path_buf(), "test", v)
+        debian_workspace::fs_workspace::FsWorkspace::new(base_path.to_path_buf(), "test", v)
     }
 
     #[test]

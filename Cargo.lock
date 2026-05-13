@@ -1102,6 +1102,7 @@ dependencies = [
  "lintian-overrides",
  "makefile-lossless",
  "serde",
+ "serde_json",
  "systemd-unit-edit",
  "tempfile",
  "toml_edit",

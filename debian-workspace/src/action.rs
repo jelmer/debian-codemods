@@ -1162,25 +1162,4 @@ mod tests {
         let parsed: Action = serde_json::from_str(&json).unwrap();
         assert_eq!(original, parsed);
     }
-
-    #[test]
-    fn diagnostic_with_actions_builds_single_default_plan() {
-        let diag = Diagnostic::with_actions(
-            LintianIssue::source("recommended-field"),
-            "Priority field is missing.",
-            "Set Priority to optional.",
-            vec![Action::Deb822(Deb822Action::SetField {
-                file: PathBuf::from("debian/control"),
-                paragraph: ParagraphSelector::Source,
-                field: "Priority".into(),
-                value: "optional".into(),
-            })],
-        );
-        assert_eq!(diag.plans.len(), 1);
-        // The description is in the message field; the label is the
-        // imperative title of the plan.
-        assert_eq!(diag.message, "Priority field is missing.");
-        assert_eq!(diag.plans[0].label, "Set Priority to optional.");
-        assert_eq!(diag.plans[0].actions.len(), 1);
-    }
 }

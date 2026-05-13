@@ -1,7 +1,7 @@
 This directory contains the fixers for lintian-brush in rust.
 
 Each fixer is registered as a `Detector`. A detector reads a Debian
-source package through a `FixerWorkspace` and emits `Diagnostic`s
+source package through a `Workspace` and emits `Diagnostic`s
 describing what (if anything) needs fixing, together with the
 `Action`s that would fix it. Detectors do *not* mutate the tree —
 applying actions is the runtime's job.
@@ -10,7 +10,7 @@ The common pattern:
 
 ```rust
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // ... read files via ws, build diagnostics ...
