@@ -2,6 +2,7 @@ mod ancient_maintscript_entry;
 mod ancient_python_version_field;
 mod autotools_pkg_config_macro_not_cross_compilation_safe;
 mod binary_control_field_duplicates_source;
+mod bugs_field_does_not_refer_to_debian_infrastructure;
 mod build_depends_on_1_revision;
 mod build_depends_on_build_essential;
 mod build_depends_on_obsolete_package;
