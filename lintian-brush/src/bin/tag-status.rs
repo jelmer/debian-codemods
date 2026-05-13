@@ -153,10 +153,7 @@ async fn report_next_tags(
 }
 
 fn update_readme(supported_tags: &HashSet<String>) -> Result<(), Box<dyn Error>> {
-    let readme_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .ok_or("Failed to get parent directory")?
-        .join("README.md");
+    let readme_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("README.md");
 
     let contents = std::fs::read_to_string(&readme_path)?;
 
@@ -168,7 +165,14 @@ fn update_readme(supported_tags: &HashSet<String>) -> Result<(), Box<dyn Error>>
         .map(|tag| format!("* {}\n", tag))
         .collect();
 
-    let re = Regex::new(r"(subset of the issues:\n\n).*(\n\.\. _writing-fixers:\n)")?;
+    let re = Regex::new(r"(?s)(subset of the issues:\n\n).*?(\n\.\. _writing-fixers:\n)")?;
+    if !re.is_match(&contents) {
+        return Err(format!(
+            "Could not find tag list markers in {}",
+            readme_path.display()
+        )
+        .into());
+    }
     let updated_contents = re.replace(&contents, |caps: &regex::Captures| {
         format!("{}{}{}", &caps[1], replacement_text, &caps[2])
     });

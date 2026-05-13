@@ -6,7 +6,7 @@
 //!
 //! Actions are `serde`-serialisable so they can be sent over an LSP wire.
 
-use crate::{Certainty, LintianIssue, PackageType, Visibility};
+use crate::{Certainty, LintianIssue, PackageType};
 use std::path::PathBuf;
 
 /// A single issue found by a detector, together with the actions that would
