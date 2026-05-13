@@ -3541,7 +3541,8 @@
     Remove unnecessary libservlet-java from Suggests/Recommends
     in debian/control.
 - tag: needlessly-depends-on-awk
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove awk from Depends in debian/control since awk is
