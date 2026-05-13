@@ -8,6 +8,7 @@ debian-codemods (0.178) UNRELEASED; urgency=medium
   * Add fixer for build-depends-on-1-revision.
   * Add fixer for homepage-for-cpan-package-contains-version.
   * Add fixer for bugs-field-does-not-refer-to-debian-infrastructure.
+  * Add fixer for depends-on-python-minimal.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 May 2026 16:45:35 +0100
 
