@@ -1227,7 +1227,8 @@
     Replace obsolete package name in Depends with its modern
     replacement. Requires a mapping of old -> new package names.
 - tag: depends-on-old-emacs
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace old versioned emacs dependency (e.g. emacs23) with
@@ -1239,7 +1240,8 @@
     Replace packaging-dev with the specific needed packages in
     Build-Depends (e.g. dpkg-dev, debhelper).
 - tag: depends-on-python-minimal
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace python-minimal with python or python3 in Depends.
