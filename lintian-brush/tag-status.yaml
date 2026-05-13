@@ -386,7 +386,8 @@
     Move Build-Depends-Indep to Build-Depends in debian/control, or
     add an Architecture: all binary package. Hard to decide which.
 - tag: build-depends-on-1-revision
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove the -1 Debian revision from version constraints in
