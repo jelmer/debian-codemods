@@ -1,0 +1,6 @@
+Source: foo
+Build-Depends: python-sphinx, debhelper-compat (= 13)
+
+Package: foo
+Description: Foo package
+ A simple foo package.

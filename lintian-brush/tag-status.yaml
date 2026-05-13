@@ -430,7 +430,8 @@
     Replace python-dev/python3-dev with python/python3 in Build-Depends
     when there are no Architecture: any binary packages.
 - tag: build-depends-on-python-sphinx-only
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace python-sphinx with python3-sphinx in Build-Depends.
