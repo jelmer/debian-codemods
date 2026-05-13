@@ -1,0 +1,3 @@
+Replace python3-minimal with python3 in foo.
+Fixed-Lintian-Issues:
+ foo binary: depends-on-python-minimal Depends
