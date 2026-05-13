@@ -1,0 +1,4 @@
+Update common-licenses path to /usr/share/common-licenses.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: copyright-refers-to-old-directory
