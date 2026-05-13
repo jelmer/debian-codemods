@@ -1,6 +1,7 @@
 debian-codemods (0.178) UNRELEASED; urgency=medium
 
   * Add fixer for homepage-for-cpan-package-contains-version.
+  * Add fixer for redundant-priority-optional-field.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 13 May 2026 10:23:42 +0100
 
