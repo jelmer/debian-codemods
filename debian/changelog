@@ -1,5 +1,6 @@
 debian-codemods (0.178) UNRELEASED; urgency=medium
 
+  * Add fixer for copyright-refers-to-old-directory.
   * Add fixer for build-depends-on-1-revision.
   * Add fixer for homepage-for-cpan-package-contains-version.
   * Add fixer for bugs-field-does-not-refer-to-debian-infrastructure.
