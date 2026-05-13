@@ -4122,7 +4122,8 @@
     Replace hardcoded libc6 dependency with ${shlibs:Depends}
     in debian/control.
 - tag: package-depends-on-itself
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove self-referencing dependency from Depends in
@@ -6711,7 +6712,8 @@
     merging with any existing build relations. Uses TemplatedControlEditor.
     Moving is straightforward but merging relations correctly requires care.
 - tag: circular-installation-prerequisite
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove self-referencing dependency from debian/control. A package
