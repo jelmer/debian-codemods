@@ -7,9 +7,9 @@ README.md::
 	cargo run --bin tag-status -- --update-readme
 
 update-readme:
-	brz diff lintian-brush/README.md
-	$(MAKE) lintian-brush/README.md
-	brz diff lintian-brush/README.md || brz commit -m "Update list of fixers in README.md" lintian-brush/README.md
+	brz diff README.md
+	$(MAKE) README.md
+	brz diff README.md || brz commit -m "Update list of fixers in README.md" README.md
 
 update-renamed-tags:
 	python3 renamed-tags.py
