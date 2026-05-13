@@ -1,0 +1,6 @@
+Source: foo
+Build-Depends: libfoo (>= 1.2-1)
+
+Package: foo
+Description: Foo package
+ A simple foo package.
