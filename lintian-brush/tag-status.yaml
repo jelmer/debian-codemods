@@ -2233,7 +2233,8 @@
     Replace Homepage URL with canonical Bioconductor URL in
     debian/control.
 - tag: homepage-for-cpan-package-contains-version
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove version number from CPAN Homepage URL in debian/control
