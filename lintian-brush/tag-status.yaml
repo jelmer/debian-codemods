@@ -704,11 +704,13 @@
     Fix reference to a non-existent license file in
     /usr/share/common-licenses/. Requires knowing the correct license.
 - tag: copyright-refers-to-old-directory
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Update /usr/doc/ references to /usr/share/doc/ in debian/copyright.
-    Simple path replacement.
+    Rewrite historical /usr/doc/copyright and /usr/share/doc/copyright
+    references in debian/copyright to /usr/share/common-licenses
+    (Policy 12.5).
 - tag: copyright-with-old-dh-make-debian-copyright
   detector: false
   difficulty: easy
