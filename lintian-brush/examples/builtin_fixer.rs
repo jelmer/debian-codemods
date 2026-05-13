@@ -4,9 +4,9 @@
 //! [`Diagnostic`]s describing what needs fixing. The runtime applies the
 //! associated actions and produces the resulting commit.
 
+use debian_workspace::Workspace;
 use lintian_brush::declare_detector;
 use lintian_brush::diagnostic::Diagnostic;
-use lintian_brush::workspace::Workspace;
 use lintian_brush::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 
 fn detect(

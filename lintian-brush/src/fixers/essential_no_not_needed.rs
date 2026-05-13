@@ -68,8 +68,9 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
-    use debian_workspace::{DetectorAdapter, FsWorkspace};
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
