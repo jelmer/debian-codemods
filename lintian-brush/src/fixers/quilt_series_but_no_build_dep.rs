@@ -12,13 +12,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let format = match ws.read_file(Path::new("debian/source/format"))? {
-        Some(b) => std::str::from_utf8(&b)
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default(),
-        None => String::new(),
-    };
-    if format == "3.0 (quilt)" {
+    if ws.source_format()?.as_deref() == Some("3.0 (quilt)") {
         return Ok(Vec::new());
     }
 

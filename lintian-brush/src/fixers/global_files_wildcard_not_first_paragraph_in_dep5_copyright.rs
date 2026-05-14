@@ -1,11 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
-use deb822_lossless::Deb822;
 use debian_copyright::{pattern_depth, pattern_sort_key};
 use debian_workspace::Workspace;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 const MARKER_WILDCARD: char = 'W';
 const MARKER_OUTOFORDER: char = 'O';
@@ -15,16 +13,12 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let bytes = match ws.read_file(&copyright_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let copyright = match ws.parsed_copyright() {
+        Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(_) => return Ok(Vec::new()),
     };
-    let Ok(content) = std::str::from_utf8(&bytes) else {
-        return Ok(Vec::new());
-    };
-    let Ok(deb822) = Deb822::from_str(&content) else {
-        return Ok(Vec::new());
-    };
+    let deb822 = copyright.as_deb822();
 
     // Snapshot all Files paragraphs with their pattern, depth, and line.
     let mut files_info: Vec<(String, usize, usize)> = Vec::new();
@@ -154,8 +148,10 @@ mod tests {
     use super::*;
     use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use deb822_lossless::Deb822;
     use std::fs;
     use std::path::Path;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
