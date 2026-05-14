@@ -228,7 +228,11 @@ impl DetectorAdapter {
         current_version: &Version,
         preferences: &crate::FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
-        let ws = FsWorkspace::new(basedir, package, current_version.clone());
+        let ws = FsWorkspace::new(
+            basedir,
+            Some(package.to_string()),
+            Some(current_version.clone()),
+        );
         let diagnostics = self.detector.detect(&ws, preferences)?;
         crate::builtin_fixers::apply_diagnostics_with(
             basedir,
