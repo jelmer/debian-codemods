@@ -229,7 +229,14 @@ mod tests {
     ) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test-package", &v, preferences)
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test-package".into()),
+                Some(v.clone()),
+            );
+            adapter.apply(&ws, preferences)
+        }
     }
 
     #[test]
