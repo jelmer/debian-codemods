@@ -6,9 +6,9 @@ version = "0.1.0"
 [lib]
 
 [dependencies]
-debversion = { workspace = true }
+debversion = { workspace = true, features = ["serde"] }
 debian-changelog = { workspace = true }
-debian-control = { workspace = true }
+debian-control = { workspace = true, features = ["serde"] }
 debian-copyright = { workspace = true }
 debian-watch = { workspace = true }
 makefile-lossless = { workspace = true }
