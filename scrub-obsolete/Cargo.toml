@@ -9,6 +9,7 @@ breezyshim = { workspace = true, features = ["debian"] }
 deb822-lossless = { workspace = true }
 debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-control = { workspace = true }
+debian-workspace = { workspace = true }
 debversion = { workspace = true, features = ["sqlx"] }
 distro-info = "0.4.0"
 env_logger.workspace = true
