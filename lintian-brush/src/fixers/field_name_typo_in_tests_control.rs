@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use deb822_lossless::Deb822;
+use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -17,7 +17,7 @@ const VALID_FIELD_NAMES: &[&str] = &[
 ];
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rel = PathBuf::from("debian/tests/control");
@@ -158,12 +158,12 @@ declare_detector! {
     name: "field-name-typo-in-tests-control",
     tags: ["field-name-typo-in-tests-control"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Tests",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Test-Command",
             field: "*",
@@ -176,7 +176,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

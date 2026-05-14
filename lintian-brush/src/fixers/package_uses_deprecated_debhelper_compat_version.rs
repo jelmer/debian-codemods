@@ -1,20 +1,20 @@
 use crate::debhelper::detect_debhelper_buildsystem;
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
     read_debhelper_compat_file,
 };
 use debian_control::lossless::relations::Relations;
+use debian_workspace::Workspace;
 use debversion::Version;
 use makefile_lossless::{Makefile, Rule};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-fn autoreconf_disabled(ws: &dyn FixerWorkspace) -> bool {
+fn autoreconf_disabled(ws: &dyn Workspace) -> bool {
     let Ok(mf) = ws.parsed_rules() else {
         return false;
     };
@@ -38,12 +38,12 @@ fn autoreconf_disabled(ws: &dyn FixerWorkspace) -> bool {
     false
 }
 
-fn get_current_package_version(ws: &dyn FixerWorkspace) -> Result<Version, FixerError> {
+fn get_current_package_version(ws: &dyn Workspace) -> Result<Version, FixerError> {
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
         // If no changelog exists, return default version
-        Err(FixerError::NoChanges) => return Ok("1.0-1".parse().unwrap()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok("1.0-1".parse().unwrap()),
+        Err(e) => return Err(e.into()),
     };
 
     let entries: Vec<_> = changelog.iter().collect();
@@ -78,7 +78,7 @@ impl Transformations {
 }
 
 /// Read binary package names from debian/control via the workspace.
-fn binary_package_names(ws: &dyn FixerWorkspace) -> Result<Vec<String>, FixerError> {
+fn binary_package_names(ws: &dyn Workspace) -> Result<Vec<String>, FixerError> {
     let Ok(control) = ws.parsed_control() else {
         return Ok(Vec::new());
     };
@@ -87,7 +87,7 @@ fn binary_package_names(ws: &dyn FixerWorkspace) -> Result<Vec<String>, FixerErr
 
 // Upgrade to debhelper 10
 fn upgrade_to_debhelper_10(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     actions: &mut Vec<Action>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
@@ -110,7 +110,7 @@ fn upgrade_to_debhelper_10(
 
 // Upgrade to debhelper 11
 fn upgrade_to_debhelper_11(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     actions: &mut Vec<Action>,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
@@ -172,21 +172,21 @@ fn upgrade_to_debhelper_11(
 /// Lazily open debian/rules for in-memory mutation. Returns `None` if
 /// the file doesn't exist.
 fn get_rules<'a>(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rules_mf: &'a mut Option<Makefile>,
 ) -> Result<Option<&'a mut Makefile>, FixerError> {
     if rules_mf.is_none() {
         match ws.parsed_rules() {
             Ok(mf) => *rules_mf = Some(mf),
-            Err(FixerError::NoChanges) => return Ok(None),
-            Err(e) => return Err(e),
+            Err(debian_workspace::Error::NotFound) => return Ok(None),
+            Err(e) => return Err(e.into()),
         }
     }
     Ok(rules_mf.as_mut())
 }
 
 fn upgrade_to_installsystemd(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
@@ -244,7 +244,7 @@ fn upgrade_to_installsystemd(
 }
 
 // Upgrade to debhelper 12
-fn uses_libexecdir(ws: &dyn FixerWorkspace) -> bool {
+fn uses_libexecdir(ws: &dyn Workspace) -> bool {
     for name in &["configure.ac", "configure.in", "Makefile.am", "meson.build"] {
         if let Ok(Some(bytes)) = ws.read_file(Path::new(name)) {
             if let Ok(content) = std::str::from_utf8(&bytes) {
@@ -258,7 +258,7 @@ fn uses_libexecdir(ws: &dyn FixerWorkspace) -> bool {
 }
 
 fn upgrade_to_debhelper_12(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     base_path: &Path,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
@@ -342,7 +342,7 @@ fn upgrade_to_debhelper_12(
 }
 
 fn update_rules_for_compat_12(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     base_path: &Path,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
@@ -610,7 +610,7 @@ fn fix_dh_argument_order(line: &str) -> String {
 
 // Upgrade to debhelper 13
 fn upgrade_to_debhelper_13(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     actions: &mut Vec<Action>,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
@@ -652,7 +652,7 @@ fn upgrade_to_debhelper_13(
 }
 
 fn drop_dh_missing_fail(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
@@ -722,7 +722,7 @@ fn drop_dh_missing_fail(
 }
 
 fn remove_nocheck_wrapper(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rules_mf: &mut Option<Makefile>,
     transforms: &mut Transformations,
 ) -> Result<(), FixerError> {
@@ -756,7 +756,7 @@ fn remove_nocheck_wrapper(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // detect_debhelper_buildsystem invokes `dh_assistant` with a
@@ -988,37 +988,37 @@ declare_detector! {
     name: "package-uses-deprecated-debhelper-compat-version",
     tags: ["package-uses-deprecated-debhelper-compat-version", "package-uses-old-debhelper-compat-version"],
     triggers: [
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
-        crate::workspace::Trigger::File("configure"),
-        crate::workspace::Trigger::File("configure.ac"),
-        crate::workspace::Trigger::File("configure.in"),
-        crate::workspace::Trigger::File("Makefile.am"),
-        crate::workspace::Trigger::File("meson.build"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::File("configure"),
+        debian_workspace::Trigger::File("configure.ac"),
+        debian_workspace::Trigger::File("configure.in"),
+        debian_workspace::Trigger::File("Makefile.am"),
+        debian_workspace::Trigger::File("meson.build"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Package",
         },
-        crate::workspace::Trigger::Glob("debian/*.upstart"),
-        crate::workspace::Trigger::Glob("debian/*.tmpfile"),
-        crate::workspace::Trigger::File("debian/tmpfile"),
-        crate::workspace::Trigger::Glob("debian/*.maintscript"),
+        debian_workspace::Trigger::Glob("debian/*.upstart"),
+        debian_workspace::Trigger::Glob("debian/*.tmpfile"),
+        debian_workspace::Trigger::File("debian/tmpfile"),
+        debian_workspace::Trigger::Glob("debian/*.maintscript"),
     ],
-    cost: crate::workspace::DetectorCost::Filesystem,
+    cost: crate::detector::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version as DebVersion;
     use std::fs;
     use tempfile::TempDir;
@@ -1112,9 +1112,9 @@ mod tests {
         ));
     }
 
-    fn make_ws(base_path: &Path) -> crate::workspace::TreeFixerWorkspace {
+    fn make_ws(base_path: &Path) -> debian_workspace::fs_workspace::FsWorkspace {
         let v: DebVersion = "1.0-1".parse().unwrap();
-        crate::workspace::TreeFixerWorkspace::new(base_path.to_path_buf(), "test", v)
+        debian_workspace::fs_workspace::FsWorkspace::new(base_path.to_path_buf(), "test", v)
     }
 
     #[test]

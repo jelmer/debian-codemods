@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -225,7 +225,7 @@ fn drop_empty_documents(original: &str) -> Result<EmptyDocsOutcome, FixerError> 
 /// same single rewrite. We therefore route them all to the same action,
 /// which is just the file write.
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let metadata_rel = PathBuf::from("debian/upstream/metadata");
@@ -367,7 +367,7 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "upstream-metadata-invalid",
     tags: [],
-    triggers: [crate::workspace::Trigger::File("debian/upstream/metadata")],
+    triggers: [debian_workspace::Trigger::File("debian/upstream/metadata")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -375,7 +375,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

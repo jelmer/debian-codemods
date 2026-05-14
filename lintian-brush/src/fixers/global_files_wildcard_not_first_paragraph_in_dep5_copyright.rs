@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use debian_copyright::{pattern_depth, pattern_sort_key};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -11,7 +11,7 @@ const MARKER_WILDCARD: char = 'W';
 const MARKER_OUTOFORDER: char = 'O';
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
@@ -139,7 +139,7 @@ declare_detector! {
     name: "global-files-wildcard-not-first-paragraph-in-dep5-copyright",
     tags: ["global-files-wildcard-not-first-paragraph-in-dep5-copyright", "globbing-patterns-out-of-order"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/copyright",
             paragraph_key: "Files",
             field: "Files",
@@ -152,7 +152,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

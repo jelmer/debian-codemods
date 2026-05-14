@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 mod decopy {
@@ -227,7 +227,7 @@ mod decopy {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
@@ -294,7 +294,7 @@ declare_detector! {
     name: "no-copyright-file",
     tags: ["no-copyright-file"],
     triggers: [
-        crate::workspace::Trigger::File("debian/copyright"),
+        debian_workspace::Trigger::File("debian/copyright"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }

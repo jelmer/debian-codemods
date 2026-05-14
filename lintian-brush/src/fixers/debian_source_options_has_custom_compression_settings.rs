@@ -1,14 +1,14 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 const SEP: char = '\t';
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let options_rel = PathBuf::from("debian/source/options");
@@ -104,7 +104,7 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "debian-source-options-has-custom-compression-settings",
     tags: ["custom-compression-in-debian-source-options"],
-    triggers: [crate::workspace::Trigger::File("debian/source/options")],
+    triggers: [debian_workspace::Trigger::File("debian/source/options")],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -112,7 +112,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

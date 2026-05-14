@@ -1,21 +1,21 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use chrono::Datelike;
+use debian_workspace::Workspace;
 use rowan::ast::AstNode;
 use std::path::PathBuf;
 
 const CHANGELOG_REL: &str = "debian/changelog";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut diagnostics = Vec::new();
@@ -102,8 +102,8 @@ pub fn detect(
 declare_detector! {
     name: "debian-changelog-has-wrong-day-of-week",
     tags: ["debian-changelog-has-wrong-day-of-week"],
-    triggers: [crate::workspace::Trigger::Changelog(
-        crate::workspace::ChangelogAspect::Timestamp,
+    triggers: [debian_workspace::Trigger::Changelog(
+        debian_workspace::ChangelogAspect::Timestamp,
     )],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -111,8 +111,9 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -124,7 +125,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = TreeFixerWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(base, "test", "1.0".parse().unwrap());
         detect(&ws, &FixerPreferences::default())
     }
 

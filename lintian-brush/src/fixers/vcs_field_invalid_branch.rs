@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::vcs::ParsedVcs;
+use debian_workspace::Workspace;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::path::PathBuf;
@@ -112,7 +112,7 @@ fn get_default_branch(url: &str, branch: Option<&str>) -> Result<Option<String>,
 }
 
 pub async fn detect_async(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if preferences
@@ -138,7 +138,6 @@ pub async fn detect_async(
     } else {
         let control = match ws.parsed_control() {
             Ok(c) => c,
-            Err(FixerError::NoChanges) => return Ok(Vec::new()),
             Err(_) => return Ok(Vec::new()),
         };
         control.source().and_then(|s| s.as_deb822().get("Vcs-Git"))
@@ -239,7 +238,7 @@ pub async fn detect_async(
 }
 
 fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rt = tokio::runtime::Runtime::new()
@@ -251,30 +250,30 @@ declare_detector! {
     name: "vcs-field-invalid-branch",
     tags: ["vcs-field-invalid-branch"],
     triggers: [
-        crate::workspace::Trigger::DebcargoField("source.vcs_git"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::DebcargoField("source.vcs_git"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Vcs-Git",
         },
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::TreeFixerWorkspace;
     use crate::Version;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use std::str::FromStr;
     use tempfile::TempDir;
 
-    fn make_ws(base: &Path) -> TreeFixerWorkspace {
+    fn make_ws(base: &Path) -> FsWorkspace {
         let v = Version::from_str("1.0-1").unwrap();
-        TreeFixerWorkspace::new(base.to_path_buf(), "test", v)
+        FsWorkspace::new(base.to_path_buf(), "test", v)
     }
 
     #[test]

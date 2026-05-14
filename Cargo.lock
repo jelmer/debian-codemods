@@ -1085,6 +1085,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "debian-workspace"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "deb822-lossless",
+ "debian-analyzer",
+ "debian-changelog",
+ "debian-control",
+ "debian-copyright",
+ "debian-watch",
+ "debversion",
+ "dep3",
+ "desktop-edit",
+ "inventory",
+ "lintian-overrides",
+ "makefile-lossless",
+ "serde",
+ "serde_json",
+ "systemd-unit-edit",
+ "tempfile",
+ "toml_edit",
+ "tracing",
+ "url",
+ "yaml-edit",
+]
+
+[[package]]
 name = "debianize"
 version = "0.163.0"
 dependencies = [
@@ -2893,6 +2920,7 @@ dependencies = [
  "debian-control",
  "debian-copyright",
  "debian-watch",
+ "debian-workspace",
  "debversion",
  "dep3",
  "desktop-edit",
@@ -3203,6 +3231,7 @@ dependencies = [
  "debian-analyzer",
  "debian-changelog",
  "debian-control",
+ "debian-workspace",
  "debversion",
  "env_logger",
  "lazy-regex",

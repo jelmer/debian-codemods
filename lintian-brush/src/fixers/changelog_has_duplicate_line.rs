@@ -1,20 +1,20 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ChangelogAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use debian_changelog::iter_changes_by_author;
+use debian_workspace::Workspace;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let changelog_rel = PathBuf::from("debian/changelog");
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(first_entry) = changelog.iter().next() else {
@@ -71,8 +71,8 @@ pub fn detect(
 declare_detector! {
     name: "changelog-has-duplicate-line",
     tags: [],
-    triggers: [crate::workspace::Trigger::Changelog(
-        crate::workspace::ChangelogAspect::Body,
+    triggers: [debian_workspace::Trigger::Changelog(
+        debian_workspace::ChangelogAspect::Body,
     )],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -80,7 +80,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

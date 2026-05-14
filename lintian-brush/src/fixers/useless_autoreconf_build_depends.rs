@@ -1,12 +1,12 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::rules::dh_invoke_drop_with;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Compat 10 is required for `dh` to autoreconf by default. If the
@@ -20,8 +20,8 @@ pub fn detect(
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut actions: Vec<Action> = Vec::new();
@@ -81,8 +81,8 @@ declare_detector! {
     name: "useless-autoreconf-build-depends",
     tags: ["useless-autoreconf-build-depends"],
     triggers: [
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
@@ -94,7 +94,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

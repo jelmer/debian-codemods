@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction, TextRange};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const OLD_REL: &str = "debian/tests/control.autodep8";
@@ -11,7 +11,7 @@ const RENAME_TAG: char = 'R';
 const MERGE_TAG: char = 'M';
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let old_rel = PathBuf::from(OLD_REL);
@@ -111,22 +111,22 @@ declare_detector! {
     name: "debian-tests-control-autodep8-is-obsolete",
     tags: ["debian-tests-control-autodep8-is-obsolete", "debian-tests-control-and-control-autodep8"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control.autodep8",
             paragraph_key: "Tests",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control.autodep8",
             paragraph_key: "Test-Command",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Tests",
             field: "*",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Test-Command",
             field: "*",
@@ -139,7 +139,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

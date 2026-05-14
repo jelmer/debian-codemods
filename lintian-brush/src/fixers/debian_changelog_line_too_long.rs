@@ -1,14 +1,14 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_changelog::textwrap::try_rewrap_changes;
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const WIDTH: usize = 80;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let package = ws.package().unwrap_or("").to_string();
@@ -22,8 +22,8 @@ pub fn detect(
     let changelog_rel = PathBuf::from("debian/changelog");
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let all_changes = debian_changelog::iter_changes_by_author(&changelog);
@@ -144,8 +144,8 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "debian-changelog-line-too-long",
     tags: ["debian-changelog-line-too-long"],
-    triggers: [crate::workspace::Trigger::Changelog(
-        crate::workspace::ChangelogAspect::Body,
+    triggers: [debian_workspace::Trigger::Changelog(
+        debian_workspace::ChangelogAspect::Body,
     )],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -154,7 +154,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

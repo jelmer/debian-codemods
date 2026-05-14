@@ -1,20 +1,20 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 const OBSOLETE_WATCH_FILE_FORMAT: u32 = 2;
 const WATCH_FILE_LATEST_VERSION: u32 = 5;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
     let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
     let version = watch_file.version();
@@ -65,8 +65,8 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-old-format",
     tags: ["older-debian-watch-file-standard", "obsolete-debian-watch-file-standard"],
-    triggers: [crate::workspace::Trigger::Watch(
-        crate::workspace::WatchAspect::Version,
+    triggers: [debian_workspace::Trigger::Watch(
+        debian_workspace::WatchAspect::Version,
     )],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -74,7 +74,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

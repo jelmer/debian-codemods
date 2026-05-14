@@ -20,12 +20,12 @@ use debian_analyzer::{
 };
 use debian_changelog::ChangeLog;
 
-/// Apply [`diagnostic::Action`]s to a working tree.
-pub mod appliers;
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
 /// Debian helper functions and types
 pub mod debhelper;
+/// Detector interface
+pub mod detector;
 /// Diagnostic and action types for the detector/applier split.
 pub mod diagnostic;
 #[macro_use]
@@ -43,11 +43,6 @@ pub mod upstream_metadata;
 pub mod vcs;
 /// Debian watch file handling
 pub mod watch;
-/// `FixerWorkspace`: abstraction over a package's source layout, used by
-/// detectors to read files (and by tree-mode fixers to write them) without
-/// baking in a particular host.
-pub mod workspace;
-
 // Re-export commonly used types for convenience
 pub use debian_analyzer::Certainty;
 pub use debversion::Version;
@@ -862,6 +857,19 @@ impl From<Error> for FixerError {
     }
 }
 
+impl From<debian_workspace::Error> for FixerError {
+    fn from(e: debian_workspace::Error) -> Self {
+        match e {
+            debian_workspace::Error::NotFound => FixerError::NoChanges,
+            debian_workspace::Error::Io(e) => FixerError::Io(e),
+            debian_workspace::Error::Parse(msg) | debian_workspace::Error::Other(msg) => {
+                FixerError::Other(msg)
+            }
+            debian_workspace::Error::MissingDependency(dep) => FixerError::MissingDependency(dep),
+        }
+    }
+}
+
 impl From<OutputParseError> for FixerError {
     fn from(e: OutputParseError) -> Self {
         FixerError::OutputParseError(e)
@@ -925,8 +933,8 @@ impl std::error::Error for FixerError {}
 
 /// Return a list of all lintian fixers.
 ///
-/// Each registered [`Detector`](crate::workspace::Detector) is wrapped in
-/// a [`DetectorAdapter`](crate::workspace::DetectorAdapter) so callers see
+/// Each registered [`Detector`](crate::detector::Detector) is wrapped in
+/// a [`DetectorAdapter`](crate::detector::DetectorAdapter) so callers see
 /// the [`Fixer`] (apply-driving) shape.
 pub fn all_lintian_fixers() -> impl Iterator<Item = Box<dyn Fixer>> {
     builtin_fixers::get_builtin_fixers().into_iter()

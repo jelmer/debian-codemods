@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, ChangelogAction, Diagnostic};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use lazy_regex::{regex, Regex};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -50,14 +50,14 @@ const TAG_COLON: char = 'C';
 const TAG_TYPO: char = 'T';
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let changelog_rel = PathBuf::from("debian/changelog");
     let changelog = match ws.parsed_changelog() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let net_access = preferences.net_access.unwrap_or(false);
@@ -222,10 +222,10 @@ fn describe_aggregate(fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) -
 declare_detector! {
     name: "possible-missing-colon-in-closes",
     tags: ["possible-missing-colon-in-closes", "misspelled-closes-bug"],
-    triggers: [crate::workspace::Trigger::Changelog(
-        crate::workspace::ChangelogAspect::Body,
+    triggers: [debian_workspace::Trigger::Changelog(
+        debian_workspace::ChangelogAspect::Body,
     )],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }
@@ -233,7 +233,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::path::Path;

@@ -1,10 +1,10 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, MaintscriptAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
 use debian_analyzer::maintscripts::{Entry, Maintscript};
 use debian_changelog::ChangeLog;
+use debian_workspace::Workspace;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use std::str::FromStr;
 // If there is no information from the upgrade release, default to 5 years.
 const DEFAULT_AGE_THRESHOLD_DAYS: i64 = 5 * 365;
 
-fn find_maintscript_files(ws: &dyn FixerWorkspace) -> Result<Vec<String>, FixerError> {
+fn find_maintscript_files(ws: &dyn Workspace) -> Result<Vec<String>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
         Some(e) => e,
         None => return Ok(vec![]),
@@ -48,9 +48,7 @@ fn get_date_threshold(upgrade_release: Option<&str>) -> Result<NaiveDate, FixerE
     Ok(threshold)
 }
 
-fn parse_changelog_dates(
-    ws: &dyn FixerWorkspace,
-) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
+fn parse_changelog_dates(ws: &dyn Workspace) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
     let bytes = match ws.read_file(Path::new("debian/changelog"))? {
         Some(b) => b,
         None => return Ok(vec![]),
@@ -105,7 +103,7 @@ struct RemovedEntry {
 
 /// Parse a maintscript file and return the entries that should be removed.
 fn obsolete_maintscript_entries<F>(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     rel: &Path,
     should_remove: F,
 ) -> Result<Vec<RemovedEntry>, FixerError>
@@ -160,7 +158,7 @@ fn format_removed_entry_detail(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let maintscripts = find_maintscript_files(ws)?;
@@ -209,12 +207,12 @@ declare_detector! {
     name: "ancient-maintscript-entry",
     tags: [],
     triggers: [
-        crate::workspace::Trigger::File("debian/maintscript"),
-        crate::workspace::Trigger::Glob("debian/*.maintscript"),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Timestamp),
+        debian_workspace::Trigger::File("debian/maintscript"),
+        debian_workspace::Trigger::Glob("debian/*.maintscript"),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Timestamp),
     ],
-    cost: crate::workspace::DetectorCost::Filesystem,
+    cost: crate::detector::DetectorCost::Filesystem,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

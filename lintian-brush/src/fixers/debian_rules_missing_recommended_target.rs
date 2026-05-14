@@ -1,16 +1,16 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use makefile_lossless::{Makefile, Parse};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-fn get_archs(ws: &dyn FixerWorkspace) -> Result<HashSet<String>, FixerError> {
+fn get_archs(ws: &dyn Workspace) -> Result<HashSet<String>, FixerError> {
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(HashSet::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(HashSet::new()),
+        Err(e) => return Err(e.into()),
     };
     Ok(control
         .binaries()
@@ -18,7 +18,7 @@ fn get_archs(ws: &dyn FixerWorkspace) -> Result<HashSet<String>, FixerError> {
         .collect())
 }
 
-fn check_cdbs_ws(ws: &dyn FixerWorkspace) -> Result<bool, FixerError> {
+fn check_cdbs_ws(ws: &dyn Workspace) -> Result<bool, FixerError> {
     let Some(content) = ws.read_file(Path::new("debian/rules"))? else {
         return Ok(false);
     };
@@ -28,7 +28,7 @@ fn check_cdbs_ws(ws: &dyn FixerWorkspace) -> Result<bool, FixerError> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
@@ -153,8 +153,8 @@ declare_detector! {
     name: "debian-rules-missing-recommended-target",
     tags: ["debian-rules-missing-recommended-target"],
     triggers: [
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Architecture",
@@ -166,7 +166,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let Some(current_version) = ws.current_version() else {
@@ -49,8 +49,8 @@ declare_detector! {
     name: "upstream-metadata-in-native-source",
     tags: ["upstream-metadata-in-native-source"],
     triggers: [
-        crate::workspace::Trigger::UpstreamMetadataField("*"),
-        crate::workspace::Trigger::Changelog(crate::workspace::ChangelogAspect::Version),
+        debian_workspace::Trigger::UpstreamMetadataField("*"),
+        debian_workspace::Trigger::Changelog(debian_workspace::ChangelogAspect::Version),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -58,7 +58,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use std::str::FromStr;

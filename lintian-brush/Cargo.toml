@@ -22,6 +22,7 @@ clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", 
 lazy-regex = { workspace = true }
 debversion = { workspace = true }
 debian-copyright = { workspace = true }
+debian-workspace = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
 tracing = "0.1"

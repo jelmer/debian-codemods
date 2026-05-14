@@ -1,0 +1,32 @@
+[package]
+name = "debian-workspace"
+edition = "2024"
+version = "0.1.0"
+
+[lib]
+
+[dependencies]
+debversion = { workspace = true }
+debian-changelog = { workspace = true }
+debian-control = { workspace = true }
+debian-copyright = { workspace = true }
+debian-watch = { workspace = true }
+makefile-lossless = { workspace = true }
+toml_edit = { workspace = true }
+yaml-edit = { workspace = true }
+deb822-lossless = { workspace = true }
+tracing = "0.1"
+inventory = "0.3"
+chrono = { workspace = true }
+tempfile = { workspace = true }
+url = { version = "2" }
+lintian-overrides.workspace = true
+debian-analyzer = { workspace = true }
+dep3 = "0.2.0"
+systemd-unit-edit = { workspace = true }
+desktop-edit = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }
