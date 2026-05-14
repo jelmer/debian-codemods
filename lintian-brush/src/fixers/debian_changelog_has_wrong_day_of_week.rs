@@ -125,7 +125,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = FsWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(base, Some("test".into()), Some("1.0".parse().unwrap()));
         detect(&ws, &FixerPreferences::default())
     }
 
