@@ -230,6 +230,17 @@ fn main() -> Result<(), i32> {
         Err(scrub_obsolete::ScrubObsoleteError::IoError(e)) => {
             svp.report_fatal("io-error", &format!("I/O error: {}", e), None, None);
         }
+        Err(scrub_obsolete::ScrubObsoleteError::Workspace(e)) => {
+            svp.report_fatal(
+                "workspace-error",
+                &format!("Workspace error: {}", e),
+                None,
+                None,
+            );
+        }
+        Err(scrub_obsolete::ScrubObsoleteError::Other(e)) => {
+            svp.report_fatal("other-error", &format!("Error: {}", e), None, None);
+        }
     };
 
     std::mem::drop(lock_write);
