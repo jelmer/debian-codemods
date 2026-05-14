@@ -5,7 +5,6 @@ use deb822_lossless::Deb822;
 use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 /// Extract license names from a synopsis. Returns a list of licenses, as
 /// a list of possible names per license (handles `X with Y exception`).
@@ -130,20 +129,12 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let bytes = match ws.read_file(&copyright_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
-    };
-    let Ok(content) = std::str::from_utf8(&bytes) else {
-        return Ok(Vec::new());
-    };
-    if !content.starts_with("Format:") {
-        return Ok(Vec::new());
-    }
-    let deb822 = match Deb822::from_str(&content) {
-        Ok(d) => d,
+    let copyright = match ws.parsed_copyright() {
+        Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
+    let deb822 = copyright.as_deb822();
 
     let defined = collect_defined_licenses(&deb822);
     let used = collect_used_licenses(&deb822, &defined);
