@@ -3,8 +3,10 @@ use debian_analyzer::benfile::{Comparison, Expr};
 use debian_analyzer::transition::Transition;
 use debian_workspace::action::{Action, Deb822Action, ParagraphSelector};
 use debian_workspace::workspace::Workspace;
+use debversion::Version;
 use regex::Regex;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 fn find_expr_by_field_name<'a>(expr: &'a Expr, field_name: &'a str) -> Option<&'a Expr> {
     let exprs = match expr {
@@ -29,8 +31,16 @@ enum Match {
     Comparison(Comparison, String),
 }
 
-fn compare(_operator: &Comparison, _value: &str, _other: &str) -> bool {
-    todo!()
+fn compare(operator: &Comparison, value: &str, other: &str) -> bool {
+    let lhs = Version::from_str(value).expect("invalid Debian version on left-hand side");
+    let rhs = Version::from_str(other).expect("invalid Debian version on right-hand side");
+    match operator {
+        Comparison::LessThan | Comparison::MuchLessThan => lhs < rhs,
+        Comparison::LessOrEqual => lhs <= rhs,
+        Comparison::GreaterThan | Comparison::MuchGreaterThan => lhs > rhs,
+        Comparison::GreaterOrEqual => lhs >= rhs,
+        Comparison::Equal => lhs == rhs,
+    }
 }
 
 impl Match {
@@ -326,6 +336,66 @@ mod tests {
         ))]);
         let result = find_expr_by_field_name(&expr, "Nonexistent");
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_compare_less_than() {
+        assert!(compare(&Comparison::LessThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::LessThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::LessThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_much_less_than() {
+        assert!(compare(&Comparison::MuchLessThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::MuchLessThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_less_or_equal() {
+        assert!(compare(&Comparison::LessOrEqual, "1.0", "2.0"));
+        assert!(compare(&Comparison::LessOrEqual, "1.0", "1.0"));
+        assert!(!compare(&Comparison::LessOrEqual, "2.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_greater_than() {
+        assert!(compare(&Comparison::GreaterThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::GreaterThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::GreaterThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_much_greater_than() {
+        assert!(compare(&Comparison::MuchGreaterThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::MuchGreaterThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_greater_or_equal() {
+        assert!(compare(&Comparison::GreaterOrEqual, "2.0", "1.0"));
+        assert!(compare(&Comparison::GreaterOrEqual, "1.0", "1.0"));
+        assert!(!compare(&Comparison::GreaterOrEqual, "1.0", "2.0"));
+    }
+
+    #[test]
+    fn test_compare_equal() {
+        assert!(compare(&Comparison::Equal, "1.0", "1.0"));
+        assert!(!compare(&Comparison::Equal, "1.0", "2.0"));
+    }
+
+    #[test]
+    fn test_compare_debian_version_epoch() {
+        assert!(compare(&Comparison::LessThan, "1.0", "1:0.1"));
+        assert!(compare(&Comparison::GreaterThan, "1:0.1", "2.0"));
+    }
+
+    #[test]
+    fn test_match_comparison_applies() {
+        let m = Match::Comparison(Comparison::GreaterOrEqual, "1.5".to_string());
+        assert!(m.applies("2.0"));
+        assert!(m.applies("1.5"));
+        assert!(!m.applies("1.0"));
     }
 
     #[test]
