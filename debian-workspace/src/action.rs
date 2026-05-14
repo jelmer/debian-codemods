@@ -1,3 +1,5 @@
+use debian_control::relations::VersionConstraint;
+use debversion::Version;
 use std::path::PathBuf;
 
 /// One self-consistent set of actions that fixes a [`Diagnostic`].
@@ -253,6 +255,24 @@ pub enum Deb822Action {
         field: String,
         /// Literal relation entry to ensure.
         entry: String,
+    },
+    /// Set the version constraint on every relation in `field` that names
+    /// `package`. Acts per-relation, so the constraint is replaced without
+    /// removing the package from the field or affecting any alternatives in
+    /// the same entry. Passing `None` drops the constraint entirely. A no-op
+    /// if the package isn't named in `field` or every matching relation
+    /// already has the requested constraint.
+    SetRelationVersionConstraint {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Depends`).
+        field: String,
+        /// Package name to set the version constraint on.
+        package: String,
+        /// New constraint, or `None` to strip the constraint entirely.
+        constraint: Option<(VersionConstraint, Version)>,
     },
     /// Move a relation entry between two fields of the same paragraph,
     /// preserving its version constraint and any alternatives. The entry
