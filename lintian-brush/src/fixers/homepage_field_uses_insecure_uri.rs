@@ -343,7 +343,7 @@ mod tests {
         )
         .unwrap();
 
-        let ws = FsWorkspace::new(tmp.path(), "foo", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(tmp.path(), Some("foo".into()), Some("1.0".parse().unwrap()));
         let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()

@@ -83,7 +83,7 @@ mod tests {
 
     fn run_detect(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let ws = FsWorkspace::new(base, "test", version);
+        let ws = FsWorkspace::new(base, Some("test".into()), Some(version));
         detect(&ws, &FixerPreferences::default())
     }
 

@@ -287,7 +287,7 @@ mod tests {
         unused_overrides: &[UnusedOverride],
     ) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let ws = FsWorkspace::new(base.to_path_buf(), "test", version);
+        let ws = FsWorkspace::new(base.to_path_buf(), Some("test".into()), Some(version));
         let diagnostics = detect_with_unused_overrides(&ws, unused_overrides)?;
         apply_diagnostics(base, &diagnostics, &FixerPreferences::default())
     }
