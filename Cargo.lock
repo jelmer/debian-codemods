@@ -925,12 +925,14 @@ dependencies = [
  "deb822-lossless",
  "debian-analyzer",
  "debian-control",
+ "debian-workspace",
  "env_logger",
  "lazy-regex",
  "lazy_static",
  "log",
  "regex",
  "svp-client",
+ "tempfile",
 ]
 
 [[package]]
