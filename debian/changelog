@@ -10,8 +10,9 @@ debian-codemods (0.178) UNRELEASED; urgency=medium
   * Add fixer for bugs-field-does-not-refer-to-debian-infrastructure.
   * Add fixer for build-depends-on-python-sphinx-only.
   * Add fixer for depends-on-python-minimal.
+  * debcargo.toml: Suggest setting collapse_features.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 May 2026 16:45:35 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 May 2026 15:58:10 +0100
 
 debian-codemods (0.177) unstable; urgency=medium
 

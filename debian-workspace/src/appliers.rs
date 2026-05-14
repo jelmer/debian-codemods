@@ -136,7 +136,8 @@ fn action_file(action: &Action) -> &Path {
             MaintscriptAction::DropEntry { file, .. } => file,
         },
         Action::Debcargo(a) => match a {
-            DebcargoAction::SetSourceField { file, .. } => file,
+            DebcargoAction::SetSourceField { file, .. }
+            | DebcargoAction::SetTopLevelBool { file, .. } => file,
         },
         Action::RunCommand(a) => match a {
             RunCommandAction::Run { scope, .. } => scope,
@@ -2995,6 +2996,18 @@ fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 };
                 if changed {
                     source.insert(field.as_str(), new);
+                    any_change = true;
+                }
+            }
+            DebcargoAction::SetTopLevelBool { field, value, .. } => {
+                use toml_edit::value as toml_value;
+                let new = toml_value(*value);
+                let changed = match doc.get(field.as_str()) {
+                    Some(existing) => existing.to_string() != new.to_string(),
+                    None => true,
+                };
+                if changed {
+                    doc.insert(field.as_str(), new);
                     any_change = true;
                 }
             }
