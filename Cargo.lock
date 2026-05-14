@@ -926,6 +926,7 @@ dependencies = [
  "debian-analyzer",
  "debian-control",
  "debian-workspace",
+ "debversion",
  "env_logger",
  "lazy-regex",
  "lazy_static",

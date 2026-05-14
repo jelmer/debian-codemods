@@ -13,6 +13,7 @@ deb822-lossless.workspace = true
 debian-analyzer = { workspace = true, features = ["svp"] }
 debian-control.workspace = true
 debian-workspace.workspace = true
+debversion.workspace = true
 env_logger = { workspace = true, optional = true }
 lazy-regex.workspace = true
 lazy_static.workspace = true
