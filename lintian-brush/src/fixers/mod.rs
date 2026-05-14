@@ -20,6 +20,7 @@ mod copyright_missing_upstream_info;
 mod copyright_refers_to_old_directory;
 mod copyright_refers_to_symlink_license;
 mod crlf_line_endings;
+mod debcargo_collapse_features;
 mod debhelper_but_no_misc_depends;
 mod debhelper_compat_wrong_field;
 mod debhelper_tools_from_autotools_dev_are_deprecated;
