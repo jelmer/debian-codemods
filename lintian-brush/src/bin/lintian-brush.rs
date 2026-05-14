@@ -345,10 +345,10 @@ fn main() -> Result<(), i32> {
 
     // Build the detector list once, filtered by --fixers/--exclude. The
     // CLI driver then wraps each surviving detector in a DetectorAdapter.
-    let detectors: Vec<Box<dyn lintian_brush::workspace::Detector>> = {
-        let mut all: Vec<_> = lintian_brush::workspace::iter_detectors().collect();
+    let detectors: Vec<Box<dyn lintian_brush::detector::Detector>> = {
+        let mut all: Vec<_> = lintian_brush::detector::iter_detectors().collect();
         if args.fixers.quick {
-            all.retain(|d| d.cost() < lintian_brush::workspace::DetectorCost::Network);
+            all.retain(|d| d.cost() < lintian_brush::detector::DetectorCost::Network);
         }
         if args.fixers.fixers.is_some() || args.fixers.exclude.is_some() {
             let include = args
@@ -361,13 +361,13 @@ fn main() -> Result<(), i32> {
                 .exclude
                 .as_ref()
                 .map(|fs| fs.iter().map(|f| f.as_str()).collect::<Vec<_>>());
-            match lintian_brush::workspace::select_detectors(
+            match lintian_brush::detector::select_detectors(
                 all,
                 include.as_deref(),
                 exclude.as_deref(),
             ) {
                 Ok(d) => d,
-                Err(lintian_brush::workspace::UnknownDetector(f)) => {
+                Err(lintian_brush::detector::UnknownDetector(f)) => {
                     tracing::error!("Unknown fixer specified: {}", f);
                     std::process::exit(1);
                 }
@@ -499,7 +499,7 @@ fn main() -> Result<(), i32> {
         let fixers: Vec<Box<dyn lintian_brush::Fixer>> = detectors
             .into_iter()
             .map(|d| {
-                Box::new(lintian_brush::workspace::DetectorAdapter::new(d))
+                Box::new(lintian_brush::detector::DetectorAdapter::new(d))
                     as Box<dyn lintian_brush::Fixer>
             })
             .collect();
@@ -841,18 +841,18 @@ fn main() -> Result<(), i32> {
     Ok(())
 }
 
-/// Build a [`TreeFixerWorkspace`] + [`FixerPreferences`] pair for the
+/// Build a [`FsWorkspace`] + [`FixerPreferences`] pair for the
 /// detector-only entry points (`--detect-only`, `--interactive`). Falls
 /// back to a placeholder package / version when the changelog isn't
 /// readable so the entry points work against partial trees.
 fn detector_runtime(
     args: &Args,
 ) -> (
-    lintian_brush::workspace::TreeFixerWorkspace,
+    debian_workspace::fs_workspace::FsWorkspace,
     lintian_brush::FixerPreferences,
 ) {
     use debian_changelog::ChangeLog;
-    use lintian_brush::workspace::TreeFixerWorkspace;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use lintian_brush::FixerPreferences;
 
     let base_path = args.output.directory.clone();
@@ -885,7 +885,7 @@ fn detector_runtime(
         ..Default::default()
     };
 
-    let ws = TreeFixerWorkspace::new(base_path, package, version);
+    let ws = FsWorkspace::new(base_path, package, version);
     (ws, preferences)
 }
 
@@ -893,7 +893,7 @@ fn detector_runtime(
 /// the diagnostics they emit. No fixes are applied.
 fn run_detect_only(
     args: &Args,
-    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
+    detectors: Vec<Box<dyn lintian_brush::detector::Detector>>,
 ) -> Result<(), i32> {
     let (ws, preferences) = detector_runtime(args);
 
@@ -932,7 +932,7 @@ fn run_detect_only(
 /// regular `lintian-brush` flow.
 fn run_interactive(
     args: &Args,
-    detectors: Vec<Box<dyn lintian_brush::workspace::Detector>>,
+    detectors: Vec<Box<dyn lintian_brush::detector::Detector>>,
 ) -> Result<(), i32> {
     use std::io::{BufRead, Write};
 
@@ -1031,7 +1031,7 @@ fn run_interactive(
                 continue;
             }
             let plan = diag.plans[choice - 1].clone();
-            match lintian_brush::appliers::apply_actions(&args.output.directory, &plan.actions) {
+            match debian_workspace::appliers::apply_actions(&args.output.directory, &plan.actions) {
                 Ok(_) => {
                     total_applied += 1;
                     all_actions.extend(plan.actions.iter().cloned());

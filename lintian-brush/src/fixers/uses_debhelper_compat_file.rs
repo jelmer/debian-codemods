@@ -1,16 +1,16 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::highest_stable_compat_level;
 use debian_analyzer::relations::is_relation_implied;
 use debian_control::lossless::Entry;
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 const FIELDS: &[&str] = &["Build-Depends", "Build-Depends-Indep", "Build-Depends-Arch"];
 
-fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
+fn check_cdbs(ws: &dyn Workspace) -> bool {
     let Ok(Some(content)) = ws.read_file(Path::new("debian/rules")) else {
         return false;
     };
@@ -20,7 +20,7 @@ fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let compat_rel = PathBuf::from("debian/compat");
@@ -48,8 +48,8 @@ pub fn detect(
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(source) = control.source() else {
         return Ok(Vec::new());
@@ -113,19 +113,19 @@ declare_detector! {
     name: "uses-debhelper-compat-file",
     tags: ["uses-debhelper-compat-file"],
     triggers: [
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::File("debian/rules"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends-Indep",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends-Arch",
@@ -137,7 +137,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

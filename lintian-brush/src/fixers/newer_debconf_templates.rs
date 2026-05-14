@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, RunCommandAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let po_dir_rel = PathBuf::from("debian/po");
@@ -67,7 +67,7 @@ declare_detector! {
     name: "newer-debconf-templates",
     tags: ["newer-debconf-templates"],
     triggers: [
-        crate::workspace::Trigger::Glob("debian/po/*"),
+        debian_workspace::Trigger::Glob("debian/po/*"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -75,7 +75,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

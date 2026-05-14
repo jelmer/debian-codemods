@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, DebcargoAction, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -109,7 +109,7 @@ fn check_urls_equivalent(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let net_access_allowed = preferences.net_access.unwrap_or(false);
@@ -146,8 +146,8 @@ pub fn detect(
 
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let Some(source) = control.source() else {
@@ -187,22 +187,23 @@ declare_detector! {
     name: "homepage-field-uses-insecure-uri",
     tags: ["homepage-field-uses-insecure-uri"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Homepage",
         },
-        crate::workspace::Trigger::DebcargoField("source.homepage"),
+        debian_workspace::Trigger::DebcargoField("source.homepage"),
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -342,7 +343,7 @@ mod tests {
         )
         .unwrap();
 
-        let ws = TreeFixerWorkspace::new(tmp.path(), "foo", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(tmp.path(), "foo", "1.0".parse().unwrap());
         let prefs = FixerPreferences {
             net_access: Some(false),
             ..Default::default()

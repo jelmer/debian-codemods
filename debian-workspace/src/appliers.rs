@@ -6,13 +6,13 @@
 //! detector that emits e.g. one `RemoveField` per binary plus a `SetField`
 //! on the source produces a single rewrite of `debian/control`.
 
-use crate::diagnostic::{
+use crate::Error as FixerError;
+use crate::action::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
     FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
     OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
     YamlAction, YamlPathComponent,
 };
-use crate::FixerError;
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -942,7 +942,7 @@ fn set_deb822_field(
     paragraph: &ParagraphSelector,
     field: &str,
     value: &str,
-    indent: Option<&crate::diagnostic::IndentPattern>,
+    indent: Option<&crate::action::IndentPattern>,
 ) -> Result<bool, FixerError> {
     // When `indent` is None we use Source::set / Binary::set on the typed
     // editor, which applies the canonical debian/control field ordering
@@ -2033,7 +2033,7 @@ fn navigate_yaml_mapping(
 }
 
 fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
-    use debian_changelog::{iter_changes_by_author, ChangeLog};
+    use debian_changelog::{ChangeLog, iter_changes_by_author};
 
     let abs = base.join(rel);
     let content = std::fs::read_to_string(&abs)?;
@@ -3160,7 +3160,7 @@ pub(crate) fn normalize_crlf(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostic::TextRange;
+    use crate::action::TextRange;
     use std::fs;
     use tempfile::TempDir;
 

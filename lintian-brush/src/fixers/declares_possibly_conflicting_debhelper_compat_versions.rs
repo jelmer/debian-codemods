@@ -1,11 +1,11 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, MakefileAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_control::lossless::Control;
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
-fn read_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
+fn read_compat(ws: &dyn Workspace) -> Result<Option<u32>, FixerError> {
     let Some(bytes) = ws.read_file(Path::new("debian/compat"))? else {
         return Ok(None);
     };
@@ -33,11 +33,11 @@ fn control_compat_level(control: &Control) -> Option<u32> {
     None
 }
 
-fn rules_dh_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
+fn rules_dh_compat(ws: &dyn Workspace) -> Result<Option<u32>, FixerError> {
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(None),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(None),
+        Err(e) => return Err(e.into()),
     };
     let result = makefile
         .find_variable("DH_COMPAT")
@@ -48,7 +48,7 @@ fn rules_dh_compat(ws: &dyn FixerWorkspace) -> Result<Option<u32>, FixerError> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let _control_rel = PathBuf::from("debian/control");
@@ -57,8 +57,8 @@ pub fn detect(
 
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let control_compat = control_compat_level(&control);
@@ -114,13 +114,13 @@ declare_detector! {
     name: "declares-possibly-conflicting-debhelper-compat-versions",
     tags: ["declares-possibly-conflicting-debhelper-compat-versions"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
         },
-        crate::workspace::Trigger::File("debian/compat"),
-        crate::workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/compat"),
+        debian_workspace::Trigger::File("debian/rules"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -128,7 +128,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

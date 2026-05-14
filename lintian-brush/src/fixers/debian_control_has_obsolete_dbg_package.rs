@@ -1,13 +1,13 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, MakefileAction, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
+use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 const MINIMUM_DEBHELPER_VERSION: &str = "9.20160114";
 
-fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
+fn check_cdbs(ws: &dyn Workspace) -> bool {
     let Ok(Some(content)) = ws.read_file(Path::new("debian/rules")) else {
         return false;
     };
@@ -17,14 +17,14 @@ fn check_cdbs(ws: &dyn FixerWorkspace) -> bool {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
     let Some(current_version) = ws.current_version() else {
         return Ok(Vec::new());
@@ -63,8 +63,8 @@ pub fn detect(
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let current_version_str = current_version.to_string();
@@ -172,12 +172,12 @@ declare_detector! {
     name: "debian-control-has-obsolete-dbg-package",
     tags: ["debian-control-has-obsolete-dbg-package"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Package",
         },
-        crate::workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/rules"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -185,7 +185,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

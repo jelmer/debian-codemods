@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use sequoia_openpgp::armor::{Kind, Writer};
 use sequoia_openpgp::cert::Cert;
 use sequoia_openpgp::parse::Parse;
@@ -49,7 +49,7 @@ fn merge_keys(key_data: Vec<Vec<u8>>) -> Result<String, Box<dyn std::error::Erro
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Walk other locations first then the main location, matching the
@@ -108,9 +108,9 @@ declare_detector! {
     name: "public-upstream-keys-in-multiple-locations",
     tags: ["public-upstream-keys-in-multiple-locations"],
     triggers: [
-        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
-        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
-        crate::workspace::Trigger::File("debian/upstream-signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream-signing-key.pgp"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -118,7 +118,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

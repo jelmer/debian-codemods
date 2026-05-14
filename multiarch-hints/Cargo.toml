@@ -16,6 +16,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
 debian-analyzer = { workspace = true, features = ["svp"] }
+debian-workspace = { workspace = true }
 debversion = { workspace = true, features = ["serde"] }
 lazy-regex = { workspace = true }
 breezyshim.workspace = true

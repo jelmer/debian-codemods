@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
+use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -29,7 +29,7 @@ fn read_obsolete_restrictions(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/tests/control");
@@ -164,12 +164,12 @@ declare_detector! {
     name: "obsolete-runtime-tests-restriction",
     tags: ["obsolete-runtime-tests-restriction"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Tests",
             field: "Restrictions",
         },
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/tests/control",
             paragraph_key: "Test-Command",
             field: "Restrictions",
@@ -182,7 +182,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::Version;
     use std::fs;
     use tempfile::TempDir;

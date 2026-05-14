@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use deb822_lossless::Deb822;
 use debian_analyzer::editor::check_generated_file;
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -92,7 +92,7 @@ fn generic_selector_for(paragraph: &deb822_lossless::Paragraph, idx: usize) -> P
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // check_generated_file walks template paths from disk; fall back
@@ -139,8 +139,8 @@ declare_detector! {
     tags: ["debian-control-has-unusual-field-spacing"],
     before: ["file-contains-trailing-whitespace"],
     triggers: [
-        crate::workspace::Trigger::File("debian/control"),
-        crate::workspace::Trigger::File("debian/control.in"),
+        debian_workspace::Trigger::File("debian/control"),
+        debian_workspace::Trigger::File("debian/control.in"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -148,7 +148,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

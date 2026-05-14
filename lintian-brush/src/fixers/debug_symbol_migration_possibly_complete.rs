@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_control::lossless::relations::Relations;
+use debian_workspace::Workspace;
 use regex::bytes::Regex;
 use std::path::PathBuf;
 
@@ -254,14 +254,14 @@ fn eliminate_dbgsym_migration(
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -380,8 +380,8 @@ fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], _actions: &[Action]) 
 declare_detector! {
     name: "debug-symbol-migration-possibly-complete",
     tags: ["debug-symbol-migration-possibly-complete"],
-    triggers: [crate::workspace::Trigger::File("debian/rules")],
-    cost: crate::workspace::DetectorCost::Network,
+    triggers: [debian_workspace::Trigger::File("debian/rules")],
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
 }

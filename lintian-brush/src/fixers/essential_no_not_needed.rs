@@ -1,17 +1,17 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &crate::FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control = match ws.parsed_control() {
         Ok(c) => c,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let control_rel = PathBuf::from("debian/control");
@@ -56,7 +56,7 @@ declare_detector! {
     name: "essential-no-not-needed",
     tags: ["essential-no-not-needed"],
     triggers: [
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Package",
             field: "Essential",
@@ -68,8 +68,9 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -82,7 +83,7 @@ mod tests {
 
     fn run_detect(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let ws = TreeFixerWorkspace::new(base, "test", version);
+        let ws = FsWorkspace::new(base, "test", version);
         detect(&ws, &FixerPreferences::default())
     }
 

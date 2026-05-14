@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 /// Old common-licenses paths that lintian flags, in priority order: the
@@ -12,7 +12,7 @@ const OLD_DIRS: &[&str] = &["usr/share/doc/copyright", "usr/doc/copyright"];
 const NEW_DIR: &str = "usr/share/common-licenses";
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
@@ -51,15 +51,16 @@ pub fn detect(
 declare_detector! {
     name: "copyright-refers-to-old-directory",
     tags: ["copyright-refers-to-old-directory"],
-    triggers: [crate::workspace::Trigger::File("debian/copyright")],
+    triggers: [debian_workspace::Trigger::File("debian/copyright")],
     detect: |ws, prefs| detect(ws, prefs),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::{DetectorAdapter, TreeFixerWorkspace};
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -71,7 +72,7 @@ mod tests {
     }
 
     fn detect_in(base: &Path) -> Result<Vec<Diagnostic>, FixerError> {
-        let ws = TreeFixerWorkspace::new(base, "test", "1.0".parse().unwrap());
+        let ws = FsWorkspace::new(base, "test", "1.0".parse().unwrap());
         detect(&ws, &FixerPreferences::default())
     }
 

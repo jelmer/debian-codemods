@@ -1,9 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction, WatchAction};
 use crate::watch::COMMON_PGPSIGURL_MANGLES;
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_watch::{mangle, Release};
+use debian_workspace::Workspace;
 use sequoia_openpgp as openpgp;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -296,7 +296,7 @@ fn export_cert_armored(cert: &openpgp::Cert) -> Result<Vec<u8>, String> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let package = ws.package().unwrap_or("").to_string();
@@ -305,7 +305,7 @@ pub fn detect(
     let watch_rel = PathBuf::from("debian/watch");
     let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
-        Err(FixerError::NoChanges) => {
+        Err(debian_workspace::Error::NotFound) => {
             tracing::debug!("No debian/watch file found");
             return Ok(Vec::new());
         }
@@ -606,17 +606,17 @@ declare_detector! {
         "debian-watch-file-pubkey-file-is-missing"
     ],
     triggers: [
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Source),
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Source),
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Option(
             "pgpsigurlmangle",
         )),
-        crate::workspace::Trigger::Watch(crate::workspace::WatchAspect::Option(
+        debian_workspace::Trigger::Watch(debian_workspace::WatchAspect::Option(
             "pgpmode",
         )),
-        crate::workspace::Trigger::File("debian/upstream/signing-key.asc"),
-        crate::workspace::Trigger::File("debian/upstream/signing-key.pgp"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.asc"),
+        debian_workspace::Trigger::File("debian/upstream/signing-key.pgp"),
     ],
-    cost: crate::workspace::DetectorCost::Network,
+    cost: crate::detector::DetectorCost::Network,
     detect: |ws, prefs| detect(ws, prefs),
 }
 

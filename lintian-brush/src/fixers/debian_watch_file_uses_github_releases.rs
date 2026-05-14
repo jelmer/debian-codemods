@@ -1,18 +1,18 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, WatchAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences};
+use debian_workspace::Workspace;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let watch_rel = PathBuf::from("debian/watch");
     let watch_file = match ws.parsed_watch() {
         Ok(w) => w,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     let mut diagnostics = Vec::new();
@@ -42,8 +42,8 @@ pub fn detect(
 declare_detector! {
     name: "debian-watch-file-uses-github-releases",
     tags: ["debian-watch-file-uses-github-releases"],
-    triggers: [crate::workspace::Trigger::Watch(
-        crate::workspace::WatchAspect::Source,
+    triggers: [debian_workspace::Trigger::Watch(
+        debian_workspace::WatchAspect::Source,
     )],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -51,7 +51,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;

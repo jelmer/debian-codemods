@@ -1,8 +1,8 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction, OverrideLineSelector};
 use crate::lintian_overrides::LintianOverrides;
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 const REMOVED_TAGS: &[&str] = &[
@@ -17,7 +17,7 @@ const REMOVED_TAGS: &[&str] = &[
 
 /// Return the package-relative paths of all lintian-overrides files: source
 /// overrides first, then per-binary overrides sorted by filename.
-fn find_override_files(ws: &dyn FixerWorkspace) -> Result<Vec<PathBuf>, FixerError> {
+fn find_override_files(ws: &dyn Workspace) -> Result<Vec<PathBuf>, FixerError> {
     let mut paths = Vec::new();
     let source_rel = PathBuf::from("debian/source/lintian-overrides");
     if ws.read_file(&source_rel)?.is_some() {
@@ -35,7 +35,7 @@ fn find_override_files(ws: &dyn FixerWorkspace) -> Result<Vec<PathBuf>, FixerErr
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -123,8 +123,8 @@ declare_detector! {
     name: "malformed-override",
     tags: ["malformed-override"],
     triggers: [
-        crate::workspace::Trigger::File("debian/source/lintian-overrides"),
-        crate::workspace::Trigger::Glob("debian/*.lintian-overrides"),
+        debian_workspace::Trigger::File("debian/source/lintian-overrides"),
+        debian_workspace::Trigger::Glob("debian/*.lintian-overrides"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -132,7 +132,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

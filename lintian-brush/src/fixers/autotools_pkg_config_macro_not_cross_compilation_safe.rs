@@ -2,8 +2,8 @@ use crate::declare_detector;
 use crate::diagnostic::{
     Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector, TextRange,
 };
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 
@@ -52,7 +52,7 @@ fn collect_matches(content: &[u8]) -> Vec<ConfigureMatch> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     // Try both configure.ac and configure.in.
@@ -157,9 +157,9 @@ declare_detector! {
     name: "autotools-pkg-config-macro-not-cross-compilation-safe",
     tags: ["autotools-pkg-config-macro-not-cross-compilation-safe"],
     triggers: [
-        crate::workspace::Trigger::File("configure.ac"),
-        crate::workspace::Trigger::File("configure.in"),
-        crate::workspace::Trigger::Deb822Field {
+        debian_workspace::Trigger::File("configure.ac"),
+        debian_workspace::Trigger::File("configure.in"),
+        debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
             paragraph_key: "Source",
             field: "Build-Depends",
@@ -171,7 +171,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

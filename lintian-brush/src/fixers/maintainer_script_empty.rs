@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
-use crate::workspace::FixerWorkspace;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq)]
@@ -81,7 +81,7 @@ fn parse_maintainer_script_name(filename: &str) -> Option<(String, String)> {
 }
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut entries = match ws.list_dir(Path::new("debian"))? {
@@ -171,14 +171,14 @@ declare_detector! {
     name: "maintainer-script-empty",
     tags: ["maintainer-script-empty"],
     triggers: [
-        crate::workspace::Trigger::File("debian/preinst"),
-        crate::workspace::Trigger::File("debian/postinst"),
-        crate::workspace::Trigger::File("debian/prerm"),
-        crate::workspace::Trigger::File("debian/postrm"),
-        crate::workspace::Trigger::Glob("debian/*.preinst"),
-        crate::workspace::Trigger::Glob("debian/*.postinst"),
-        crate::workspace::Trigger::Glob("debian/*.prerm"),
-        crate::workspace::Trigger::Glob("debian/*.postrm"),
+        debian_workspace::Trigger::File("debian/preinst"),
+        debian_workspace::Trigger::File("debian/postinst"),
+        debian_workspace::Trigger::File("debian/prerm"),
+        debian_workspace::Trigger::File("debian/postrm"),
+        debian_workspace::Trigger::Glob("debian/*.preinst"),
+        debian_workspace::Trigger::Glob("debian/*.postinst"),
+        debian_workspace::Trigger::Glob("debian/*.prerm"),
+        debian_workspace::Trigger::Glob("debian/*.postrm"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
     describe: |fixed, actions| describe_aggregate(fixed, actions),
@@ -187,7 +187,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use tempfile::TempDir;

@@ -1,12 +1,12 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
-use crate::workspace::FixerWorkspace;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::Workspace;
 use regex::bytes::Regex;
 use std::path::PathBuf;
 
 pub fn detect(
-    ws: &dyn FixerWorkspace,
+    ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     if ws.source_format()?.as_deref() != Some("3.0 (quilt)") {
@@ -16,8 +16,8 @@ pub fn detect(
     let rules_rel = PathBuf::from("debian/rules");
     let makefile = match ws.parsed_rules() {
         Ok(m) => m,
-        Err(FixerError::NoChanges) => return Ok(Vec::new()),
-        Err(e) => return Err(e),
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
 
     // Skip when QUILT_PATCH_DIR points somewhere other than the default;
@@ -112,8 +112,8 @@ declare_detector! {
     name: "dh-quilt-addon-but-quilt-source-format",
     tags: ["dh-quilt-addon-but-quilt-source-format"],
     triggers: [
-        crate::workspace::Trigger::File("debian/source/format"),
-        crate::workspace::Trigger::File("debian/rules"),
+        debian_workspace::Trigger::File("debian/source/format"),
+        debian_workspace::Trigger::File("debian/rules"),
     ],
     detect: |ws, prefs| detect(ws, prefs),
 }
@@ -121,7 +121,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::DetectorAdapter;
+    use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
