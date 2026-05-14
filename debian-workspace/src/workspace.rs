@@ -75,6 +75,12 @@ pub trait Workspace {
     /// Returns `Err(Error::NotFound)` if the file is missing —
     /// detectors typically want that exact response.
     ///
+    /// Parsing is relaxed: syntax errors are tolerated and the resulting
+    /// AST may have missing or partially-recovered nodes. Detectors that
+    /// need to reject malformed input should validate the structure they
+    /// care about (e.g. that the source paragraph or a particular field
+    /// exists) rather than expecting `Err`.
+    ///
     /// Implementations may cache the parse; the returned value is owned
     /// (`Control` is cheap to clone — its rowan green nodes are shared
     /// internally).
@@ -82,15 +88,19 @@ pub trait Workspace {
 
     /// Read `debian/changelog` and return a parsed value.
     ///
-    /// Returns `Err(Error::NotFound)` if the file is missing.
+    /// Returns `Err(Error::NotFound)` if the file is missing. Parsing is
+    /// relaxed; see [`parsed_control`](Self::parsed_control) for details
+    /// on what that means.
     fn parsed_changelog(&self) -> Result<ChangeLog, Error>;
 
     /// Read `debian/copyright` and return a parsed value.
     ///
-    /// Returns `Err(Error::NotFound)` if the file is missing.
-    /// Returns the lossless `Copyright` even when the file isn't a
-    /// machine-readable DEP-5 document — callers that care should check
-    /// for a header paragraph.
+    /// Returns `Err(Error::NotFound)` if the file is missing, and
+    /// `Err(Error::Parse)` only when the file isn't a machine-readable
+    /// DEP-5 document at all (i.e. doesn't start with `Format:`).
+    /// Parsing is otherwise relaxed; see
+    /// [`parsed_control`](Self::parsed_control) for details on what that
+    /// means.
     fn parsed_copyright(&self) -> Result<Copyright, Error>;
 
     /// Read `debian/upstream/metadata` and return its parsed YAML.
