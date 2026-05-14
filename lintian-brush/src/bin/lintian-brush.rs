@@ -860,18 +860,15 @@ fn detector_runtime(
     let (package, version) = match std::fs::read(&changelog_path) {
         Ok(bytes) => match ChangeLog::read_relaxed(bytes.as_slice()) {
             Ok(cl) => match cl.iter().next() {
-                Some(first) => (
-                    first.package().unwrap_or_else(|| "unknown".to_string()),
-                    first.version().unwrap_or_else(|| "0".parse().unwrap()),
-                ),
-                None => ("unknown".to_string(), "0".parse().unwrap()),
+                Some(first) => (first.package(), first.version()),
+                None => (None, None),
             },
             Err(e) => {
                 tracing::warn!("Unable to parse {}: {}", changelog_path.display(), e);
-                ("unknown".to_string(), "0".parse().unwrap())
+                (None, None)
             }
         },
-        Err(_) => ("unknown".to_string(), "0".parse().unwrap()),
+        Err(_) => (None, None),
     };
 
     let preferences = FixerPreferences {

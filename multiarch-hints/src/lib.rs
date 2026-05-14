@@ -221,8 +221,8 @@ format: blah
         std::fs::write(debian.join("control"), control).unwrap();
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             tmp.path(),
-            "src",
-            "1.0".parse().unwrap(),
+            Some("src".into()),
+            Some("1.0".parse().unwrap()),
         );
         (tmp, ws)
     }
@@ -430,8 +430,8 @@ format: blah
         let tmp = tempfile::TempDir::new().unwrap();
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             tmp.path(),
-            "src",
-            "1.0".parse().unwrap(),
+            Some("src".into()),
+            Some("1.0".parse().unwrap()),
         );
         let hints = vec![make_hint("foo", "ma-foreign", "foo could be MA: foreign")];
         let by_binary = multiarch_hints_by_binary(&hints);
@@ -924,11 +924,7 @@ pub fn apply_multiarch_hints(
         &basis_tree,
         dirty_tracker,
         |path| -> Result<Vec<Change>, OverallError> {
-            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
-                path,
-                "",
-                "0".parse::<debversion::Version>().unwrap(),
-            );
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(path, None, None);
             let detected = detect_multiarch_hints(&ws, hints, minimum_certainty)
                 .map_err(|e| OverallError::Other(e.to_string()))?;
 

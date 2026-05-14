@@ -273,7 +273,7 @@ mod tests {
 
     fn make_ws(base: &Path) -> FsWorkspace {
         let v = Version::from_str("1.0-1").unwrap();
-        FsWorkspace::new(base.to_path_buf(), "test", v)
+        FsWorkspace::new(base.to_path_buf(), Some("test".into()), Some(v))
     }
 
     #[test]

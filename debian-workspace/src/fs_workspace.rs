@@ -23,8 +23,8 @@ use toml_edit::DocumentMut;
 /// that don't want a Python runtime.
 pub struct FsWorkspace {
     base_path: PathBuf,
-    package: String,
-    version: Version,
+    package: Option<String>,
+    version: Option<Version>,
 }
 
 impl FsWorkspace {
@@ -33,14 +33,16 @@ impl FsWorkspace {
     /// * `base_path` — absolute filesystem path of the package root (the
     ///   directory containing `debian/`).
     /// * `package`, `version` — taken from `debian/changelog` by the caller.
+    ///   Pass `None` when the caller hasn't read the changelog (e.g. tests, or
+    ///   tools that don't surface package metadata to their detectors).
     pub fn new(
         base_path: impl Into<PathBuf>,
-        package: impl Into<String>,
-        version: Version,
+        package: Option<String>,
+        version: Option<Version>,
     ) -> Self {
         Self {
             base_path: base_path.into(),
-            package: package.into(),
+            package,
             version,
         }
     }
@@ -118,11 +120,11 @@ impl<T> Drop for FsEditor<T> {
 
 impl Workspace for FsWorkspace {
     fn package(&self) -> Option<&str> {
-        Some(&self.package)
+        self.package.as_deref()
     }
 
     fn current_version(&self) -> Option<&Version> {
-        Some(&self.version)
+        self.version.as_ref()
     }
 
     fn parsed_control(&self) -> Result<Control, Error> {
@@ -327,7 +329,11 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         make_pkg(tmp.path());
 
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
 
         {
             let control = ws.control().unwrap();
@@ -345,7 +351,11 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         make_pkg(tmp.path());
 
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
 
         let p = Path::new("debian/control");
         let bytes = ws.read_file(p).unwrap().unwrap();
@@ -362,7 +372,11 @@ mod tests {
     fn tree_workspace_missing_control_is_not_found() {
         let tmp = TempDir::new().unwrap();
         // Don't make_pkg — no debian/ at all.
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
         assert!(matches!(ws.control(), Err(Error::NotFound)));
     }
 
@@ -375,7 +389,11 @@ mod tests {
         fs::create_dir_all(&nested).unwrap();
         fs::write(nested.join("format"), "3.0 (quilt)\n").unwrap();
 
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
         let mut paths = ws.walk_dir(Path::new("debian")).unwrap().unwrap();
         paths.sort();
 
@@ -392,7 +410,11 @@ mod tests {
     #[test]
     fn tree_workspace_walk_dir_missing_returns_none() {
         let tmp = TempDir::new().unwrap();
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
         assert!(ws.walk_dir(Path::new("debian")).unwrap().is_none());
     }
 
@@ -400,7 +422,11 @@ mod tests {
     fn debcargo_absent_returns_none() {
         let tmp = TempDir::new().unwrap();
         make_pkg(tmp.path());
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
         assert!(ws.parsed_debcargo().unwrap().is_none());
         assert!(ws.debcargo().unwrap().is_none());
     }
@@ -412,7 +438,11 @@ mod tests {
         let toml = "[source]\nvcs_git = \"https://salsa.debian.org/rust-team/debcargo-conf\"\n";
         fs::write(tmp.path().join("debian/debcargo.toml"), toml).unwrap();
 
-        let ws = FsWorkspace::new(tmp.path(), "foo", Version::from_str("1.0").unwrap());
+        let ws = FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        );
 
         let doc = ws.parsed_debcargo().unwrap().unwrap();
         assert_eq!(
