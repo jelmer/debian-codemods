@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
@@ -1374,6 +1374,10 @@ pub fn run_lintian_fixers(
     } else {
         ProgressBar::new(fixers.len() as u64)
     };
+    pb.set_style(
+        ProgressStyle::with_template("[{pos}/{len}] {wide_bar} {msg}")
+            .expect("static template is valid"),
+    );
     #[cfg(test)]
     pb.set_draw_target(indicatif::ProgressDrawTarget::hidden());
     let mut dirty_tracker = if use_dirty_tracker.unwrap_or(true) {
@@ -1386,7 +1390,7 @@ pub fn run_lintian_fixers(
     };
     for fixer in fixers {
         let fixer_name = fixer.name();
-        pb.set_message(format!("Running fixer {}", fixer_name));
+        pb.set_message(fixer_name.clone());
         // Get now from chrono
         let start = std::time::SystemTime::now();
         if let Some(dirty_tracker) = dirty_tracker.as_mut() {
