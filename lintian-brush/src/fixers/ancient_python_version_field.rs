@@ -124,7 +124,14 @@ mod tests {
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "lintian-brush", &v, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("lintian-brush".into()),
+                Some(v.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

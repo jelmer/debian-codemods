@@ -239,7 +239,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -263,7 +270,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         assert!(matches!(result, Err(FixerError::NoChanges)));
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -285,7 +299,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -310,7 +331,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         // With dpkg >= 1.22.13, Priority: optional in binaries doesn't need to be moved to source
         assert!(matches!(result, Err(FixerError::NoChanges)));
 
@@ -333,7 +361,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         assert!(result.is_ok());
 
         let updated_content = fs::read_to_string(&control_path).unwrap();
@@ -354,7 +389,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("bullseye".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 
@@ -372,7 +414,14 @@ mod tests {
         let version: crate::Version = "1.0".parse().unwrap();
         let mut preferences = crate::FixerPreferences::default();
         preferences.compat_release = Some("trixie".to_string());
-        let result = fixer.apply(temp_dir.path(), "foo", &version, &preferences);
+        let result = {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                temp_dir.path(),
+                Some("foo".into()),
+                Some(version.clone()),
+            );
+            fixer.apply(&ws, &preferences)
+        };
         // Priority: important should not be removed even with new dpkg
         assert!(matches!(result, Err(FixerError::NoChanges)));
 
@@ -389,12 +438,12 @@ mod tests {
 
         let fixer = make_fixer();
         let version: crate::Version = "1.0".parse().unwrap();
-        let result = fixer.apply(
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             temp_dir.path(),
-            "test-package",
-            &version,
-            &Default::default(),
+            Some("test-package".into()),
+            Some(version.clone()),
         );
+        let result = fixer.apply(&ws, &Default::default());
         assert!(matches!(result, Err(FixerError::NoChanges)));
     }
 }
