@@ -1,14 +1,14 @@
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::{self, WorkingTree};
 use clap::Parser;
-use deb_transition_apply::TransitionResult;
+use deb_transition_apply::{detect_transition, TransitionResult};
 use debian_analyzer::config::Config;
-use debian_analyzer::control::TemplatedControlEditor;
-use debian_analyzer::editor::EditorError;
 use debian_analyzer::transition::Transition;
+use debian_workspace::appliers::apply_actions;
+use debian_workspace::fs_workspace::FsWorkspace;
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use svp_client::{ChangelogBehaviour, Reporter};
 
 #[derive(Parser)]
@@ -43,19 +43,18 @@ struct Args {
 
 fn apply_transition(
     wt: &dyn WorkingTree,
-    debian_path: &Path,
+    subpath: &std::path::Path,
     transition: &Transition,
-) -> Result<TransitionResult, EditorError> {
-    use debian_analyzer::control::TemplatedControlEditor;
-
-    let control_path = debian_path.join("control");
-
-    let mut editor = TemplatedControlEditor::create(wt.abspath(&control_path).unwrap())?;
-
-    Ok(deb_transition_apply::apply_transition(
-        &mut editor,
-        transition,
-    ))
+) -> Result<TransitionResult, debian_workspace::Error> {
+    let base_path = wt
+        .abspath(subpath)
+        .map_err(|e| debian_workspace::Error::Other(format!("abspath failed: {}", e)))?;
+    let ws = FsWorkspace::new(&base_path, None, None);
+    let (result, actions) = detect_transition(&ws, transition)?;
+    if !actions.is_empty() {
+        apply_actions(ws.base_path(), &actions)?;
+    }
+    Ok(result)
 }
 
 fn versions_dict() -> HashMap<String, String> {
@@ -188,7 +187,7 @@ fn main() -> Result<(), i32> {
         subpath.join("debian")
     };
 
-    let (result, bugnos) = match crate::apply_transition(&wt, &debian_path, &transition) {
+    let (result, bugnos) = match crate::apply_transition(&wt, &subpath, &transition) {
         Ok(crate::TransitionResult::PackageNotAffected(..)) => {
             svp.report_nothing_to_do(Some("Package not affected by transition"), None);
         }

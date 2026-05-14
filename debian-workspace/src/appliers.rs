@@ -754,9 +754,8 @@ fn apply_generic_deb822_group(
                 let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
                     continue;
                 };
-                if set_relation_version_constraint_in_paragraph(
-                    &mut p, field, package, constraint,
-                ) {
+                if set_relation_version_constraint_in_paragraph(&mut p, field, package, constraint)
+                {
                     any_change = true;
                 }
             }
@@ -1091,7 +1090,10 @@ fn set_relation_version_constraint_in_paragraph(
     p: &mut deb822_lossless::Paragraph,
     field: &str,
     package: &str,
-    constraint: &Option<(debian_control::relations::VersionConstraint, debversion::Version)>,
+    constraint: &Option<(
+        debian_control::relations::VersionConstraint,
+        debversion::Version,
+    )>,
 ) -> bool {
     use debian_control::lossless::relations::Relations;
     let Some(value) = p.get(field) else {
@@ -1289,7 +1291,10 @@ fn set_deb822_relation_version_constraint(
     paragraph: &ParagraphSelector,
     field: &str,
     package: &str,
-    constraint: &Option<(debian_control::relations::VersionConstraint, debversion::Version)>,
+    constraint: &Option<(
+        debian_control::relations::VersionConstraint,
+        debversion::Version,
+    )>,
 ) -> Result<bool, FixerError> {
     match paragraph {
         ParagraphSelector::Source => {
