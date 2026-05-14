@@ -130,9 +130,17 @@ impl Workspace for FsWorkspace {
     fn parsed_control(&self) -> Result<Control, Error> {
         let path = self.full_path(Path::new("debian/control"));
         let text = fs::read_to_string(&path)?;
-        text.parse().map_err(|e: deb822_lossless::ParseError| {
-            Error::Parse(format!("Failed to parse {}: {}", path.display(), e))
-        })
+        let (control, errors) = Control::read_relaxed(text.as_bytes())
+            .map_err(|e| Error::Parse(format!("Failed to parse {}: {}", path.display(), e)))?;
+        if !errors.is_empty() {
+            tracing::debug!(
+                "{} has {} parse warning(s): {}",
+                path.display(),
+                errors.len(),
+                errors.join("; ")
+            );
+        }
+        Ok(control)
     }
 
     fn parsed_changelog(&self) -> Result<ChangeLog, Error> {
@@ -145,8 +153,17 @@ impl Workspace for FsWorkspace {
     fn parsed_copyright(&self) -> Result<Copyright, Error> {
         let path = self.full_path(Path::new("debian/copyright"));
         let text = fs::read_to_string(&path)?;
-        text.parse()
-            .map_err(|e| Error::Parse(format!("Failed to parse {}: {:?}", path.display(), e)))
+        let (copyright, errors) = Copyright::from_str_relaxed(&text)
+            .map_err(|e| Error::Parse(format!("Failed to parse {}: {:?}", path.display(), e)))?;
+        if !errors.is_empty() {
+            tracing::debug!(
+                "{} has {} parse warning(s): {}",
+                path.display(),
+                errors.len(),
+                errors.join("; ")
+            );
+        }
+        Ok(copyright)
     }
 
     fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, Error> {
