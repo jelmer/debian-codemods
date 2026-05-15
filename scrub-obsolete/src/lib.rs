@@ -3,10 +3,16 @@ use breezyshim::commit::NullCommitReporter;
 use breezyshim::error::Error as BrzError;
 use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use deb822_lossless::Paragraph;
-use debian_analyzer::editor::{Editor, EditorError, MutableTreeEdit};
+use debian_analyzer::editor::EditorError;
 use debian_control::lossless::relations::{Entry, Relation, Relations};
 use debian_control::relations::VersionConstraint;
 use debian_control::{Binary, Source};
+use debian_workspace::action::{
+    Action as WsAction, Deb822Action, MaintscriptAction as WsMaintscriptAction, ParagraphSelector,
+};
+use debian_workspace::appliers::apply_actions;
+use debian_workspace::fs_workspace::FsWorkspace;
+use debian_workspace::workspace::Workspace;
 use debversion::Version;
 use std::collections::HashMap;
 use std::path::Path;
@@ -295,8 +301,13 @@ fn drop_old_binary_relations(
     ret
 }
 
-fn drop_old_relations(
-    editor: &impl Editor<debian_control::Control>,
+/// Detect changes against a parsed control file.
+///
+/// Walks every source/binary paragraph and runs the scrub-obsolete rules.
+/// Returns the per-paragraph changes (used for reporting and translated into
+/// `debian_workspace::Action`s for the applier).
+fn detect_control_changes(
+    control: &debian_control::lossless::Control,
     build_checker: &dyn PackageChecker,
     runtime_checker: &dyn PackageChecker,
     compat_release: &str,
@@ -306,7 +317,7 @@ fn drop_old_relations(
     let mut actions = vec![];
     let mut source_actions = vec![];
 
-    if let Some(mut source) = editor.source() {
+    if let Some(mut source) = control.source() {
         source_actions.extend(drop_old_source_relations(
             &mut source,
             build_checker,
@@ -319,7 +330,7 @@ fn drop_old_relations(
         actions.push((None, source_actions));
     }
 
-    for mut binary in editor.binaries() {
+    for mut binary in control.binaries() {
         let binary_actions = drop_old_binary_relations(
             runtime_checker,
             &mut binary,
@@ -334,33 +345,114 @@ fn drop_old_relations(
     actions
 }
 
-#[allow(clippy::result_large_err)]
-fn update_maintscripts(
-    wt: &GenericWorkingTree,
-    debian_path: &Path,
-    checker: &dyn PackageChecker,
-    allow_reformatting: bool,
-) -> Result<Vec<(PathBuf, Vec<MaintscriptAction>)>, ScrubObsoleteError> {
-    let mut ret = vec![];
-    let debian_abs_path = wt.abspath(debian_path)?;
-    let dir_entries = std::fs::read_dir(debian_abs_path)?;
+/// Translate a scrub-obsolete action into a debian-workspace deb822 action.
+///
+/// The scrub-obsolete `Action` type is the user-facing reporting format. The
+/// applier consumes `debian_workspace::Action`s, so we project the two.
+fn action_to_ws(
+    action: &Action,
+    selector: ParagraphSelector,
+    field: &str,
+    control_file: &Path,
+) -> Option<WsAction> {
+    let file = control_file.to_path_buf();
+    match action {
+        Action::DropEssential(rel)
+        | Action::DropTransition(rel)
+        | Action::DropObsoleteConflict(rel) => {
+            let package = rel.try_name()?;
+            Some(WsAction::Deb822(Deb822Action::DropRelation {
+                file,
+                paragraph: selector,
+                field: field.to_string(),
+                package,
+            }))
+        }
+        Action::DropMinimumVersion(rel) => {
+            let package = rel.try_name()?;
+            Some(WsAction::Deb822(
+                Deb822Action::SetRelationVersionConstraint {
+                    file,
+                    paragraph: selector,
+                    field: field.to_string(),
+                    package,
+                    constraint: None,
+                },
+            ))
+        }
+        Action::ReplaceTransition(rel, replacements) => {
+            let package = rel.try_name()?;
+            // scrub-obsolete only emits ReplaceTransition with a single-package
+            // replacement (multi-package replacements are warned about and
+            // skipped earlier in drop_obsolete_depends).
+            let to_entry = replacements
+                .iter()
+                .map(|r| r.to_string())
+                .collect::<Vec<_>>()
+                .join(" | ");
+            Some(WsAction::Deb822(Deb822Action::ReplaceRelation {
+                file,
+                paragraph: selector,
+                field: field.to_string(),
+                from_package: package,
+                to_entry,
+            }))
+        }
+    }
+}
 
-    for entry in dir_entries {
-        let entry = entry?;
-        let file_name_str = entry.file_name();
-        if !(file_name_str == "maintscript"
-            || file_name_str
-                .to_str()
-                .map(|s| s.ends_with(".maintscript"))
-                .unwrap_or(false))
-        {
+fn control_changes_to_ws_actions(changes: &ControlChanges, control_file: &Path) -> Vec<WsAction> {
+    let mut out = vec![];
+    for (para, field_changes) in changes {
+        let selector = match para {
+            None => ParagraphSelector::Source,
+            Some(package) => ParagraphSelector::Binary {
+                package: package.clone(),
+            },
+        };
+        for (field, actions, _release) in field_changes {
+            for action in actions {
+                if let Some(a) = action_to_ws(action, selector.clone(), field, control_file) {
+                    out.push(a);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Per-file maintscript entries that should be dropped.
+type MaintscriptRemovals = Vec<(PathBuf, Vec<MaintscriptAction>)>;
+
+/// Detect changes to maintscript files in `debian/` (and `<pkg>.maintscript` /
+/// `maintscript`). Returns the per-file removed entries plus the workspace
+/// actions that will drop them.
+#[allow(clippy::result_large_err)]
+fn detect_maintscript_changes(
+    ws: &dyn Workspace,
+    checker: &dyn PackageChecker,
+) -> Result<(MaintscriptRemovals, Vec<WsAction>), ScrubObsoleteError> {
+    let mut ret = vec![];
+    let mut ws_actions = vec![];
+    let debian = Path::new("debian");
+    let Some(entries) = ws.list_dir(debian)? else {
+        return Ok((ret, ws_actions));
+    };
+    for name in entries {
+        if !(name == "maintscript" || name.ends_with(".maintscript")) {
             continue;
         }
-        let mut editor = wt.edit_file::<debian_analyzer::maintscripts::Maintscript>(
-            &entry.path(),
-            false,
-            allow_reformatting,
-        )?;
+        let rel = debian.join(&name);
+        let Some(bytes) = ws.read_file(&rel)? else {
+            continue;
+        };
+        let text = String::from_utf8(bytes.into_owned()).map_err(|e| {
+            ScrubObsoleteError::Other(format!("{}: invalid UTF-8: {}", rel.display(), e))
+        })?;
+        let script: debian_analyzer::maintscripts::Maintscript = text.parse().map_err(|e| {
+            ScrubObsoleteError::Other(format!("Failed to parse {}: {}", rel.display(), e))
+        })?;
+
         let mut can_drop = |p: &str, v: &Version| -> bool {
             let compat_version = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(checker.package_version(p))
@@ -369,14 +461,29 @@ fn update_maintscripts(
             compat_version.map(|cv| &cv > v).unwrap_or(false)
         };
 
-        let removed = drop_obsolete_maintscript_entries(&mut editor, &mut can_drop);
-        if !removed.is_empty() {
-            ret.push((debian_path.join(entry.file_name()), removed));
+        let removed = drop_obsolete_maintscript_entries(&script, &mut can_drop);
+        if removed.is_empty() {
+            continue;
         }
-
-        editor.commit()?;
+        for entry in &removed {
+            // Pin the entry's text from the maintscript so the applier can
+            // match it line-by-line.
+            let entry_text = script
+                .entries()
+                .get(entry.lineno - 1)
+                .map(|e| e.to_string().trim().to_string())
+                .unwrap_or_default();
+            if entry_text.is_empty() {
+                continue;
+            }
+            ws_actions.push(WsAction::Maintscript(WsMaintscriptAction::DropEntry {
+                file: rel.clone(),
+                entry: entry_text,
+            }));
+        }
+        ret.push((rel, removed));
     }
-    Ok(ret)
+    Ok((ret, ws_actions))
 }
 
 pub struct MaintscriptAction {
@@ -493,21 +600,35 @@ impl ScrubObsoleteResult {
     }
 }
 
-async fn _scrub_obsolete(
-    wt: &GenericWorkingTree,
-    debian_path: &Path,
+/// Detect every scrub-obsolete change against a workspace.
+///
+/// Returns the result with no changes applied. Callers that want to apply the
+/// changes should pass `result.workspace_actions()` to
+/// [`apply_actions`](debian_workspace::appliers::apply_actions).
+pub async fn detect_scrub_obsolete(
+    ws: &dyn Workspace,
     compat_release: &str,
     upgrade_release: &str,
-    allow_reformatting: bool,
     keep_minimum_depends_versions: bool,
-) -> Result<ScrubObsoleteResult, ScrubObsoleteError> {
-    let mut specific_files = vec![];
+) -> Result<DetectedChanges, ScrubObsoleteError> {
     let source_package_checker = UddPackageChecker::new(compat_release, true).await;
     let binary_package_checker = UddPackageChecker::new(upgrade_release, false).await;
-    let control_actions = if !debian_path.join("debcargo.toml").exists() {
-        let control_path = debian_path.join("control");
-        let control = debian_analyzer::control::TemplatedControlEditor::open(control_path)?;
-        let control_actions = drop_old_relations(
+
+    let control_file_rel = Path::new("debian/control");
+    let (control_actions, control_ws_actions) = if ws.parsed_debcargo()?.is_some() {
+        // debcargo-managed packages: skip control entirely.
+        (vec![], vec![])
+    } else {
+        let control = match ws.parsed_control() {
+            Ok(c) => c,
+            Err(debian_workspace::Error::NotFound) => {
+                return Err(ScrubObsoleteError::NotDebianPackage(PathBuf::from(
+                    "debian",
+                )));
+            }
+            Err(e) => return Err(ScrubObsoleteError::Workspace(e)),
+        };
+        let changes = detect_control_changes(
             &control,
             &source_package_checker,
             &binary_package_checker,
@@ -515,38 +636,44 @@ async fn _scrub_obsolete(
             upgrade_release,
             keep_minimum_depends_versions,
         );
-        let changed_files = control.commit()?;
-        specific_files.extend(
-            wt.safe_relpath_files(
-                changed_files
-                    .iter()
-                    .map(|s| s.as_path())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-                true,
-                false,
-            )?,
-        );
-        control_actions
-    } else {
-        vec![]
+        let ws_actions = control_changes_to_ws_actions(&changes, control_file_rel);
+        (changes, ws_actions)
     };
 
-    let mut maintscript_removed = vec![];
-    for (path, removed) in
-        update_maintscripts(wt, debian_path, &binary_package_checker, allow_reformatting)?
-    {
-        if !removed.is_empty() {
-            specific_files.push(path.clone());
-            maintscript_removed.push((path, removed, upgrade_release.to_string()));
-        }
-    }
+    let (maintscript_removed, maintscript_ws_actions) =
+        detect_maintscript_changes(ws, &binary_package_checker)?;
 
-    Ok(ScrubObsoleteResult {
-        specific_files,
+    let mut workspace_actions = control_ws_actions;
+    workspace_actions.extend(maintscript_ws_actions);
+
+    let maintscript_removed = maintscript_removed
+        .into_iter()
+        .map(|(path, removed)| (path, removed, upgrade_release.to_string()))
+        .collect();
+
+    Ok(DetectedChanges {
         control_actions,
         maintscript_removed,
+        workspace_actions,
     })
+}
+
+/// Output of [`detect_scrub_obsolete`]: the per-file edits plus the typed
+/// `debian_workspace::Action`s that, when applied, perform them.
+pub struct DetectedChanges {
+    /// Per-paragraph, per-field scrub-obsolete actions (for reporting).
+    pub control_actions: ControlChanges,
+    /// Per-file maintscript entries to drop, with the release they're keyed
+    /// against (third tuple element).
+    pub maintscript_removed: Vec<(PathBuf, Vec<MaintscriptAction>, String)>,
+    /// Typed workspace actions that produce these changes.
+    pub workspace_actions: Vec<WsAction>,
+}
+
+impl DetectedChanges {
+    pub fn any_changes(&self) -> bool {
+        !self.control_actions.is_empty() || !self.maintscript_removed.is_empty()
+    }
 }
 
 #[derive(Debug)]
@@ -556,6 +683,11 @@ pub enum ScrubObsoleteError {
     BrzError(BrzError),
     SqlxError(sqlx::Error),
     IoError(std::io::Error),
+    /// A debian-workspace error surfaced from the workspace abstraction or
+    /// the applier.
+    Workspace(debian_workspace::Error),
+    /// Catch-all for errors that don't map onto one of the typed variants.
+    Other(String),
 }
 
 impl std::fmt::Display for ScrubObsoleteError {
@@ -568,6 +700,8 @@ impl std::fmt::Display for ScrubObsoleteError {
             ScrubObsoleteError::BrzError(e) => write!(f, "Breezy error: {}", e),
             ScrubObsoleteError::SqlxError(e) => write!(f, "SQLx error: {}", e),
             ScrubObsoleteError::IoError(e) => write!(f, "I/O error: {}", e),
+            ScrubObsoleteError::Workspace(e) => write!(f, "Workspace error: {}", e),
+            ScrubObsoleteError::Other(e) => write!(f, "{}", e),
         }
     }
 }
@@ -598,6 +732,12 @@ impl From<std::io::Error> for ScrubObsoleteError {
     }
 }
 
+impl From<debian_workspace::Error> for ScrubObsoleteError {
+    fn from(e: debian_workspace::Error) -> Self {
+        ScrubObsoleteError::Workspace(e)
+    }
+}
+
 /// Scrub obsolete entries.
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::result_large_err)]
@@ -607,32 +747,44 @@ pub fn scrub_obsolete(
     compat_release: &str,
     upgrade_release: &str,
     update_changelog: Option<bool>,
-    allow_reformatting: bool,
+    #[allow(unused_variables)] allow_reformatting: bool,
     keep_minimum_depends_versions: bool,
     #[allow(unused_variables)] transitions: Option<HashMap<String, String>>,
 ) -> Result<ScrubObsoleteResult, ScrubObsoleteError> {
-    let debian_path = if debian_analyzer::control_files_in_root(wt, subpath) {
-        subpath.to_path_buf()
-    } else {
-        subpath.join("debian")
-    };
+    let debian_path = subpath.join("debian");
+    let base_path = wt.abspath(subpath)?;
+
+    // scrub-obsolete doesn't surface package/version metadata to its
+    // detectors, so leave them unset rather than fabricating sentinels.
+    let ws = FsWorkspace::new(&base_path, None, None);
 
     let rt = tokio::runtime::Runtime::new().unwrap();
-
-    let result = rt.block_on(_scrub_obsolete(
-        wt,
-        &debian_path,
+    let detected = rt.block_on(detect_scrub_obsolete(
+        &ws,
         compat_release,
         upgrade_release,
-        allow_reformatting,
         keep_minimum_depends_versions,
     ))?;
+
+    let mut result = ScrubObsoleteResult {
+        specific_files: vec![],
+        control_actions: detected.control_actions,
+        maintscript_removed: detected.maintscript_removed,
+    };
 
     if !result.any_changes() {
         return Ok(result);
     }
 
-    let mut specific_files = result.specific_files.clone();
+    let changed_files = apply_actions(ws.base_path(), &detected.workspace_actions)?;
+    // The applier returns paths relative to base_path; promote them to
+    // tree-relative paths via the breezy working tree.
+    let safe_files: Vec<&Path> = changed_files.iter().map(|p| p.as_path()).collect();
+    let mut specific_files: Vec<PathBuf> = wt
+        .safe_relpath_files(safe_files.as_slice(), true, false)?
+        .into_iter()
+        .collect();
+
     let summary = result.itemized();
 
     let changelog_path = debian_path.join("changelog");
@@ -673,6 +825,8 @@ pub fn scrub_obsolete(
         specific_files.push(changelog_path);
     }
 
+    result.specific_files = specific_files.clone();
+
     let mut lines = vec![];
     for (release, _entries) in summary.iter() {
         let rev_aliases = debian_analyzer::release_info::release_aliases(release, None);
@@ -712,24 +866,23 @@ pub fn scrub_obsolete(
     Ok(result)
 }
 
-/// Drop obsolete entries from a maintscript file.
+/// Identify obsolete entries in a maintscript file.
 ///
 /// # Arguments
-/// * `editor` - editor to use to access the maintscript
+/// * `script` - parsed maintscript
 /// * `should_remove` - callable to check whether a package/version tuple is obsolete
 ///
 /// # Returns
-/// list of tuples with index, package, version of entries that were removed
+/// list of `MaintscriptAction` records describing the entries that should be
+/// dropped (their `lineno` is the 1-based entry index)
 fn drop_obsolete_maintscript_entries(
-    editor: &mut dyn Editor<debian_analyzer::maintscripts::Maintscript>,
+    script: &debian_analyzer::maintscripts::Maintscript,
     should_remove: &mut dyn FnMut(&str, &Version) -> bool,
 ) -> Vec<MaintscriptAction> {
-    let mut to_remove = vec![];
     let mut ret = vec![];
-    for (i, entry) in editor.entries().iter().enumerate() {
+    for (i, entry) in script.entries().iter().enumerate() {
         if let (Some(package), Some(version)) = (entry.package(), entry.prior_version()) {
             if should_remove(package, version) {
-                to_remove.push(i);
                 ret.push(MaintscriptAction {
                     package: package.clone(),
                     version: version.clone(),
@@ -737,9 +890,6 @@ fn drop_obsolete_maintscript_entries(
                 });
             }
         }
-    }
-    for i in to_remove.into_iter().rev() {
-        editor.remove(i);
     }
     ret
 }
