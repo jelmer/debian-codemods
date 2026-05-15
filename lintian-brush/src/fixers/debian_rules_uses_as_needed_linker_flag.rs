@@ -2,23 +2,18 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, MakefileAction};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
-use makefile_lossless::Makefile;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let rules_rel = PathBuf::from("debian/rules");
-    let bytes = match ws.read_file(Path::new("debian/rules"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let makefile = match ws.parsed_rules() {
+        Ok(m) => m,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
     };
-
-    let content = std::str::from_utf8(&bytes)
-        .map_err(|e| FixerError::Other(format!("debian/rules is not valid UTF-8: {}", e)))?;
-    let parsed = Makefile::parse(&content);
-    let makefile = parsed.tree();
 
     for var_def in makefile.variable_definitions() {
         let Some(name) = var_def.name() else {
@@ -102,12 +97,20 @@ mod tests {
     use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &version, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(version.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

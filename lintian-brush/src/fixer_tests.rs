@@ -112,13 +112,13 @@ fn test_all_fixers_handle_missing_source_stanza() {
         let current_version: debversion::Version = "1.0-1".parse().unwrap();
         let timeout = Some(chrono::Duration::seconds(30));
 
-        let result = fixer.run(
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             &testdir,
-            "test-package",
-            &current_version,
-            &preferences,
-            timeout,
+            Some("test-package".into()),
+            Some(current_version.clone()),
         );
+
+        let result = fixer.run(&ws, &preferences, timeout);
 
         match result {
             Ok(_) => {}                      // Fixer made changes, that's fine
@@ -293,13 +293,12 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
         .unwrap_or_else(|| panic!("Fixer '{}' not found", fixer_name));
 
     let timeout = Some(chrono::Duration::seconds(30)); // 30 second timeout for tests
-    let (actual_result, exit_code) = match fixer.run(
+    let ws = debian_workspace::fs_workspace::FsWorkspace::new(
         &testdir,
-        "test-package",
-        &current_version,
-        &preferences,
-        timeout,
-    ) {
+        Some("test-package".into()),
+        Some(current_version.clone()),
+    );
+    let (actual_result, exit_code) = match fixer.run(&ws, &preferences, timeout) {
         Ok(result) => (Some(result), 0),
         Err(FixerError::NoChanges) => {
             eprintln!("Fixer returned NoChanges for test {}", test_name);

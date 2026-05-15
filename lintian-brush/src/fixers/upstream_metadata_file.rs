@@ -5,7 +5,6 @@ use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::str::FromStr;
 use tracing::debug;
 use upstream_ontologist::vcs::convert_cvs_list_to_str;
 use upstream_ontologist::{
@@ -387,19 +386,13 @@ pub fn detect(
 
     if has_name_or_contact {
         // Check if debian/copyright is machine-readable and has Name/Contact
-        let copyright_path = base_path.join("debian/copyright");
-        if copyright_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&copyright_path) {
-                if let Ok(copyright) = debian_copyright::lossless::Copyright::from_str(&content) {
-                    // Check for upstream name and contact in the header
-                    if let Some(header) = copyright.header() {
-                        if header.upstream_name().is_some() {
-                            external_present_fields.insert("Name");
-                        }
-                        if header.upstream_contact().is_some() {
-                            external_present_fields.insert("Contact");
-                        }
-                    }
+        if let Ok(copyright) = ws.parsed_copyright() {
+            if let Some(header) = copyright.header() {
+                if header.upstream_name().is_some() {
+                    external_present_fields.insert("Name");
+                }
+                if header.upstream_contact().is_some() {
+                    external_present_fields.insert("Contact");
                 }
             }
         }
@@ -767,12 +760,12 @@ mod tests {
     fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
         let v: Version = version_str.parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             base,
-            "test-package",
-            &v,
-            &crate::FixerPreferences::default(),
-        )
+            Some("test-package".into()),
+            Some(v.clone()),
+        );
+        adapter.apply(&ws, &crate::FixerPreferences::default())
     }
 
     #[test]

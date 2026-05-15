@@ -2,7 +2,6 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, IndentPattern, ParagraphSelector};
 use crate::licenses::{COMMON_LICENSES_DIR, FULL_LICENSE_NAME};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
-use debian_copyright::lossless::Copyright;
 use debian_copyright::License;
 use debian_workspace::Workspace;
 use lazy_static::lazy_static;
@@ -239,17 +238,11 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let bytes = match ws.read_file(&copyright_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
-    };
-    let Ok(content) = std::str::from_utf8(&bytes) else {
-        return Ok(Vec::new());
-    };
-    let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
+    let copyright = match ws.parsed_copyright() {
         Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(e) => {
-            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            tracing::debug!("debian/copyright is not machine-readable: {}", e);
             return Ok(Vec::new());
         }
     };
@@ -668,13 +661,21 @@ mod tests {
     use super::*;
     use crate::detector::DetectorAdapter;
     use crate::{FixerPreferences, Version};
+    use debian_copyright::lossless::Copyright;
     use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &v, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(v.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

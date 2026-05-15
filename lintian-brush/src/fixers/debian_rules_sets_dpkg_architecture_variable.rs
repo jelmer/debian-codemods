@@ -213,7 +213,14 @@ mod tests {
             ..Default::default()
         };
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &v, &prefs)
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(v.clone()),
+            );
+            adapter.apply(&ws, &prefs)
+        }
     }
 
     #[test]
