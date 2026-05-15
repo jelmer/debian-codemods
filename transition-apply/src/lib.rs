@@ -1,8 +1,12 @@
 use deb822_lossless::{Deb822, Paragraph};
 use debian_analyzer::benfile::{Comparison, Expr};
 use debian_analyzer::transition::Transition;
-use debian_control::lossless::Control;
+use debian_workspace::action::{Action, Deb822Action, ParagraphSelector};
+use debian_workspace::workspace::Workspace;
+use debversion::Version;
 use regex::Regex;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 fn find_expr_by_field_name<'a>(expr: &'a Expr, field_name: &'a str) -> Option<&'a Expr> {
     let exprs = match expr {
@@ -27,8 +31,16 @@ enum Match {
     Comparison(Comparison, String),
 }
 
-fn compare(_operator: &Comparison, _value: &str, _other: &str) -> bool {
-    todo!()
+fn compare(operator: &Comparison, value: &str, other: &str) -> bool {
+    let lhs = Version::from_str(value).expect("invalid Debian version on left-hand side");
+    let rhs = Version::from_str(other).expect("invalid Debian version on right-hand side");
+    match operator {
+        Comparison::LessThan | Comparison::MuchLessThan => lhs < rhs,
+        Comparison::LessOrEqual => lhs <= rhs,
+        Comparison::GreaterThan | Comparison::MuchGreaterThan => lhs > rhs,
+        Comparison::GreaterOrEqual => lhs >= rhs,
+        Comparison::Equal => lhs == rhs,
+    }
 }
 
 impl Match {
@@ -166,25 +178,39 @@ impl TransitionResult {
     }
 }
 
-pub fn apply_transition(control: &mut Control, transition: &Transition) -> TransitionResult {
+/// Compute the per-paragraph workspace actions that would apply `transition`
+/// to the package in `ws`.
+///
+/// Returns the [`TransitionResult`] alongside the actions. Callers that want
+/// to apply the changes should pass the actions to
+/// [`apply_actions`](debian_workspace::appliers::apply_actions). When the
+/// result isn't [`TransitionResult::TransitionSuccess`], the action list is
+/// empty.
+pub fn detect_transition(
+    ws: &dyn Workspace,
+    transition: &Transition,
+) -> Result<(TransitionResult, Vec<Action>), debian_workspace::Error> {
+    let control = ws.parsed_control()?;
+    let source_name = control.source().and_then(|s| s.name()).unwrap_or_default();
+
     if let Some(is_affected) = &transition.is_affected {
         if !control_matches(control.as_deb822(), is_affected) {
-            return TransitionResult::PackageNotAffected(control.source().unwrap().to_string());
+            return Ok((TransitionResult::PackageNotAffected(source_name), vec![]));
         }
     }
     if let Some(is_good) = &transition.is_good {
         if control_matches(control.as_deb822(), is_good) {
-            return TransitionResult::PackageAlreadyGood(control.source().unwrap().to_string());
+            return Ok((TransitionResult::PackageAlreadyGood(source_name), vec![]));
         }
     }
     if let Some(is_bad) = &transition.is_bad {
         if !control_matches(control.as_deb822(), is_bad) {
-            return TransitionResult::PackageNotBad(control.source().unwrap().to_string());
+            return Ok((TransitionResult::PackageNotBad(source_name), vec![]));
         }
     }
 
     if transition.is_bad.is_none() || transition.is_good.is_none() {
-        return TransitionResult::PackageNotBad(control.source().unwrap().to_string());
+        return Ok((TransitionResult::PackageNotBad(source_name), vec![]));
     }
 
     let map = map_bad_to_good(
@@ -193,37 +219,70 @@ pub fn apply_transition(control: &mut Control, transition: &Transition) -> Trans
     )
     .unwrap();
 
-    let deb822 = control.as_mut_deb822();
+    let control_file = PathBuf::from("debian/control");
+    let mut actions = vec![];
 
-    for (field, bad, good) in map {
-        for mut para in deb822.paragraphs() {
-            if let Some(old_value) = para.get(&field) {
-                if bad.applies(&old_value) {
-                    let new_value = match (&bad, &good) {
-                        (Match::String(o), Match::String(n)) => old_value.replace(o, n),
-                        (Match::Regex(o), Match::String(n)) => o.replace(&old_value, n).to_string(),
-                        (_, _) => {
-                            return TransitionResult::Unsupported(format!(
-                                "unsupported bad/good combination for field {}: {:?} -> {:?}",
-                                field, bad, good
-                            ));
-                        }
-                    };
-                    para.insert(&field, &new_value);
-                }
+    for para in control.as_deb822().paragraphs() {
+        let selector = if para.get("Source").is_some() {
+            ParagraphSelector::Source
+        } else if let Some(pkg) = para.get("Package") {
+            ParagraphSelector::Binary { package: pkg }
+        } else {
+            continue;
+        };
+
+        for (field, bad, good) in &map {
+            let Some(old_value) = para.get(field) else {
+                continue;
+            };
+            if !bad.applies(&old_value) {
+                continue;
             }
+            let new_value = match (bad, good) {
+                (Match::String(o), Match::String(n)) => old_value.replace(o, n),
+                (Match::Regex(o), Match::String(n)) => o.replace(&old_value, n).to_string(),
+                _ => {
+                    return Ok((
+                        TransitionResult::Unsupported(format!(
+                            "unsupported bad/good combination for field {}: {:?} -> {:?}",
+                            field, bad, good
+                        )),
+                        vec![],
+                    ));
+                }
+            };
+            actions.push(Action::Deb822(Deb822Action::SetField {
+                file: control_file.clone(),
+                paragraph: selector.clone(),
+                field: field.clone(),
+                value: new_value,
+            }));
         }
     }
 
     let bugnos = transition_find_bugno(transition);
-
-    TransitionResult::TransitionSuccess(control.source().unwrap().to_string(), bugnos)
+    Ok((
+        TransitionResult::TransitionSuccess(source_name, bugnos),
+        actions,
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use debian_workspace::fs_workspace::FsWorkspace;
     use std::str::FromStr;
+    use tempfile::TempDir;
+
+    /// Build a throwaway FsWorkspace whose `debian/control` contains
+    /// `control_text`.
+    fn make_ws(control_text: &str) -> (TempDir, FsWorkspace) {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir_all(tmp.path().join("debian")).unwrap();
+        std::fs::write(tmp.path().join("debian/control"), control_text).unwrap();
+        let ws = FsWorkspace::new(tmp.path(), None, None);
+        (tmp, ws)
+    }
 
     #[test]
     fn test_find_expr_by_field_name_returns_none_for_non_or() {
@@ -277,6 +336,66 @@ mod tests {
         ))]);
         let result = find_expr_by_field_name(&expr, "Nonexistent");
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_compare_less_than() {
+        assert!(compare(&Comparison::LessThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::LessThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::LessThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_much_less_than() {
+        assert!(compare(&Comparison::MuchLessThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::MuchLessThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_less_or_equal() {
+        assert!(compare(&Comparison::LessOrEqual, "1.0", "2.0"));
+        assert!(compare(&Comparison::LessOrEqual, "1.0", "1.0"));
+        assert!(!compare(&Comparison::LessOrEqual, "2.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_greater_than() {
+        assert!(compare(&Comparison::GreaterThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::GreaterThan, "1.0", "2.0"));
+        assert!(!compare(&Comparison::GreaterThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_much_greater_than() {
+        assert!(compare(&Comparison::MuchGreaterThan, "2.0", "1.0"));
+        assert!(!compare(&Comparison::MuchGreaterThan, "1.0", "1.0"));
+    }
+
+    #[test]
+    fn test_compare_greater_or_equal() {
+        assert!(compare(&Comparison::GreaterOrEqual, "2.0", "1.0"));
+        assert!(compare(&Comparison::GreaterOrEqual, "1.0", "1.0"));
+        assert!(!compare(&Comparison::GreaterOrEqual, "1.0", "2.0"));
+    }
+
+    #[test]
+    fn test_compare_equal() {
+        assert!(compare(&Comparison::Equal, "1.0", "1.0"));
+        assert!(!compare(&Comparison::Equal, "1.0", "2.0"));
+    }
+
+    #[test]
+    fn test_compare_debian_version_epoch() {
+        assert!(compare(&Comparison::LessThan, "1.0", "1:0.1"));
+        assert!(compare(&Comparison::GreaterThan, "1:0.1", "2.0"));
+    }
+
+    #[test]
+    fn test_match_comparison_applies() {
+        let m = Match::Comparison(Comparison::GreaterOrEqual, "1.5".to_string());
+        assert!(m.applies("2.0"));
+        assert!(m.applies("1.5"));
+        assert!(!m.applies("1.0"));
     }
 
     #[test]
@@ -576,9 +695,8 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_transition_package_not_affected() {
-        let control_text = "Source: mypackage\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_package_not_affected() {
+        let (_tmp, ws) = make_ws("Source: mypackage\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: None,
@@ -587,14 +705,14 @@ mod tests {
             is_bad: None,
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(matches!(result, TransitionResult::PackageNotAffected(_)));
+        assert_eq!(actions, vec![]);
     }
 
     #[test]
-    fn test_apply_transition_package_already_good() {
-        let control_text = "Source: mypackage\nPackage: newpkg\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_package_already_good() {
+        let (_tmp, ws) = make_ws("Source: mypackage\nPackage: newpkg\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: None,
@@ -606,14 +724,14 @@ mod tests {
             is_bad: None,
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(matches!(result, TransitionResult::PackageAlreadyGood(_)));
+        assert_eq!(actions, vec![]);
     }
 
     #[test]
-    fn test_apply_transition_package_not_bad() {
-        let control_text = "Source: mypackage\nPackage: foo\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_package_not_bad() {
+        let (_tmp, ws) = make_ws("Source: mypackage\nPackage: foo\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: None,
@@ -622,14 +740,14 @@ mod tests {
             is_bad: Some(Expr::FieldString("Package".to_string(), "bar".to_string())),
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(matches!(result, TransitionResult::PackageNotBad(_)));
+        assert_eq!(actions, vec![]);
     }
 
     #[test]
-    fn test_apply_transition_missing_is_bad() {
-        let control_text = "Source: mypackage\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_missing_is_bad() {
+        let (_tmp, ws) = make_ws("Source: mypackage\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: None,
@@ -638,14 +756,14 @@ mod tests {
             is_bad: None,
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(matches!(result, TransitionResult::PackageNotBad(_)));
+        assert_eq!(actions, vec![]);
     }
 
     #[test]
-    fn test_apply_transition_missing_is_good() {
-        let control_text = "Source: mypackage\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_missing_is_good() {
+        let (_tmp, ws) = make_ws("Source: mypackage\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: None,
@@ -654,14 +772,14 @@ mod tests {
             is_bad: Some(Expr::And(vec![])),
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(matches!(result, TransitionResult::PackageNotBad(_)));
+        assert_eq!(actions, vec![]);
     }
 
     #[test]
-    fn test_apply_transition_success() {
-        let control_text = "Source: mypackage\nPackage: oldpkg\n";
-        let mut control = Control::from_str(control_text).unwrap();
+    fn test_detect_transition_success() {
+        let (_tmp, ws) = make_ws("Source: mypackage\n\nPackage: oldpkg\n");
         let transition = Transition {
             title: Some("test".to_string()),
             notes: Some("Fixes #123".to_string()),
@@ -676,9 +794,20 @@ mod tests {
             ))])),
             export: None,
         };
-        let result = apply_transition(&mut control, &transition);
+        let (result, actions) = detect_transition(&ws, &transition).unwrap();
         assert!(
             matches!(result, TransitionResult::TransitionSuccess(_, ref bugs) if bugs == &vec![123])
+        );
+        assert_eq!(
+            actions,
+            vec![Action::Deb822(Deb822Action::SetField {
+                file: PathBuf::from("debian/control"),
+                paragraph: ParagraphSelector::Binary {
+                    package: "oldpkg".to_string(),
+                },
+                field: "Package".to_string(),
+                value: "newpkg".to_string(),
+            })]
         );
     }
 }

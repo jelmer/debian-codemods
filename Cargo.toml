@@ -25,7 +25,7 @@ configparser = "3"
 url = "2"
 debian-copyright = "0.1.48"
 debian-changelog = "0.2.13"
-debian-control = ">=0.3.6,<0.4"
+debian-control = ">=0.3.9,<0.4"
 debian-workspace = { path = "debian-workspace", version = "0.1.0" }
 deb822-lossless = "0.5.15"
 pyo3-log = ">=0.12,<0.14"

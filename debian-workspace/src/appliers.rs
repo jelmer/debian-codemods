@@ -67,6 +67,7 @@ fn action_file(action: &Action) -> &Path {
             | Deb822Action::NormalizeFieldSpacing { file, .. }
             | Deb822Action::DropRelation { file, .. }
             | Deb822Action::ReplaceRelation { file, .. }
+            | Deb822Action::SetRelationVersionConstraint { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
             | Deb822Action::DropSubstvar { file, .. }
             | Deb822Action::EnsureRelation { file, .. }
@@ -229,6 +230,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
             | Deb822Action::ReplaceRelation { paragraph, .. }
+            | Deb822Action::SetRelationVersionConstraint { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
@@ -343,6 +345,19 @@ fn apply_control_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::SetRelationVersionConstraint {
+                paragraph,
+                field,
+                package,
+                constraint,
+                ..
+            } => {
+                if set_deb822_relation_version_constraint(
+                    &editor, paragraph, field, package, constraint,
+                )? {
+                    any_change = true;
+                }
+            }
             Deb822Action::EnsureSubstvar {
                 paragraph,
                 field,
@@ -441,6 +456,7 @@ fn apply_copyright_deb822_group(
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
             | Deb822Action::ReplaceRelation { paragraph, .. }
+            | Deb822Action::SetRelationVersionConstraint { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
@@ -725,6 +741,21 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if replace_relation_in_paragraph(&mut p, field, from_package, to_entry) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::SetRelationVersionConstraint {
+                paragraph,
+                field,
+                package,
+                constraint,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if set_relation_version_constraint_in_paragraph(&mut p, field, package, constraint)
+                {
                     any_change = true;
                 }
             }
@@ -1052,6 +1083,48 @@ fn remove_deb822_field(
     }
 }
 
+/// Set the version constraint on every relation in `field` that names
+/// `package`, preserving alternatives within the same entry. `None` strips
+/// the constraint. Returns true iff the field was modified.
+fn set_relation_version_constraint_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    package: &str,
+    constraint: &Option<(
+        debian_control::relations::VersionConstraint,
+        debversion::Version,
+    )>,
+) -> bool {
+    use debian_control::lossless::relations::Relations;
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (relations, _errors) = Relations::parse_relaxed(&value, true);
+    let mut any_change = false;
+    for entry in relations.entries() {
+        for mut rel in entry.relations() {
+            if rel.try_name().as_deref() != Some(package) {
+                continue;
+            }
+            if rel.version() == *constraint {
+                continue;
+            }
+            rel.set_version(constraint.clone());
+            any_change = true;
+        }
+    }
+    if !any_change {
+        return false;
+    }
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
 fn drop_relation_in_paragraph(
     p: &mut deb822_lossless::Paragraph,
     field: &str,
@@ -1208,6 +1281,47 @@ fn drop_deb822_relation(
         }
         other => Err(FixerError::Other(format!(
             "deb822 DropRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn set_deb822_relation_version_constraint(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    package: &str,
+    constraint: &Option<(
+        debian_control::relations::VersionConstraint,
+        debversion::Version,
+    )>,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(set_relation_version_constraint_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                package,
+                constraint,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(set_relation_version_constraint_in_paragraph(
+                    p, field, package, constraint,
+                ));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 SetRelationVersionConstraint does not support paragraph selector {:?}",
             other
         ))),
     }
