@@ -10,7 +10,7 @@ use indicatif::{MultiProgress, ProgressBar};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
-use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree_with_dirty_tracker};
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
@@ -19,6 +19,7 @@ use debian_analyzer::{
     ApplyError, ChangelogError,
 };
 use debian_changelog::ChangeLog;
+use debian_workspace::Workspace;
 
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
@@ -1064,22 +1065,21 @@ pub fn run_lintian_fixer(
 
     let changelog_path = subpath.join("debian/changelog");
 
-    let r = match local_tree.get_file(changelog_path.as_path()) {
-        Ok(f) => f,
-        Err(Error::NoSuchFile(_pb)) => {
-            return Err(FixerError::NotDebianPackage(
-                local_tree.abspath(subpath).unwrap(),
-            ));
+    let basedir = local_tree.abspath(subpath).unwrap();
+    let cl = match debian_workspace::fs_workspace::FsWorkspace::new(basedir.as_path(), None, None)
+        .parsed_changelog()
+    {
+        Ok(cl) => cl,
+        Err(debian_workspace::Error::NotFound) => {
+            return Err(FixerError::NotDebianPackage(basedir));
         }
         Err(e) => return Err(FixerError::Other(e.to_string())),
     };
-
-    let cl = ChangeLog::read_relaxed(r)?;
     let first_entry = if let Some(entry) = cl.iter().next() {
         entry
     } else {
         return Err(FixerError::InvalidChangelog(
-            local_tree.abspath(subpath).unwrap(),
+            basedir,
             "No entries in changelog".to_string(),
         ));
     };
@@ -1101,7 +1101,6 @@ pub fn run_lintian_fixer(
         local_tree.basis_tree().unwrap()
     };
 
-    let basedir = local_tree.abspath(subpath).unwrap();
     let ws = debian_workspace::fs_workspace::FsWorkspace::new(
         basedir.as_path(),
         Some(package.to_string()),
@@ -1788,7 +1787,7 @@ mod tests {
     use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use breezyshim::repository::Repository;
-    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::tree::{MutableTree, Tree, WorkingTree};
     use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::Branch;
     use debian_workspace::Workspace;
