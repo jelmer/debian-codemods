@@ -3,7 +3,6 @@ use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 const CORRECT_FORMAT_URI: &str =
     "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
@@ -13,21 +12,15 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let bytes = match ws.read_file(&copyright_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
-    };
-    let Ok(content) = std::str::from_utf8(&bytes) else {
-        return Ok(Vec::new());
-    };
-    let deb822 = match deb822_lossless::Deb822::from_str(&content) {
-        Ok(d) => d,
+    let copyright = match ws.parsed_copyright() {
+        Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(_) => return Ok(Vec::new()),
     };
-    let Some(header) = deb822.paragraphs().next() else {
+    let Some(header) = copyright.header() else {
         return Ok(Vec::new());
     };
-    let Some(format) = header.get("Format") else {
+    let Some(format) = header.as_deb822().get("Format") else {
         return Ok(Vec::new());
     };
 
@@ -106,7 +99,14 @@ mod tests {
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &version, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(version.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

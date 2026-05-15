@@ -1,7 +1,6 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
-use debian_copyright::lossless::Copyright;
 use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -35,17 +34,11 @@ pub fn detect(
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
-    let bytes = match ws.read_file(&copyright_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
-    };
-    let Ok(content) = std::str::from_utf8(&bytes) else {
-        return Ok(Vec::new());
-    };
-    let (copyright, _errors) = match Copyright::from_str_relaxed(&content) {
+    let copyright = match ws.parsed_copyright() {
         Ok(c) => c,
+        Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
         Err(e) => {
-            tracing::debug!("debian/copyright is not machine-readable: {:?}", e);
+            tracing::debug!("debian/copyright is not machine-readable: {}", e);
             return Ok(Vec::new());
         }
     };
@@ -288,7 +281,14 @@ mod tests {
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &version, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(version.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

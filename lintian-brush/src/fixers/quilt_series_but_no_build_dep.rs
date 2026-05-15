@@ -12,13 +12,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let format = match ws.read_file(Path::new("debian/source/format"))? {
-        Some(b) => std::str::from_utf8(&b)
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default(),
-        None => String::new(),
-    };
-    if format == "3.0 (quilt)" {
+    if ws.source_format()?.as_deref() == Some("3.0 (quilt)") {
         return Ok(Vec::new());
     }
 
@@ -94,7 +88,14 @@ mod tests {
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &version, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(version.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

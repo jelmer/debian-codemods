@@ -126,7 +126,12 @@ mod tests {
 
     fn run_apply(base: &Path, version: &Version) -> Result<crate::FixerResult, FixerError> {
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", version, &FixerPreferences::default())
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            base,
+            Some("test".into()),
+            Some(version.clone()),
+        );
+        adapter.apply(&ws, &FixerPreferences::default())
     }
 
     #[test]

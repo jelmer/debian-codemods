@@ -3,7 +3,6 @@ use crate::diagnostic::{Action, ActionPlan, Diagnostic, MaintscriptAction};
 use crate::{FixerError, FixerPreferences};
 use chrono::{DateTime, NaiveDate, Utc};
 use debian_analyzer::maintscripts::{Entry, Maintscript};
-use debian_changelog::ChangeLog;
 use debian_workspace::Workspace;
 use debversion::Version;
 use distro_info::{DebianDistroInfo, DistroInfo};
@@ -49,12 +48,16 @@ fn get_date_threshold(upgrade_release: Option<&str>) -> Result<NaiveDate, FixerE
 }
 
 fn parse_changelog_dates(ws: &dyn Workspace) -> Result<Vec<(Version, DateTime<Utc>)>, FixerError> {
-    let bytes = match ws.read_file(Path::new("debian/changelog"))? {
-        Some(b) => b,
-        None => return Ok(vec![]),
+    let changelog = match ws.parsed_changelog() {
+        Ok(cl) => cl,
+        Err(debian_workspace::Error::NotFound) => return Ok(vec![]),
+        Err(e) => {
+            return Err(FixerError::Other(format!(
+                "Failed to parse changelog: {}",
+                e
+            )))
+        }
     };
-    let changelog = ChangeLog::read_relaxed(&bytes[..])
-        .map_err(|e| FixerError::Other(format!("Failed to parse changelog: {:?}", e)))?;
 
     let mut dates = Vec::new();
 

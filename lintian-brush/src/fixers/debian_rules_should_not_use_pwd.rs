@@ -2,7 +2,6 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
-use makefile_lossless::Makefile;
 use std::path::{Path, PathBuf};
 
 pub fn detect(
@@ -19,7 +18,7 @@ pub fn detect(
     };
     // Parse as a sanity check; if the file isn't a parseable makefile
     // there's nothing safe to substitute in.
-    if Makefile::read_relaxed(content.as_bytes()).is_err() {
+    if ws.parsed_rules().is_err() {
         return Ok(Vec::new());
     }
     if !content.contains("$(PWD)") {
@@ -62,7 +61,14 @@ mod tests {
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
         let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        adapter.apply(base, "test", &version, &FixerPreferences::default())
+        {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+                base,
+                Some("test".into()),
+                Some(version.clone()),
+            );
+            adapter.apply(&ws, &FixerPreferences::default())
+        }
     }
 
     #[test]

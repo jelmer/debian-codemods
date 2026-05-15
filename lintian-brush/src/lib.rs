@@ -10,7 +10,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
-use breezyshim::tree::{Tree, TreeChange, WorkingTree};
+use breezyshim::tree::{TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree_with_dirty_tracker};
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
@@ -19,6 +19,7 @@ use debian_analyzer::{
     ApplyError, ChangelogError,
 };
 use debian_changelog::ChangeLog;
+use debian_workspace::Workspace;
 
 /// Built-in fixers for common Lintian issues
 pub mod builtin_fixers;
@@ -725,26 +726,19 @@ pub trait Fixer: std::fmt::Debug + Sync {
     ///
     /// # Arguments
     ///
-    /// * `basedir` - Directory in which to run
-    /// * `package` - Name of the source package
-    /// * `current_version` - The version of the package that is being created or updated
-    /// * `compat_release` - Compatibility level (a Debian release name)
-    /// * `minimum_certainty` - Minimum certainty level
-    /// * `trust_package` - Whether to run code from the package
-    /// * `allow_reformatting` - Allow reformatting of files that are being changed
-    /// * `net_access` - Allow network access
-    /// * `opinionated` - Whether to be opinionated
-    /// * `diligence` - Level of diligence
-    /// * `timeout` - Maximum time to run the fixer
+    /// * `workspace` - On-disk workspace for the package being fixed.
+    ///   The fixer reads/writes the package through this handle and looks up
+    ///   the package name and current version on it.
+    /// * `preferences` - Knobs that influence fixer behaviour (compat release,
+    ///   minimum certainty, network access, …).
+    /// * `timeout` - Maximum time to run the fixer.
     ///
     /// # Returns
     ///
     ///  A FixerResult object
     fn run(
         &self,
-        basedir: &std::path::Path,
-        package: &str,
-        current_version: &Version,
+        workspace: &debian_workspace::fs_workspace::FsWorkspace,
         preferences: &FixerPreferences,
         timeout: Option<chrono::Duration>,
     ) -> Result<FixerResult, FixerError>;
@@ -1071,22 +1065,21 @@ pub fn run_lintian_fixer(
 
     let changelog_path = subpath.join("debian/changelog");
 
-    let r = match local_tree.get_file(changelog_path.as_path()) {
-        Ok(f) => f,
-        Err(Error::NoSuchFile(_pb)) => {
-            return Err(FixerError::NotDebianPackage(
-                local_tree.abspath(subpath).unwrap(),
-            ));
+    let basedir = local_tree.abspath(subpath).unwrap();
+    let cl = match debian_workspace::fs_workspace::FsWorkspace::new(basedir.as_path(), None, None)
+        .parsed_changelog()
+    {
+        Ok(cl) => cl,
+        Err(debian_workspace::Error::NotFound) => {
+            return Err(FixerError::NotDebianPackage(basedir));
         }
         Err(e) => return Err(FixerError::Other(e.to_string())),
     };
-
-    let cl = ChangeLog::read_relaxed(r)?;
     let first_entry = if let Some(entry) = cl.iter().next() {
         entry
     } else {
         return Err(FixerError::InvalidChangelog(
-            local_tree.abspath(subpath).unwrap(),
+            basedir,
             "No entries in changelog".to_string(),
         ));
     };
@@ -1108,15 +1101,15 @@ pub fn run_lintian_fixer(
         local_tree.basis_tree().unwrap()
     };
 
-    let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
+    let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+        basedir.as_path(),
+        Some(package.to_string()),
+        Some(current_version.clone()),
+    );
+
+    let make_changes = |_basedir: &std::path::Path| -> Result<_, FixerError> {
         tracing::debug!("Running fixer {:?}", fixer);
-        let result = fixer.run(
-            basedir,
-            package.as_str(),
-            &current_version,
-            preferences,
-            timeout,
-        )?;
+        let result = fixer.run(&ws, preferences, timeout)?;
         if let Some(certainty) = result.certainty {
             if !certainty_sufficient(certainty, preferences.minimum_certainty) {
                 return Err(FixerError::NotCertainEnough(
@@ -1798,9 +1791,10 @@ mod tests {
     use super::*;
     use breezyshim::controldir::{create_standalone_workingtree, ControlDirFormat};
     use breezyshim::repository::Repository;
-    use breezyshim::tree::{MutableTree, WorkingTree};
+    use breezyshim::tree::{MutableTree, Tree, WorkingTree};
     use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::Branch;
+    use debian_workspace::Workspace;
     use std::path::Path;
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
@@ -1981,13 +1975,11 @@ mod tests {
 
             fn run(
                 &self,
-                basedir: &std::path::Path,
-                package: &str,
-                _current_version: &Version,
+                workspace: &debian_workspace::fs_workspace::FsWorkspace,
                 _preferences: &FixerPreferences,
                 _timeout: Option<chrono::Duration>,
             ) -> Result<FixerResult, FixerError> {
-                let control_path = basedir.join("debian/control");
+                let control_path = workspace.base_path().join("debian/control");
                 let mut control_content = std::fs::read_to_string(&control_path).unwrap();
                 control_content.push_str("a new line\n");
                 std::fs::write(control_path, control_content).unwrap();
@@ -1997,7 +1989,7 @@ mod tests {
                     certainty: Some(Certainty::Certain),
                     fixed_lintian_issues: vec![LintianIssue {
                         tag: Some("some-tag".to_string()),
-                        package: Some(package.to_string()),
+                        package: workspace.package().map(|s| s.to_string()),
                         info: None,
                         package_type: Some(PackageType::Source),
                         visibility: None,
@@ -2038,12 +2030,11 @@ mod tests {
 
             fn run(
                 &self,
-                basedir: &std::path::Path,
-                _package: &str,
-                _current_version: &Version,
+                workspace: &debian_workspace::fs_workspace::FsWorkspace,
                 _preferences: &FixerPreferences,
                 _timeout: Option<chrono::Duration>,
             ) -> Result<FixerResult, FixerError> {
+                let basedir = workspace.base_path();
                 std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
                 std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
                 Err(FixerError::ScriptFailed {
@@ -2293,13 +2284,11 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
                     Ok(FixerResult {
                         description: "Renamed a file.".to_string(),
                         patch_name: None,
@@ -2374,13 +2363,11 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
                     Ok(FixerResult {
                         description: "Renamed a file.".to_string(),
                         patch_name: None,
@@ -2454,20 +2441,18 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(basedir.join("debian/somefile"), "test").unwrap();
+                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
                     Ok(FixerResult {
                         description: "Created new file.".to_string(),
                         patch_name: None,
                         certainty: None,
                         fixed_lintian_issues: vec![LintianIssue {
                             tag: Some("some-tag".to_string()),
-                            package: Some(package.to_string()),
+                            package: workspace.package().map(|s| s.to_string()),
                             info: None,
                             package_type: Some(PackageType::Source),
                             visibility: None,
@@ -2555,12 +2540,11 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
+                    let basedir = workspace.base_path();
                     std::fs::rename(
                         basedir.join("debian/control"),
                         basedir.join("debian/control.blah"),
@@ -2645,9 +2629,7 @@ Arch: all
 
                 fn run(
                     &self,
-                    _basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    _workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
@@ -2728,13 +2710,15 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(basedir.join("configure.ac"), "AC_INIT(foo, bar)\n").unwrap();
+                    std::fs::write(
+                        workspace.base_path().join("configure.ac"),
+                        "AC_INIT(foo, bar)\n",
+                    )
+                    .unwrap();
                     Ok(FixerResult {
                         description: "Created new configure.ac.".to_string(),
                         patch_name: Some("add-config".to_string()),
@@ -2870,13 +2854,15 @@ Arch: all
 
                 fn run(
                     &self,
-                    basedir: &std::path::Path,
-                    _package: &str,
-                    _current_version: &Version,
+                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
                     _preferences: &FixerPreferences,
                     _timeout: Option<chrono::Duration>,
                 ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(basedir.join("configure.ac"), "AC_INIT(foo, bar)\n").unwrap();
+                    std::fs::write(
+                        workspace.base_path().join("configure.ac"),
+                        "AC_INIT(foo, bar)\n",
+                    )
+                    .unwrap();
                     Ok(FixerResult {
                         description: "Created new configure.ac.".to_string(),
                         patch_name: Some("add-config".to_string()),

@@ -615,9 +615,12 @@ mod tests {
         };
         let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
-        let result = adapter
-            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
-            .unwrap();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(version),
+        );
+        let result = adapter.apply(&ws, &FixerPreferences::default()).unwrap();
 
         assert_eq!(result.description, "Set Priority on source");
         assert_eq!(result.certainty, Some(Certainty::Confident));
@@ -640,8 +643,13 @@ mod tests {
         };
         let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(version),
+        );
         let err = adapter
-            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
+            .apply(&ws, &FixerPreferences::default())
             .unwrap_err();
         assert!(matches!(err, FixerError::NoChanges));
     }
@@ -672,8 +680,13 @@ mod tests {
         };
         let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(version),
+        );
         let err = adapter
-            .apply(tmp.path(), "foo", &version, &FixerPreferences::default())
+            .apply(&ws, &FixerPreferences::default())
             .unwrap_err();
         match err {
             FixerError::NoChangesAfterOverrides(issues) => {
@@ -713,9 +726,12 @@ mod tests {
         let mut prefs = FixerPreferences::default();
         prefs.minimum_certainty = Some(Certainty::Confident);
         let version: Version = "1.0".parse().unwrap();
-        let err = adapter
-            .apply(tmp.path(), "foo", &version, &prefs)
-            .unwrap_err();
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            Some("foo".into()),
+            Some(version),
+        );
+        let err = adapter.apply(&ws, &prefs).unwrap_err();
         assert!(matches!(err, FixerError::NotCertainEnough(..)));
         assert_eq!(
             fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
@@ -749,7 +765,12 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let prefs = FixerPreferences::default();
         let version: Version = "1.0".parse().unwrap();
-        let result = adapter.run(tmp.path(), "test-package", &version, &prefs, None);
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            tmp.path(),
+            Some("test-package".into()),
+            Some(version),
+        );
+        let result = adapter.run(&ws, &prefs, None);
         match result.unwrap_err() {
             FixerError::Panic { message, .. } => {
                 assert_eq!(message, "Test panic from detector");

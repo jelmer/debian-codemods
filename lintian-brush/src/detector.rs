@@ -1,8 +1,6 @@
 use crate::FixerError;
 use debian_workspace::fs_workspace::FsWorkspace;
 use debian_workspace::{Trigger, Workspace};
-use debversion::Version;
-use std::path::Path;
 
 /// Rough indication of a detector's runtime cost.
 ///
@@ -194,9 +192,8 @@ pub fn select_detectors(
 /// Bridge a [`Detector`] into the public [`crate::Fixer`] trait so the CLI
 /// driver picks it up via [`crate::builtin_fixers::get_builtin_fixers`].
 ///
-/// Constructs a [`FsWorkspace`] from the on-disk `basedir`, runs the
-/// detector, then applies the resulting actions through
-/// [`crate::appliers::apply_actions`].
+/// Runs the detector against the caller-supplied [`FsWorkspace`] and applies
+/// the resulting actions through [`crate::appliers::apply_actions`].
 pub struct DetectorAdapter {
     detector: Box<dyn Detector>,
     name: &'static str,
@@ -223,19 +220,12 @@ impl DetectorAdapter {
     /// filtered out by lintian overrides.
     pub fn apply(
         &self,
-        basedir: &Path,
-        package: &str,
-        current_version: &Version,
+        workspace: &FsWorkspace,
         preferences: &crate::FixerPreferences,
     ) -> Result<crate::FixerResult, FixerError> {
-        let ws = FsWorkspace::new(
-            basedir,
-            Some(package.to_string()),
-            Some(current_version.clone()),
-        );
-        let diagnostics = self.detector.detect(&ws, preferences)?;
+        let diagnostics = self.detector.detect(workspace, preferences)?;
         crate::builtin_fixers::apply_diagnostics_with(
-            basedir,
+            workspace.base_path(),
             &diagnostics,
             preferences,
             &|fixed, actions| self.detector.describe(fixed, actions),
@@ -267,9 +257,7 @@ impl crate::Fixer for DetectorAdapter {
 
     fn run(
         &self,
-        basedir: &Path,
-        package: &str,
-        current_version: &Version,
+        workspace: &FsWorkspace,
         preferences: &crate::FixerPreferences,
         _timeout: Option<chrono::Duration>,
     ) -> Result<crate::FixerResult, FixerError> {
@@ -284,7 +272,7 @@ impl crate::Fixer for DetectorAdapter {
         }
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.apply(basedir, package, current_version, preferences)
+            self.apply(workspace, preferences)
         }));
 
         for (key, old_value) in env_backup {
