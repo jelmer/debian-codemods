@@ -2,6 +2,8 @@
 name = "debian-workspace"
 edition = "2024"
 version = "0.1.0"
+description = "Workspace for manipulating Debian packages"
+license = "Apache-2.0"
 
 [lib]
 
