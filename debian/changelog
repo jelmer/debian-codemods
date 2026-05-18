@@ -12,8 +12,11 @@ debian-codemods (0.178) UNRELEASED; urgency=medium
   * Add fixer for depends-on-python-minimal.
   * debcargo.toml: Suggest setting collapse_features.
   * Fix test_bsd incorrectly returning changes. Closes: #1136917
+  * initial-upload-closes-no-bugs: Cross-check the whole
+    changelog for already-closed WNPP bugs before re-adding them on the
+    initial release entry. Closes: #1136913
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 18 May 2026 01:35:01 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 18 May 2026 01:50:24 +0100
 
 debian-codemods (0.177) unstable; urgency=medium
 
