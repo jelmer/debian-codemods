@@ -1,4 +1,4 @@
-debian-codemods (0.178) UNRELEASED; urgency=medium
+debian-codemods (0.178) unstable; urgency=medium
 
   * Add fixer for homepage-for-cpan-package-contains-version.
   * Add fixer for redundant-priority-optional-field.
