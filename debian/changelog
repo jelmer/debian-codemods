@@ -1,3 +1,9 @@
+debian-codemods (0.181) UNRELEASED; urgency=medium
+
+  * Add fixer for binary-package-depends-on-toolchain-package.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
+
 debian-codemods (0.180) unstable; urgency=medium
 
   * Add fixer for apache2-module-does-not-depend-on-apache2-api.
