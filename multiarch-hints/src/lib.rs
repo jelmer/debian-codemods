@@ -107,7 +107,8 @@ where
 pub struct Hint {
     pub binary: String,
     pub description: String,
-    pub source: String,
+    #[serde(default)]
+    pub source: Option<String>,
     pub link: String,
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
@@ -123,9 +124,9 @@ impl Hint {
 pub fn multiarch_hints_by_source(hints: &[Hint]) -> HashMap<&str, Vec<&Hint>> {
     let mut map = HashMap::new();
     for hint in hints {
-        map.entry(hint.source.as_str())
-            .or_insert_with(Vec::new)
-            .push(hint);
+        if let Some(source) = hint.source.as_deref() {
+            map.entry(source).or_insert_with(Vec::new).push(hint);
+        }
     }
     map
 }
@@ -182,7 +183,33 @@ hints:
                 link: "https://wiki.debian.org/MultiArch/Hints#file-conflict".to_string(),
                 severity: Severity::High,
                 version: Some("1.8.3-2+b11".parse().unwrap()),
-                source: "coinmp".to_string(),
+                source: Some("coinmp".to_string()),
+            }]
+        );
+    }
+
+    #[test]
+    fn test_missing_source() {
+        let hints = parse_multiarch_hints(
+            r#"format: multiarch-hints-1.0
+hints:
+- binary: somepkg
+  description: some description
+  link: https://wiki.debian.org/MultiArch/Hints#file-conflict
+  severity: high
+"#
+            .as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(
+            hints,
+            vec![Hint {
+                binary: "somepkg".to_string(),
+                description: "some description".to_string(),
+                link: "https://wiki.debian.org/MultiArch/Hints#file-conflict".to_string(),
+                severity: Severity::High,
+                version: None,
+                source: None,
             }]
         );
     }
@@ -205,7 +232,7 @@ format: blah
             link: format!("https://wiki.debian.org/MultiArch/Hints#{}", kind),
             severity: Severity::Normal,
             version: None,
-            source: "src".to_string(),
+            source: Some("src".to_string()),
         }
     }
 
