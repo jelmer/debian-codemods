@@ -93,7 +93,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
@@ -101,7 +101,7 @@ mod tests {
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        let adapter = DetectorImpl;
         {
             let ws = debian_workspace::fs_workspace::FsWorkspace::new(
                 base,

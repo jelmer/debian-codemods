@@ -4,9 +4,22 @@ use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::path::PathBuf;
 
+/// Look up a lintian-brush-internal override from `preferences.extra_env`.
+///
+/// These knobs (`DEBCONF_GETTEXTIZE_TIMESTAMP`, `DEBCONF_UPDATEPO`) only
+/// exist to make this fixer's behaviour deterministic in tests; they are
+/// not standard environment variables, so we deliberately do not fall
+/// back to the process environment.
+fn override_from(preferences: &FixerPreferences, name: &str) -> Option<String> {
+    preferences
+        .extra_env
+        .as_ref()
+        .and_then(|e| e.get(name).cloned())
+}
+
 pub fn detect(
     ws: &dyn Workspace,
-    _preferences: &FixerPreferences,
+    preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let po_dir_rel = PathBuf::from("debian/po");
     let entries = match ws.list_dir(&po_dir_rel)? {
@@ -22,10 +35,17 @@ pub fn detect(
     let issue =
         LintianIssue::source_with_info("newer-debconf-templates", Visibility::Warning, info);
 
+    // The debconf-updatepo program; overridable so tests can point at a
+    // path that does not exist and exercise the MissingDependency case.
+    let updatepo =
+        override_from(preferences, "DEBCONF_UPDATEPO").unwrap_or_else(|| "debconf-updatepo".into());
+
     // If a deterministic timestamp is requested, run debconf-updatepo and
     // rewrite POT-Creation-Date in any .po file it touched. We delegate
     // both to the shell so the applier sees a single command.
-    let argv = if let Ok(timestamp_str) = std::env::var("DEBCONF_GETTEXTIZE_TIMESTAMP") {
+    let argv = if let Some(timestamp_str) =
+        override_from(preferences, "DEBCONF_GETTEXTIZE_TIMESTAMP")
+    {
         let timestamp: i64 = timestamp_str
             .parse()
             .map_err(|_| FixerError::Other("Invalid DEBCONF_GETTEXTIZE_TIMESTAMP".to_string()))?;
@@ -36,7 +56,7 @@ pub fn detect(
             "set -e\n\
              before=$(mktemp -d)\n\
              cp -a debian/po/. \"$before\"/\n\
-             debconf-updatepo\n\
+             {}\n\
              for f in debian/po/*; do\n\
                  [ -f \"$f\" ] || continue\n\
                  if ! cmp -s \"$f\" \"$before/$(basename \"$f\")\" 2>/dev/null; then\n\
@@ -44,11 +64,11 @@ pub fn detect(
                  fi\n\
              done\n\
              rm -rf \"$before\"\n",
-            formatted
+            updatepo, formatted
         );
         vec!["sh".into(), "-c".into(), script]
     } else {
-        vec!["debconf-updatepo".into()]
+        vec![updatepo]
     };
 
     Ok(vec![Diagnostic::with_actions(
@@ -75,23 +95,28 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
 
-    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+    fn run_apply_with(
+        base: &Path,
+        preferences: &FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
         let v: Version = "1.0".parse().unwrap();
-        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
-        {
-            let ws = debian_workspace::fs_workspace::FsWorkspace::new(
-                base,
-                Some("test".into()),
-                Some(v.clone()),
-            );
-            adapter.apply(&ws, &FixerPreferences::default())
-        }
+        let adapter = DetectorImpl;
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            base,
+            Some("test".into()),
+            Some(v.clone()),
+        );
+        adapter.apply(&ws, preferences)
+    }
+
+    fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
+        run_apply_with(base, &FixerPreferences::default())
     }
 
     #[test]
@@ -108,23 +133,23 @@ mod tests {
         fs::create_dir_all(&po_dir).unwrap();
         fs::write(po_dir.join("POTFILES.in"), "").unwrap();
 
-        // Set PATH to an empty directory so debconf-updatepo isn't found.
-        let empty_bin = tmp.path().join("empty-bin");
-        fs::create_dir(&empty_bin).unwrap();
-        let old_path = std::env::var("PATH").unwrap_or_default();
-        // SAFETY: the test process is single-threaded for this assertion.
-        unsafe {
-            std::env::set_var("PATH", empty_bin.to_str().unwrap());
-        }
+        // Point debconf-updatepo at a path that does not exist instead of
+        // mutating the process PATH, which would race other tests.
+        let missing = tmp.path().join("nonexistent-debconf-updatepo");
+        let mut extra_env = std::collections::HashMap::new();
+        extra_env.insert(
+            "DEBCONF_UPDATEPO".to_string(),
+            missing.to_str().unwrap().to_string(),
+        );
+        let preferences = FixerPreferences {
+            extra_env: Some(extra_env),
+            ..Default::default()
+        };
 
-        let result = run_apply(tmp.path());
-
-        unsafe {
-            std::env::set_var("PATH", old_path);
-        }
-
-        match result {
-            Err(FixerError::MissingDependency(name)) => assert_eq!(name, "debconf-updatepo"),
+        match run_apply_with(tmp.path(), &preferences) {
+            Err(FixerError::MissingDependency(name)) => {
+                assert_eq!(name, missing.to_str().unwrap())
+            }
             other => panic!("expected MissingDependency, got {:?}", other),
         }
     }

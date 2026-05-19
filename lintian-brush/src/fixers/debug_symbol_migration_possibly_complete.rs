@@ -100,17 +100,16 @@ fn package_exists(
     version_info: Option<(&str, String)>,
     preferences: &FixerPreferences,
 ) -> Option<bool> {
-    // Check environment variable first (for testing without network)
+    // Without network access, consult the lintian-brush-internal
+    // <RELEASE>_PACKAGES knob passed through preferences.extra_env. It is
+    // not a standard environment variable, so we do not read the process
+    // environment.
     if !preferences.net_access.unwrap_or(true) {
         let env_var_name = format!("{}_PACKAGES", release.to_uppercase());
-
-        // Check preferences.extra_env first (for in-process Rust fixers in tests)
-        let packages_env_str = if let Some(extra_env) = &preferences.extra_env {
-            extra_env.get(&env_var_name).cloned()
-        } else {
-            None
-        }
-        .or_else(|| std::env::var(&env_var_name).ok());
+        let packages_env_str = preferences
+            .extra_env
+            .as_ref()
+            .and_then(|extra_env| extra_env.get(&env_var_name).cloned());
 
         if let Some(packages_env) = packages_env_str {
             return Some(packages_env.split(',').any(|p| p == package));
