@@ -3247,6 +3247,7 @@ dependencies = [
  "serde_yaml",
  "svp-client",
  "tempfile",
+ "tokio",
  "url",
  "xz2",
 ]
