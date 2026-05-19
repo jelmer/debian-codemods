@@ -17,6 +17,9 @@ pub mod fs_workspace;
 /// Allow notification on certain events.
 pub mod trigger;
 
+/// Heuristics for classifying binary packages (transitional/meta-package).
+pub mod package_class;
+
 pub use debversion::Version;
 pub use trigger::{ChangelogAspect, Trigger, WatchAspect};
 pub use workspace::{Workspace, compat_level};
