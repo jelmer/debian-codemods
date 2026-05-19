@@ -12,6 +12,7 @@ chrono = { workspace = true }
 lazy_static = { workspace = true }
 log = { workspace = true }
 reqwest = { workspace = true, features = ["blocking"] }
+tokio = { workspace = true, features = ["fs", "io-util"], optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 xz2 = "0.1"
@@ -34,6 +35,8 @@ svp-client = { workspace = true }
 [features]
 default = ["cli"]
 cli = ["dep:clap", "dep:env_logger"]
+# Async hint download for hosts that run on a tokio runtime (e.g. an LSP).
+async = ["dep:tokio"]
 
 [[bin]]
 name = "apply-multiarch-hints"

@@ -4,7 +4,7 @@ use breezyshim::tree::WorkingTree;
 use breezyshim::workingtree::GenericWorkingTree;
 use debian_analyzer::{
     add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, ApplyError,
-    Certainty, ChangelogError,
+    ChangelogError,
 };
 use debian_control::fields::MultiArch;
 use debian_workspace::action::{Action, ActionPlan, Deb822Action, ParagraphSelector};
@@ -22,6 +22,11 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::time::SystemTime;
+
+/// Re-export so library consumers (e.g. an LSP host) don't have to
+/// add a direct `debian-analyzer` dep just to spell the certainty
+/// parameter to [`detect_multiarch_hints`].
+pub use debian_analyzer::Certainty;
 
 pub const MULTIARCH_HINTS_URL: &str = "https://dedup.debian.net/static/multiarch-hints.yaml.xz";
 const USER_AGENT: &str = concat!("apply-multiarch-hints/", env!("CARGO_PKG_VERSION"));
@@ -440,21 +445,42 @@ format: blah
     }
 }
 
-pub fn cache_download_multiarch_hints(
-    url: Option<&str>,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+/// Locate the directory we cache the downloaded multiarch-hints file in.
+///
+/// Honours `$XDG_CACHE_HOME` and falls back to `$HOME/.cache`. Returns
+/// `None` when neither is set — callers should treat that as "skip the
+/// cache" rather than as an error. The returned path is *not* created;
+/// see [`cache_file_path`] for the canonical filename.
+pub fn cache_dir() -> Option<std::path::PathBuf> {
     let cache_home = if let Ok(xdg_cache_home) = std::env::var("XDG_CACHE_HOME") {
         Path::new(&xdg_cache_home).to_path_buf()
     } else if let Ok(home) = std::env::var("HOME") {
         Path::new(&home).join(".cache")
     } else {
+        return None;
+    };
+    Some(cache_home.join("lintian-brush"))
+}
+
+/// Path to the cached multiarch-hints file, or `None` when no cache
+/// directory is available. The directory is *not* created here — the
+/// sync/async cache wrappers call their respective `create_dir_all`
+/// before writing.
+pub fn cache_file_path() -> Option<std::path::PathBuf> {
+    cache_dir().map(|d| d.join("multiarch-hints.yml"))
+}
+
+pub fn cache_download_multiarch_hints(
+    url: Option<&str>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let Some(local_hints_path) = cache_file_path() else {
         log::warn!("Unable to find cache directory, not caching");
         return download_multiarch_hints(url, None)?
             .ok_or_else(|| "Expected download data but got None".into());
     };
-    let cache_dir = cache_home.join("lintian-brush");
-    fs::create_dir_all(&cache_dir)?;
-    let local_hints_path = cache_dir.join("multiarch-hints.yml");
+    if let Some(parent) = local_hints_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     let last_modified = match fs::metadata(&local_hints_path) {
         Ok(metadata) => Some(metadata.modified()?),
         Err(_) => None,
@@ -501,6 +527,82 @@ pub fn download_multiarch_hints(
         Ok(Some(buffer))
     } else {
         Ok(Some(response.bytes()?.to_vec()))
+    }
+}
+
+/// Async sibling of [`download_multiarch_hints`].
+///
+/// Performs the HTTP request on reqwest's async client (so the caller's
+/// tokio runtime stays unblocked) and decompresses the `.xz` payload on
+/// the blocking pool, where the CPU-bound work belongs.
+#[cfg(feature = "async")]
+pub async fn download_multiarch_hints_async(
+    url: Option<&str>,
+    since: Option<SystemTime>,
+) -> Result<Option<Vec<u8>>, Box<dyn std::error::Error + Send + Sync>> {
+    let url = url.unwrap_or(MULTIARCH_HINTS_URL).to_string();
+    let client = reqwest::Client::builder().user_agent(USER_AGENT).build()?;
+    let mut request = client.get(&url).header("Accept-Encoding", "identity");
+    if let Some(since) = since {
+        request = request.header("If-Modified-Since", format_system_time(since));
+    }
+    let response = request.send().await?;
+    if response.status() == reqwest::StatusCode::NOT_MODIFIED {
+        return Ok(None);
+    } else if response.status() != reqwest::StatusCode::OK {
+        return Err(format!(
+            "Unable to download multiarch hints: {:?}",
+            response.status()
+        )
+        .into());
+    }
+    let bytes = response.bytes().await?.to_vec();
+    if url.ends_with(".xz") {
+        // xz decompression is CPU-bound; keep it off the async worker.
+        let decoded = tokio::task::spawn_blocking(move || {
+            use std::io::Read;
+            let mut reader = xz2::read::XzDecoder::new(&bytes[..]);
+            let mut out = Vec::new();
+            reader.read_to_end(&mut out)?;
+            Ok::<Vec<u8>, std::io::Error>(out)
+        })
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
+        Ok(Some(decoded))
+    } else {
+        Ok(Some(bytes))
+    }
+}
+
+/// Async sibling of [`cache_download_multiarch_hints`].
+///
+/// Conditional GET against the cached copy on disk; refreshes it from the
+/// network when stale and returns the live bytes either way.
+#[cfg(feature = "async")]
+pub async fn cache_download_multiarch_hints_async(
+    url: Option<&str>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    let Some(local_hints_path) = cache_file_path() else {
+        log::warn!("Unable to find cache directory, not caching");
+        return download_multiarch_hints_async(url, None)
+            .await?
+            .ok_or_else(|| "Expected download data but got None".into());
+    };
+    if let Some(parent) = local_hints_path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    let last_modified = match tokio::fs::metadata(&local_hints_path).await {
+        Ok(metadata) => Some(metadata.modified()?),
+        Err(_) => None,
+    };
+
+    match download_multiarch_hints_async(url, last_modified).await {
+        Ok(None) => Ok(tokio::fs::read(&local_hints_path).await?),
+        Ok(Some(buffer)) => {
+            tokio::fs::write(&local_hints_path, &buffer).await?;
+            Ok(buffer)
+        }
+        Err(e) => Err(e),
     }
 }
 
