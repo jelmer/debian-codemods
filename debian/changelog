@@ -1,4 +1,4 @@
-debian-codemods (0.179) UNRELEASED; urgency=medium
+debian-codemods (0.179) unstable; urgency=medium
 
   * Ship librust-lintian-brush-dev, librust-multiarch-hints-dev,
     librust-debian-workspace-dev. These are necessary so debian-lsp can
