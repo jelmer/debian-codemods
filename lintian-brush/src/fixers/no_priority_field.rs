@@ -217,12 +217,12 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use std::fs;
     use tempfile::TempDir;
 
-    fn make_fixer() -> DetectorAdapter {
-        DetectorAdapter::new(Box::new(DetectorImpl))
+    fn make_fixer() -> DetectorImpl {
+        DetectorImpl
     }
 
     #[test]

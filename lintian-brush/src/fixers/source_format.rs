@@ -119,13 +119,13 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use debversion::Version;
     use std::fs;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path, version: &Version) -> Result<crate::FixerResult, FixerError> {
-        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        let adapter = DetectorImpl;
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             base,
             Some("test".into()),

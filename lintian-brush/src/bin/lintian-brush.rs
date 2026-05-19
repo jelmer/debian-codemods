@@ -336,15 +336,11 @@ fn main() -> Result<(), i32> {
 
     breezyshim::init();
 
-    // TODO(jelmer): Allow changing this via arguments
-    let timeout = Some(chrono::Duration::seconds(10));
-
     if args.fixers.fixers_dir.is_some() {
         tracing::warn!("--fixers-dir is deprecated and has no effect; all fixers are now built-in");
     }
 
-    // Build the detector list once, filtered by --fixers/--exclude. The
-    // CLI driver then wraps each surviving detector in a DetectorAdapter.
+    // Build the detector list once, filtered by --fixers/--exclude.
     let detectors: Vec<Box<dyn lintian_brush::detector::Detector>> = {
         let mut all: Vec<_> = lintian_brush::detector::iter_detectors().collect();
         if args.fixers.quick {
@@ -495,14 +491,6 @@ fn main() -> Result<(), i32> {
         let svp = svp_client::Reporter::new(versions_dict());
 
         let since_revid = wt.last_revision().unwrap();
-        // Wrap the (already-filtered) detectors as Fixers for the runner.
-        let fixers: Vec<Box<dyn lintian_brush::Fixer>> = detectors
-            .into_iter()
-            .map(|d| {
-                Box::new(lintian_brush::detector::DetectorAdapter::new(d))
-                    as Box<dyn lintian_brush::Fixer>
-            })
-            .collect();
 
         let debian_info = distro_info::DebianDistroInfo::new().unwrap();
         let mut compat_release = if args.fixers.modern {
@@ -634,7 +622,7 @@ fn main() -> Result<(), i32> {
 
         let mut overall_result = match lintian_brush::run_lintian_fixers(
             &wt,
-            fixers.as_slice(),
+            detectors.as_slice(),
             update_changelog.as_ref().map(|b| || *b),
             args.output.verbose,
             None,
@@ -646,7 +634,6 @@ fn main() -> Result<(), i32> {
             },
             Some(std::path::Path::new(subpath.as_str())),
             Some("lintian-brush"),
-            timeout,
             Some(&multi_progress),
         ) {
             Err(OverallError::NotDebianPackage(p)) => {
