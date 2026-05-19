@@ -27,6 +27,10 @@ override_dh_auto_test:
 
 CRATE_VERSION = $(shell cargo metadata --manifest-path lintian-brush/Cargo.toml --no-deps --format-version 1 | python3 -c "import json,sys; pkgs=json.load(sys.stdin)['packages']; print(next(p['version'] for p in pkgs if p['name']=='lintian-brush'))")
 CRATE_REGISTRY_DIR = debian/librust-lintian-brush-dev/usr/share/cargo/registry/lintian-brush-$(CRATE_VERSION)
+MULTIARCH_HINTS_VERSION = $(shell cargo metadata --manifest-path multiarch-hints/Cargo.toml --no-deps --format-version 1 | python3 -c "import json,sys; pkgs=json.load(sys.stdin)['packages']; print(next(p['version'] for p in pkgs if p['name']=='multiarch-hints'))")
+MULTIARCH_HINTS_REGISTRY_DIR = debian/librust-multiarch-hints-dev/usr/share/cargo/registry/multiarch-hints-$(MULTIARCH_HINTS_VERSION)
+DEBIAN_WORKSPACE_VERSION = $(shell cargo metadata --manifest-path debian-workspace/Cargo.toml --no-deps --format-version 1 | python3 -c "import json,sys; pkgs=json.load(sys.stdin)['packages']; print(next(p['version'] for p in pkgs if p['name']=='debian-workspace'))")
+DEBIAN_WORKSPACE_REGISTRY_DIR = debian/librust-debian-workspace-dev/usr/share/cargo/registry/debian-workspace-$(DEBIAN_WORKSPACE_VERSION)
 
 execute_after_dh_auto_install:
 	mkdir -p debian/lintian-brush/$(ZSH_COMPDIR)
@@ -38,6 +42,16 @@ execute_after_dh_auto_install:
 	    $(CRATE_REGISTRY_DIR)/
 	cp debian/cargo-checksum.json $(CRATE_REGISTRY_DIR)/.cargo-checksum.json
 	touch -d@$(SOURCE_DATE_EPOCH) $(CRATE_REGISTRY_DIR)/Cargo.toml
+	mkdir -p $(MULTIARCH_HINTS_REGISTRY_DIR)
+	cp -r multiarch-hints/src multiarch-hints/Cargo.toml \
+	    $(MULTIARCH_HINTS_REGISTRY_DIR)/
+	cp debian/cargo-checksum.json $(MULTIARCH_HINTS_REGISTRY_DIR)/.cargo-checksum.json
+	touch -d@$(SOURCE_DATE_EPOCH) $(MULTIARCH_HINTS_REGISTRY_DIR)/Cargo.toml
+	mkdir -p $(DEBIAN_WORKSPACE_REGISTRY_DIR)
+	cp -r debian-workspace/src debian-workspace/Cargo.toml \
+	    $(DEBIAN_WORKSPACE_REGISTRY_DIR)/
+	cp debian/cargo-checksum.json $(DEBIAN_WORKSPACE_REGISTRY_DIR)/.cargo-checksum.json
+	touch -d@$(SOURCE_DATE_EPOCH) $(DEBIAN_WORKSPACE_REGISTRY_DIR)/Cargo.toml
 
 override_dh_auto_clean:
 	if test -f Cargo.lock.upstream; then mv Cargo.lock.upstream Cargo.lock; fi
