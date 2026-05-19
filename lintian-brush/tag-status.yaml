@@ -292,11 +292,7 @@
     Would need to fix the version number in debian/changelog.
     Tricky because BinNMU revisions are an upload process concern.
 - tag: binary-package-depends-on-toolchain-package
-  detector: false
-  difficulty: easy
-  comment: |
-    Remove toolchain package (e.g. gcc, binutils) from Depends in
-    debian/control. Same pattern as build-depends-on-build-essential.
+  detector: true
 - tag: binary-with-bad-dynamic-table
   detector: false
   status: build-stage
