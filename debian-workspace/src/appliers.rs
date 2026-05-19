@@ -11,7 +11,7 @@ use crate::action::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
     FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
     OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
-    YamlAction, YamlPathComponent,
+    YamlAction, YamlPathComponent, action_file,
 };
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::BTreeMap;
@@ -23,9 +23,15 @@ use std::path::{Path, PathBuf};
 /// once. The grouping is stable: actions on the same file are applied in the
 /// order they appear in `actions`.
 ///
-/// Returns the list of files that were modified. An empty result means no
-/// action produced an observable change (e.g. all `RemoveField`s targeted
-/// fields that were already absent).
+/// Returns the paths that were actually modified, de-duplicated. An empty
+/// result means no action produced an observable change (e.g. all
+/// `RemoveField`s targeted fields that were already absent).
+///
+/// The result is authoritative: it is what the appliers observed, not a
+/// prediction. A `Rename` reports both its source and destination; a
+/// `RunCommand` reports the files the command actually touched (determined
+/// by snapshotting its scope before and after), not the scope directory
+/// itself.
 pub fn apply_actions(base_path: &Path, actions: &[Action]) -> Result<Vec<PathBuf>, FixerError> {
     // Group while preserving order.
     let mut groups: BTreeMap<PathBuf, Vec<&Action>> = BTreeMap::new();
@@ -38,125 +44,35 @@ pub fn apply_actions(base_path: &Path, actions: &[Action]) -> Result<Vec<PathBuf
         groups.entry(file).or_default().push(action);
     }
 
-    let mut changed = Vec::new();
+    let mut changed: Vec<PathBuf> = Vec::new();
     for file in order {
         let group = groups.remove(&file).unwrap();
-        let modified = apply_group(base_path, &file, &group)?;
-        if modified {
-            changed.push(file);
+        for path in apply_group(base_path, &file, &group)? {
+            if !changed.contains(&path) {
+                changed.push(path);
+            }
         }
     }
     Ok(changed)
 }
 
 /// Convenience: apply a single action.
+///
+/// Returns `true` if the action produced an observable change.
 pub fn apply_action(base_path: &Path, action: &Action) -> Result<bool, FixerError> {
     let changed = apply_actions(base_path, std::slice::from_ref(action))?;
     Ok(!changed.is_empty())
 }
 
-fn action_file(action: &Action) -> &Path {
-    match action {
-        Action::Deb822(a) => match a {
-            Deb822Action::SetField { file, .. }
-            | Deb822Action::SetFieldWithIndent { file, .. }
-            | Deb822Action::RemoveField { file, .. }
-            | Deb822Action::RenameField { file, .. }
-            | Deb822Action::RemoveParagraph { file, .. }
-            | Deb822Action::AppendParagraph { file, .. }
-            | Deb822Action::NormalizeFieldSpacing { file, .. }
-            | Deb822Action::DropRelation { file, .. }
-            | Deb822Action::ReplaceRelation { file, .. }
-            | Deb822Action::SetRelationVersionConstraint { file, .. }
-            | Deb822Action::EnsureSubstvar { file, .. }
-            | Deb822Action::DropSubstvar { file, .. }
-            | Deb822Action::EnsureRelation { file, .. }
-            | Deb822Action::MoveRelation { file, .. }
-            | Deb822Action::ReorderParagraphs { file, .. } => file,
-        },
-        Action::Systemd(a) => match a {
-            SystemdAction::SetField { file, .. }
-            | SystemdAction::RemoveField { file, .. }
-            | SystemdAction::RenameField { file, .. }
-            | SystemdAction::Add { file, .. }
-            | SystemdAction::RemoveValue { file, .. } => file,
-        },
-        Action::DesktopIni(a) => match a {
-            DesktopIniAction::SetField { file, .. }
-            | DesktopIniAction::RemoveField { file, .. }
-            | DesktopIniAction::RemoveAll { file, .. }
-            | DesktopIniAction::RenameField { file, .. } => file,
-        },
-        Action::Yaml(a) => match a {
-            YamlAction::SetField { file, .. }
-            | YamlAction::SetFieldOrdered { file, .. }
-            | YamlAction::RemoveField { file, .. }
-            | YamlAction::RenameField { file, .. } => file,
-        },
-        Action::Changelog(a) => match a {
-            ChangelogAction::ReplaceEntryChanges { file, .. }
-            | ChangelogAction::SetEntryDate { file, .. }
-            | ChangelogAction::RemoveBullet { file, .. }
-            | ChangelogAction::ReplaceBullet { file, .. }
-            | ChangelogAction::SetEntryVersion { file, .. } => file,
-        },
-        Action::Watch(a) => match a {
-            WatchAction::SetEntryMatchingPattern { file, .. }
-            | WatchAction::RemoveEntryOption { file, .. }
-            | WatchAction::SetEntryOption { file, .. }
-            | WatchAction::SetEntryUrl { file, .. }
-            | WatchAction::ConvertEntryToTemplate { file, .. } => file,
-        },
-        Action::Makefile(a) => match a {
-            MakefileAction::ReplaceRecipe { file, .. }
-            | MakefileAction::RemoveRecipe { file, .. }
-            | MakefileAction::SetVariable { file, .. }
-            | MakefileAction::SetVariableOperator { file, .. }
-            | MakefileAction::RemoveVariable { file, .. }
-            | MakefileAction::RemoveRule { file, .. }
-            | MakefileAction::RemovePhonyTarget { file, .. }
-            | MakefileAction::RenameRuleTarget { file, .. }
-            | MakefileAction::AddRule { file, .. }
-            | MakefileAction::AddPhonyTarget { file, .. }
-            | MakefileAction::AddInclude { file, .. }
-            | MakefileAction::ReplaceVariableWithInclude { file, .. }
-            | MakefileAction::InsertIncludeBeforeVariable { file, .. } => file,
-        },
-        Action::Dep3(a) => match a {
-            Dep3Action::SetField { file, .. }
-            | Dep3Action::RemoveField { file, .. }
-            | Dep3Action::RenameField { file, .. } => file,
-        },
-        Action::LintianOverrides(a) => match a {
-            LintianOverridesAction::AddLine { file, .. }
-            | LintianOverridesAction::DropLine { file, .. }
-            | LintianOverridesAction::RenameTag { file, .. }
-            | LintianOverridesAction::SetLineInfo { file, .. } => file,
-        },
-        Action::Maintscript(a) => match a {
-            MaintscriptAction::DropEntry { file, .. } => file,
-        },
-        Action::Debcargo(a) => match a {
-            DebcargoAction::SetSourceField { file, .. }
-            | DebcargoAction::SetTopLevelBool { file, .. } => file,
-        },
-        Action::RunCommand(a) => match a {
-            RunCommandAction::Run { scope, .. } => scope,
-        },
-        Action::Filesystem(a) => match a {
-            FilesystemAction::SetMode { file, .. }
-            | FilesystemAction::Delete { file }
-            | FilesystemAction::Rename { file, .. }
-            | FilesystemAction::RemoveDirIfEmpty { file }
-            | FilesystemAction::Write { file, .. }
-            | FilesystemAction::ReplaceText { file, .. }
-            | FilesystemAction::Substitute { file, .. }
-            | FilesystemAction::NormalizeLineEndings { file } => file,
-        },
-    }
-}
-
-fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+/// Apply one group of same-file, same-kind actions and report the paths it
+/// modified.
+///
+/// Most appliers touch exactly the grouped file, so they report a simple
+/// changed/unchanged `bool` that is lifted here to `[rel]` or `[]`. The
+/// filesystem and run-command appliers can touch other paths (a `Rename`
+/// destination, the files a command writes), so they report their modified
+/// set directly.
+fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<Vec<PathBuf>, FixerError> {
     // Decide which applier to use based on the kinds present. We don't allow
     // mixing kinds for the same file (e.g. a Deb822 SetField alongside a
     // Filesystem Delete on debian/control) — that is almost certainly a bug
@@ -171,18 +87,26 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, Fixer
             rel.display()
         )));
     }
+    // Lift a single-file applier's changed/unchanged bool to a path list.
+    let lift = |changed: bool| {
+        if changed {
+            vec![rel.to_path_buf()]
+        } else {
+            vec![]
+        }
+    };
     match group[0] {
-        Action::Deb822(_) => apply_deb822_group(base, rel, group),
-        Action::Systemd(_) => apply_systemd_group(base, rel, group),
-        Action::DesktopIni(_) => apply_desktop_ini_group(base, rel, group),
-        Action::Yaml(_) => apply_yaml_group(base, rel, group),
-        Action::Changelog(_) => apply_changelog_group(base, rel, group),
-        Action::Watch(_) => apply_watch_group(base, rel, group),
-        Action::Makefile(_) => apply_makefile_group(base, rel, group),
-        Action::Dep3(_) => apply_dep3_group(base, rel, group),
-        Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group),
-        Action::Maintscript(_) => apply_maintscript_group(base, rel, group),
-        Action::Debcargo(_) => apply_debcargo_group(base, rel, group),
+        Action::Deb822(_) => apply_deb822_group(base, rel, group).map(lift),
+        Action::Systemd(_) => apply_systemd_group(base, rel, group).map(lift),
+        Action::DesktopIni(_) => apply_desktop_ini_group(base, rel, group).map(lift),
+        Action::Yaml(_) => apply_yaml_group(base, rel, group).map(lift),
+        Action::Changelog(_) => apply_changelog_group(base, rel, group).map(lift),
+        Action::Watch(_) => apply_watch_group(base, rel, group).map(lift),
+        Action::Makefile(_) => apply_makefile_group(base, rel, group).map(lift),
+        Action::Dep3(_) => apply_dep3_group(base, rel, group).map(lift),
+        Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group).map(lift),
+        Action::Maintscript(_) => apply_maintscript_group(base, rel, group).map(lift),
+        Action::Debcargo(_) => apply_debcargo_group(base, rel, group).map(lift),
         Action::RunCommand(_) => apply_run_command_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
     }
@@ -3038,8 +2962,8 @@ fn apply_run_command_group(
     base: &Path,
     _rel: &Path,
     group: &[&Action],
-) -> Result<bool, FixerError> {
-    let mut any_change = false;
+) -> Result<Vec<PathBuf>, FixerError> {
+    let mut changed: Vec<PathBuf> = Vec::new();
     for action in group {
         let Action::RunCommand(rc) = action else {
             unreachable!("apply_run_command_group called with non-run-command action");
@@ -3069,12 +2993,39 @@ fn apply_run_command_group(
             )));
         }
 
+        // The command decides what it writes, so the only way to learn the
+        // modified set is to diff the scope before and after. Report each
+        // file that was added, removed, or had its bytes change.
         let after = snapshot_scope(&scope_abs)?;
-        if before != after {
-            any_change = true;
+        for abs in diff_snapshots(&before, &after) {
+            let rel = abs.strip_prefix(base).unwrap_or(&abs).to_path_buf();
+            if !changed.contains(&rel) {
+                changed.push(rel);
+            }
         }
     }
-    Ok(any_change)
+    Ok(changed)
+}
+
+/// Return every path that differs between two scope snapshots: files added,
+/// removed, or whose bytes changed.
+fn diff_snapshots(
+    before: &std::collections::BTreeMap<PathBuf, Vec<u8>>,
+    after: &std::collections::BTreeMap<PathBuf, Vec<u8>>,
+) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for (path, new_bytes) in after {
+        if before.get(path).map(|b| b.as_slice()) != Some(new_bytes.as_slice()) {
+            out.push(path.clone());
+        }
+    }
+    for path in before.keys() {
+        if !after.contains_key(path) {
+            out.push(path.clone());
+        }
+    }
+    out.sort();
+    out
 }
 
 fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
@@ -3134,9 +3085,19 @@ fn apply_debcargo_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
     Ok(any_change)
 }
 
-fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+fn apply_filesystem_group(
+    base: &Path,
+    rel: &Path,
+    group: &[&Action],
+) -> Result<Vec<PathBuf>, FixerError> {
     let abs = base.join(rel);
-    let mut any_change = false;
+    let mut changed: Vec<PathBuf> = Vec::new();
+    let mut mark = |path: &Path| {
+        let p = path.to_path_buf();
+        if !changed.contains(&p) {
+            changed.push(p);
+        }
+    };
     for action in group {
         let Action::Filesystem(fs) = action else {
             unreachable!("apply_filesystem_group called with non-filesystem action");
@@ -3152,7 +3113,7 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                         continue;
                     }
                     std::fs::set_permissions(&abs, perms)?;
-                    any_change = true;
+                    mark(rel);
                 }
                 #[cfg(not(unix))]
                 {
@@ -3163,7 +3124,7 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                 }
             }
             FilesystemAction::Delete { .. } => match std::fs::remove_file(&abs) {
-                Ok(()) => any_change = true,
+                Ok(()) => mark(rel),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => return Err(FixerError::Io(e)),
             },
@@ -3178,10 +3139,13 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                     std::fs::create_dir_all(parent)?;
                 }
                 std::fs::rename(&abs, &to_abs)?;
-                any_change = true;
+                // A rename modifies both endpoints: the source disappears,
+                // the destination appears.
+                mark(rel);
+                mark(to);
             }
             FilesystemAction::RemoveDirIfEmpty { .. } => match std::fs::remove_dir(&abs) {
-                Ok(()) => any_change = true,
+                Ok(()) => mark(rel),
                 Err(e)
                     if e.kind() == std::io::ErrorKind::NotFound
                         || e.kind() == std::io::ErrorKind::DirectoryNotEmpty =>
@@ -3200,7 +3164,7 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                     std::fs::create_dir_all(parent)?;
                 }
                 std::fs::write(&abs, content)?;
-                any_change = true;
+                mark(rel);
             }
             FilesystemAction::ReplaceText {
                 range, replacement, ..
@@ -3228,7 +3192,7 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                 }
                 content.replace_range(range.start..range.end, replacement);
                 std::fs::write(&abs, content)?;
-                any_change = true;
+                mark(rel);
             }
             FilesystemAction::Substitute { from, to, .. } => {
                 if from.is_empty() {
@@ -3246,7 +3210,7 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                     continue;
                 }
                 std::fs::write(&abs, new_content)?;
-                any_change = true;
+                mark(rel);
             }
             FilesystemAction::NormalizeLineEndings { .. } => {
                 let bytes = match std::fs::read(&abs) {
@@ -3259,11 +3223,11 @@ fn apply_filesystem_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<
                     continue;
                 }
                 std::fs::write(&abs, converted)?;
-                any_change = true;
+                mark(rel);
             }
         }
     }
-    Ok(any_change)
+    Ok(changed)
 }
 
 /// Replace every `\r\n` pair with `\n`, leaving lone `\r` bytes alone.
@@ -3787,14 +3751,64 @@ mod tests {
             file: PathBuf::from("debian/source.lintian-overrides"),
             to: PathBuf::from("debian/source/lintian-overrides"),
         });
-        assert!(apply_action(tmp.path(), &action).unwrap());
+        // A rename reports both endpoints as modified.
+        assert_eq!(
+            apply_actions(tmp.path(), std::slice::from_ref(&action)).unwrap(),
+            vec![
+                PathBuf::from("debian/source.lintian-overrides"),
+                PathBuf::from("debian/source/lintian-overrides"),
+            ]
+        );
         assert!(!tmp.path().join("debian/source.lintian-overrides").exists());
         assert_eq!(
             fs::read_to_string(tmp.path().join("debian/source/lintian-overrides")).unwrap(),
             "x\n"
         );
         // Idempotent: source already gone is a no-op.
-        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert!(apply_actions(tmp.path(), &[action]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn run_command_reports_only_the_files_it_changed() {
+        let tmp = TempDir::new().unwrap();
+        let scope = tmp.path().join("debian/po");
+        fs::create_dir_all(&scope).unwrap();
+        fs::write(scope.join("touched"), "before\n").unwrap();
+        fs::write(scope.join("untouched"), "stable\n").unwrap();
+
+        // A command that rewrites one file in the scope and adds another,
+        // leaving the third alone.
+        let action = Action::RunCommand(RunCommandAction::Run {
+            argv: vec![
+                "sh".into(),
+                "-c".into(),
+                "printf after > debian/po/touched && printf new > debian/po/created".into(),
+            ],
+            scope: PathBuf::from("debian/po"),
+            env: Vec::new(),
+        });
+        let changed = apply_actions(tmp.path(), std::slice::from_ref(&action)).unwrap();
+        assert_eq!(
+            changed,
+            vec![
+                PathBuf::from("debian/po/created"),
+                PathBuf::from("debian/po/touched"),
+            ]
+        );
+    }
+
+    #[test]
+    fn run_command_with_no_effect_reports_nothing() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("debian/po")).unwrap();
+        fs::write(tmp.path().join("debian/po/keep"), "x\n").unwrap();
+
+        let action = Action::RunCommand(RunCommandAction::Run {
+            argv: vec!["true".into()],
+            scope: PathBuf::from("debian/po"),
+            env: Vec::new(),
+        });
+        assert!(apply_actions(tmp.path(), &[action]).unwrap().is_empty());
     }
 
     #[test]
