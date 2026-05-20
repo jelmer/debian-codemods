@@ -1,0 +1,3 @@
+Add ${apache2:Depends} to Depends for libapache2-mod-foo.
+Fixed-Lintian-Issues:
+ libapache2-mod-foo binary: apache2-module-does-not-depend-on-apache2-api
