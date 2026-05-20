@@ -709,41 +709,6 @@ pub struct FixerPreferences {
     pub lintian_data_path: Option<std::path::PathBuf>,
 }
 
-/// A fixer script
-///
-/// The `lintian_tags attribute contains the name of the lintian tags this fixer addresses.
-pub trait Fixer: std::fmt::Debug + Sync {
-    /// Name of the fixer
-    fn name(&self) -> String;
-
-    /// Lintian tags this fixer addresses
-    fn lintian_tags(&self) -> Vec<String>;
-
-    /// Enable downcasting to concrete types
-    fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Apply this fixer script.
-    ///
-    /// # Arguments
-    ///
-    /// * `workspace` - On-disk workspace for the package being fixed.
-    ///   The fixer reads/writes the package through this handle and looks up
-    ///   the package name and current version on it.
-    /// * `preferences` - Knobs that influence fixer behaviour (compat release,
-    ///   minimum certainty, network access, …).
-    /// * `timeout` - Maximum time to run the fixer.
-    ///
-    /// # Returns
-    ///
-    ///  A FixerResult object
-    fn run(
-        &self,
-        workspace: &debian_workspace::fs_workspace::FsWorkspace,
-        preferences: &FixerPreferences,
-        timeout: Option<chrono::Duration>,
-    ) -> Result<FixerResult, FixerError>;
-}
-
 /// Errors that can occur when running a fixer
 #[derive(Debug)]
 pub enum FixerError {
@@ -927,10 +892,9 @@ impl std::error::Error for FixerError {}
 
 /// Return a list of all lintian fixers.
 ///
-/// Each registered [`Detector`](crate::detector::Detector) is wrapped in
-/// a [`DetectorAdapter`](crate::detector::DetectorAdapter) so callers see
-/// the [`Fixer`] (apply-driving) shape.
-pub fn all_lintian_fixers() -> impl Iterator<Item = Box<dyn Fixer>> {
+/// Each item is a registered [`Detector`](crate::detector::Detector),
+/// sorted by its `after` / `before` declarations.
+pub fn all_lintian_fixers() -> impl Iterator<Item = Box<dyn crate::detector::Detector>> {
     builtin_fixers::get_builtin_fixers().into_iter()
 }
 
@@ -1024,13 +988,13 @@ pub fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
     out
 }
 
-/// Run a lintian fixer on a tree.
+/// Run a lintian detector on a tree.
 ///
 /// # Arguments
 ///
 ///  * `local_tree`: WorkingTree object
 ///  * `basis_tree`: Tree
-///  * `fixer`: Fixer object to apply
+///  * `detector`: Detector object to apply
 ///  * `committer`: Optional committer (name and email)
 ///  * `update_changelog`: Whether to add a new entry to the changelog
 ///  * `compat_release`: Minimum release that the package should be usable on
@@ -1050,7 +1014,7 @@ pub fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
 ///   tuple with set of FixerResult, summary of the changes
 pub fn run_lintian_fixer(
     local_tree: &breezyshim::workingtree::GenericWorkingTree,
-    fixer: &dyn Fixer,
+    detector: &dyn crate::detector::Detector,
     committer: Option<&str>,
     mut update_changelog: impl FnMut() -> bool,
     preferences: &FixerPreferences,
@@ -1059,7 +1023,6 @@ pub fn run_lintian_fixer(
     timestamp: Option<chrono::naive::NaiveDateTime>,
     basis_tree: Option<&dyn breezyshim::tree::PyTree>,
     changes_by: Option<&str>,
-    timeout: Option<chrono::Duration>,
 ) -> Result<(FixerResult, String), FixerError> {
     let changes_by = changes_by.unwrap_or("lintian-brush");
 
@@ -1107,20 +1070,16 @@ pub fn run_lintian_fixer(
         Some(current_version.clone()),
     );
 
-    let make_changes = |_basedir: &std::path::Path| -> Result<_, FixerError> {
-        tracing::debug!("Running fixer {:?}", fixer);
-        let result = fixer.run(&ws, preferences, timeout)?;
-        if let Some(certainty) = result.certainty {
-            if !certainty_sufficient(certainty, preferences.minimum_certainty) {
-                return Err(FixerError::NotCertainEnough(
-                    certainty,
-                    preferences.minimum_certainty,
-                    result.overridden_lintian_issues,
-                ));
-            }
-        }
+    // Detect first: run the detector and filter its diagnostics into a
+    // plan. Only if something actionable survives do we enter
+    // `apply_or_revert` and mutate the tree.
+    tracing::debug!("Running detector {}", detector.name());
+    let plan = crate::detector::detect_and_plan(detector, &ws, preferences)?;
 
-        Ok(result)
+    let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
+        crate::builtin_fixers::apply_plan(basedir, plan, &|fixed, actions| {
+            detector.describe(fixed, actions)
+        })
     };
 
     let (mut result, changes, mut specific_files) = match apply_or_revert(
@@ -1175,7 +1134,7 @@ pub fn run_lintian_fixer(
             &result
                 .patch_name
                 .as_deref()
-                .map_or_else(|| fixer.name(), |n| n.to_string()),
+                .map_or_else(|| detector.name().to_string(), |n| n.to_string()),
             result.description.as_str(),
             timestamp.map(|t| t.date()),
         ) {
@@ -1303,8 +1262,8 @@ impl std::error::Error for OverallError {}
 ///
 /// # Arguments
 ///
-///  * `tree`: The tree to run the fixers on
-///  * `fixers`: A set of Fixer objects
+///  * `tree`: The tree to run the detectors on
+///  * `detectors`: A set of Detector objects
 ///  * `update_changelog`: Whether to add an entry to the changelog
 ///  * `verbose`: Whether to be verbose
 ///  * `committer`: Optional committer (name and email)
@@ -1320,7 +1279,6 @@ impl std::error::Error for OverallError {}
 ///  * `opinionated`: Whether to be opinionated
 ///  * `diligence`: Level of diligence
 ///  * `changes_by`: Name of the person making the changes
-///  * `timeout`: Per-fixer timeout
 ///
 /// # Returns:
 ///   Tuple with two lists:
@@ -1330,7 +1288,7 @@ impl std::error::Error for OverallError {}
 ///        error that occurred
 pub fn run_lintian_fixers(
     local_tree: &breezyshim::workingtree::GenericWorkingTree,
-    fixers: &[Box<dyn Fixer>],
+    detectors: &[Box<dyn crate::detector::Detector>],
     mut update_changelog: Option<impl FnMut() -> bool>,
     verbose: bool,
     committer: Option<&str>,
@@ -1338,7 +1296,6 @@ pub fn run_lintian_fixers(
     use_dirty_tracker: Option<bool>,
     subpath: Option<&std::path::Path>,
     changes_by: Option<&str>,
-    timeout: Option<chrono::Duration>,
     multi_progress: Option<&MultiProgress>,
 ) -> Result<ManyResult, OverallError> {
     let subpath = subpath.unwrap_or_else(|| std::path::Path::new(""));
@@ -1363,9 +1320,9 @@ pub fn run_lintian_fixers(
 
     let mut ret = ManyResult::new();
     let pb = if let Some(mp) = multi_progress {
-        mp.add(ProgressBar::new(fixers.len() as u64))
+        mp.add(ProgressBar::new(detectors.len() as u64))
     } else {
-        ProgressBar::new(fixers.len() as u64)
+        ProgressBar::new(detectors.len() as u64)
     };
     pb.set_style(
         ProgressStyle::with_template("[{pos}/{len}] {wide_bar} {msg}")
@@ -1381,9 +1338,9 @@ pub fn run_lintian_fixers(
     } else {
         None
     };
-    for fixer in fixers {
-        let fixer_name = fixer.name();
-        pb.set_message(fixer_name.clone());
+    for detector in detectors {
+        let fixer_name = detector.name();
+        pb.set_message(fixer_name);
         // Get now from chrono
         let start = std::time::SystemTime::now();
         if let Some(dirty_tracker) = dirty_tracker.as_mut() {
@@ -1392,11 +1349,11 @@ pub fn run_lintian_fixers(
         pb.inc(1);
 
         // Create a span for this fixer so log messages are attributed to it
-        let _span = tracing::info_span!("fixer", name = fixer.name()).entered();
+        let _span = tracing::info_span!("fixer", name = fixer_name).entered();
 
         match run_lintian_fixer(
             local_tree,
-            fixer.as_ref(),
+            detector.as_ref(),
             committer,
             &mut update_changelog,
             preferences,
@@ -1405,70 +1362,76 @@ pub fn run_lintian_fixers(
             None,
             Some(&basis_tree),
             changes_by,
-            timeout,
         ) {
             Err(e) => match e {
                 FixerError::NotDebianPackage(path) => {
                     return Err(OverallError::NotDebianPackage(path));
                 }
                 FixerError::ChangelogCreate(ref _m) => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     if verbose {
-                        tracing::info!("Fixer {} failed to create changelog entry.", fixer.name());
+                        tracing::info!("Fixer {} failed to create changelog entry.", fixer_name);
                     }
                     continue;
                 }
                 FixerError::OutputParseError(ref _e) => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     if verbose {
-                        tracing::info!("Fixer {} failed to parse output.", fixer.name());
+                        tracing::info!("Fixer {} failed to parse output.", fixer_name);
                     }
                     continue;
                 }
                 FixerError::DescriptionMissing => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     if verbose {
                         tracing::info!(
                             "Fixer {} failed because description is missing.",
-                            fixer.name()
+                            fixer_name
                         );
                     }
                     continue;
                 }
                 FixerError::FormattingUnpreservable(path) => {
                     ret.formatting_unpreservable
-                        .insert(fixer.name(), path.clone());
+                        .insert(fixer_name.to_string(), path.clone());
                     if verbose {
                         tracing::info!(
                             "Fixer {} was unable to preserve formatting of {}.",
-                            fixer.name(),
+                            fixer_name,
                             path.display()
                         );
                     }
                     continue;
                 }
                 FixerError::GeneratedFile(p) => {
-                    ret.failed_fixers
-                        .insert(fixer.name(), format!("Generated file: {}", p.display()));
+                    ret.failed_fixers.insert(
+                        fixer_name.to_string(),
+                        format!("Generated file: {}", p.display()),
+                    );
                     if verbose {
                         tracing::info!(
                             "Fixer {} encountered generated file {}",
-                            fixer.name(),
+                            fixer_name,
                             p.display()
                         );
                     }
                 }
                 FixerError::ScriptNotFound(ref p) => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     if verbose {
-                        tracing::info!("Fixer {} ({}) not found.", fixer.name(), p.display());
+                        tracing::info!("Fixer {} ({}) not found.", fixer_name, p.display());
                     }
                     continue;
                 }
                 FixerError::ScriptFailed { .. } => {
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     if verbose {
-                        tracing::info!("Fixer {} failed to run.", fixer.name());
+                        tracing::info!("Fixer {} failed to run.", fixer_name);
                         eprintln!("{}", e);
                     }
                     continue;
@@ -1498,7 +1461,8 @@ pub fn run_lintian_fixers(
                     if verbose {
                         tracing::info!("Unable to manipulate upstream patches: {}", reason);
                     }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     continue;
                 }
                 FixerError::NoChanges => {
@@ -1531,30 +1495,33 @@ pub fn run_lintian_fixers(
                     ref backtrace,
                 } => {
                     if verbose {
-                        tracing::error!("Fixer {} panicked: {}", fixer.name(), message);
+                        tracing::error!("Fixer {} panicked: {}", fixer_name, message);
                         if let Some(bt) = backtrace {
                             tracing::error!("Backtrace:\n{}", bt);
                         }
                     }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     continue;
                 }
                 FixerError::MissingDependency(ref dep) => {
                     if verbose {
                         tracing::info!(
                             "Fixer {} skipped: missing optional dependency '{}'",
-                            fixer.name(),
+                            fixer_name,
                             dep
                         );
                     }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     continue;
                 }
                 FixerError::Other(ref em) => {
                     if verbose {
-                        tracing::info!("Fixer {} failed: {}", fixer.name(), em);
+                        tracing::info!("Fixer {} failed: {}", fixer_name, em);
                     }
-                    ret.failed_fixers.insert(fixer.name(), e.to_string());
+                    ret.failed_fixers
+                        .insert(fixer_name.to_string(), e.to_string());
                     continue;
                 }
                 FixerError::InvalidChangelog(path, reason) => {
@@ -1794,7 +1761,6 @@ mod tests {
     use breezyshim::tree::{MutableTree, Tree, WorkingTree};
     use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::Branch;
-    use debian_workspace::Workspace;
     use std::path::Path;
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
@@ -1945,103 +1911,110 @@ mod tests {
     mod test_run_lintian_fixer {
         use super::*;
 
-        #[derive(Debug)]
+        use crate::detector::Detector;
+        use crate::diagnostic::{Action, Diagnostic, FilesystemAction, RunCommandAction};
+
+        /// Test detector that appends a line to `debian/control` and
+        /// reports a fixed `some-tag` issue.
         struct DummyFixer {
-            name: String,
-            lintian_tags: Vec<String>,
+            name: &'static str,
+            lintian_tags: &'static [&'static str],
         }
 
         impl DummyFixer {
-            fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                Self {
-                    name: name.to_string(),
-                    lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                }
+            fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                Self { name, lintian_tags }
             }
         }
 
-        impl Fixer for DummyFixer {
-            fn name(&self) -> String {
-                self.name.clone()
+        impl Detector for DummyFixer {
+            fn name(&self) -> &'static str {
+                self.name
             }
 
-            fn lintian_tags(&self) -> Vec<String> {
-                self.lintian_tags.clone()
+            fn lintian_tags(&self) -> &'static [&'static str] {
+                self.lintian_tags
             }
 
-            fn as_any(&self) -> &dyn std::any::Any {
-                self
-            }
-
-            fn run(
+            fn detect(
                 &self,
-                workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                ws: &dyn debian_workspace::Workspace,
                 _preferences: &FixerPreferences,
-                _timeout: Option<chrono::Duration>,
-            ) -> Result<FixerResult, FixerError> {
-                let control_path = workspace.base_path().join("debian/control");
-                let mut control_content = std::fs::read_to_string(&control_path).unwrap();
-                control_content.push_str("a new line\n");
-                std::fs::write(control_path, control_content).unwrap();
-                Ok(FixerResult {
-                    description: "Fixed some tag.\nExtended description.".to_string(),
-                    patch_name: None,
-                    certainty: Some(Certainty::Certain),
-                    fixed_lintian_issues: vec![LintianIssue {
-                        tag: Some("some-tag".to_string()),
-                        package: workspace.package().map(|s| s.to_string()),
-                        info: None,
-                        package_type: Some(PackageType::Source),
-                        visibility: None,
-                    }],
-                    overridden_lintian_issues: vec![],
-                    revision_id: None,
-                })
+            ) -> Result<Vec<Diagnostic>, FixerError> {
+                let control = std::path::Path::new("debian/control");
+                let mut content = ws.read_file(control)?.unwrap_or_default().into_owned();
+                content.extend_from_slice(b"a new line\n");
+                let issue = LintianIssue {
+                    package: ws.package().map(|s| s.to_string()),
+                    ..LintianIssue::source("some-tag", Visibility::Warning)
+                };
+                Ok(vec![Diagnostic::with_actions(
+                    issue,
+                    "Fixed some tag.",
+                    "Append a line to debian/control.",
+                    vec![Action::Filesystem(FilesystemAction::Write {
+                        file: control.to_path_buf(),
+                        content,
+                    })],
+                )
+                .with_certainty(Certainty::Certain)])
+            }
+
+            fn describe(
+                &self,
+                _fixed: &[(Diagnostic, crate::diagnostic::ActionPlan)],
+                _actions: &[Action],
+            ) -> String {
+                "Fixed some tag.\nExtended description.".to_string()
             }
         }
 
-        #[derive(Debug)]
+        /// Test detector whose action writes some files and then fails,
+        /// used to check failure bookkeeping and that the tree is
+        /// reverted afterwards.
         struct FailingFixer {
-            name: String,
-            lintian_tags: Vec<String>,
+            name: &'static str,
+            lintian_tags: &'static [&'static str],
         }
 
         impl FailingFixer {
-            fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                Self {
-                    name: name.to_string(),
-                    lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                }
+            fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                Self { name, lintian_tags }
             }
         }
 
-        impl Fixer for FailingFixer {
-            fn name(&self) -> String {
-                self.name.clone()
+        impl Detector for FailingFixer {
+            fn name(&self) -> &'static str {
+                self.name
             }
 
-            fn lintian_tags(&self) -> Vec<String> {
-                self.lintian_tags.clone()
+            fn lintian_tags(&self) -> &'static [&'static str] {
+                self.lintian_tags
             }
 
-            fn as_any(&self) -> &dyn std::any::Any {
-                self
-            }
-
-            fn run(
+            fn detect(
                 &self,
-                workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                _ws: &dyn debian_workspace::Workspace,
                 _preferences: &FixerPreferences,
-                _timeout: Option<chrono::Duration>,
-            ) -> Result<FixerResult, FixerError> {
-                let basedir = workspace.base_path();
-                std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
-                std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
-                Err(FixerError::ScriptFailed {
-                    stderr: "Not successful".to_string(),
-                    path: std::path::PathBuf::from("/dev/null"),
-                    exit_code: 1,
-                })
+            ) -> Result<Vec<Diagnostic>, FixerError> {
+                // The command writes two files and then exits non-zero,
+                // so applying it fails and the tree is reverted.
+                Ok(vec![Diagnostic::with_actions(
+                    LintianIssue::source("some-tag", Visibility::Warning),
+                    "Some tag.",
+                    "Run a failing command.",
+                    vec![Action::RunCommand(RunCommandAction::Run {
+                        argv: vec![
+                            "sh".to_string(),
+                            "-c".to_string(),
+                            "echo blah > debian/foo; echo foo > debian/control; \
+                             echo 'Not successful' >&2; exit 1"
+                                .to_string(),
+                        ],
+                        scope: std::path::PathBuf::from("."),
+                        env: vec![],
+                    })],
+                )])
             }
         }
 
@@ -2102,7 +2075,6 @@ Arch: all
                 None,
                 None,
                 None,
-                None,
             )
             .unwrap();
             std::mem::drop(lock);
@@ -2148,7 +2120,6 @@ Arch: all
                     None,
                     None,
                     None,
-                    None,
                 ),
                 Err(OverallError::NotDebianPackage(_))
             ));
@@ -2171,7 +2142,6 @@ Arch: all
                 None,
                 None,
                 None,
-                None,
             )
             .unwrap();
             let revid = tree.last_revision().unwrap();
@@ -2190,7 +2160,7 @@ Arch: all
                         package: Some("blah".to_string()),
                         info: None,
                         package_type: Some(PackageType::Source),
-                        visibility: None,
+                        visibility: Some(Visibility::Warning),
                     }],
                     None,
                 ),
@@ -2216,7 +2186,6 @@ Arch: all
                 false,
                 Some(COMMITTER),
                 &FixerPreferences::default(),
-                None,
                 None,
                 None,
                 None,
@@ -2254,49 +2223,41 @@ Arch: all
         fn test_simple_modify_too_uncertain() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct UncertainFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl UncertainFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for UncertainFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for UncertainFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: Some(Certainty::Possible),
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Possible)])
                 }
             }
 
@@ -2316,7 +2277,6 @@ Arch: all
                 None,
                 None,
                 None,
-                None,
             );
 
             assert!(
@@ -2333,49 +2293,41 @@ Arch: all
         fn test_simple_modify_acceptably_uncertain() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct UncertainFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl UncertainFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for UncertainFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for UncertainFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: Some(Certainty::Possible),
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Possible)])
                 }
             }
 
@@ -2395,7 +2347,6 @@ Arch: all
                 None,
                 None,
                 None,
-                None,
             )
             .unwrap();
 
@@ -2411,55 +2362,44 @@ Arch: all
         fn test_new_file() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct NewFileFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl NewFileFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for NewFileFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for NewFileFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Created new file.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![LintianIssue {
-                            tag: Some("some-tag".to_string()),
-                            package: workspace.package().map(|s| s.to_string()),
-                            info: None,
-                            package_type: Some(PackageType::Source),
-                            visibility: None,
-                        }],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    let issue = LintianIssue {
+                        package: ws.package().map(|s| s.to_string()),
+                        ..LintianIssue::source("some-tag", Visibility::Warning)
+                    };
+                    Ok(vec![Diagnostic::with_actions(
+                        issue,
+                        "Created new file.",
+                        "Created new file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )])
                 }
             }
 
@@ -2473,7 +2413,6 @@ Arch: all
                 &FixerPreferences::default(),
                 &mut None,
                 Path::new(""),
-                None,
                 None,
                 None,
                 None,
@@ -2510,54 +2449,40 @@ Arch: all
         fn test_rename_file() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct RenameFileFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl RenameFileFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for RenameFileFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for RenameFileFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    let basedir = workspace.base_path();
-                    std::fs::rename(
-                        basedir.join("debian/control"),
-                        basedir.join("debian/control.blah"),
-                    )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Rename {
+                            file: std::path::PathBuf::from("debian/control"),
+                            to: std::path::PathBuf::from("debian/control.blah"),
+                        })],
+                    )])
                 }
             }
 
@@ -2571,7 +2496,6 @@ Arch: all
                 &FixerPreferences::default(),
                 &mut None,
                 Path::new(""),
-                None,
                 None,
                 None,
                 None,
@@ -2599,48 +2523,33 @@ Arch: all
         fn test_empty_change() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
+            /// Detector that finds nothing to fix.
             struct EmptyFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl EmptyFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for EmptyFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for EmptyFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    _workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    Ok(FixerResult {
-                        description: "I didn't actually change anything.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![])
                 }
             }
 
@@ -2654,7 +2563,6 @@ Arch: all
                 &FixerPreferences::default(),
                 &mut None,
                 Path::new(""),
-                None,
                 None,
                 None,
                 None,
@@ -2682,51 +2590,39 @@ Arch: all
 
             #[derive(Debug)]
             struct NewFileFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl NewFileFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for NewFileFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for NewFileFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(
-                        workspace.base_path().join("configure.ac"),
-                        "AC_INIT(foo, bar)\n",
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::untagged(
+                        "Created new configure.ac.",
+                        "Created new configure.ac.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("configure.ac"),
+                            content: b"AC_INIT(foo, bar)\n".to_vec(),
+                        })],
                     )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Created new configure.ac.".to_string(),
-                        patch_name: Some("add-config".to_string()),
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                    .with_patch_name("add-config")])
                 }
             }
 
@@ -2745,7 +2641,6 @@ Arch: all
                         .unwrap()
                         .naive_utc(),
                 ),
-                None,
                 None,
                 None,
             )
@@ -2824,53 +2719,40 @@ Arch: all
                 .commit()
                 .unwrap();
 
-            #[derive(Debug)]
             struct NewFileFixer {
-                name: String,
-                lintian_tags: Vec<String>,
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
             }
 
             impl NewFileFixer {
-                fn new(name: &str, lintian_tags: &[&str]) -> Self {
-                    Self {
-                        name: name.to_string(),
-                        lintian_tags: lintian_tags.iter().map(|t| t.to_string()).collect(),
-                    }
+                fn new(name: &'static str, lintian_tags: &'static [&'static str]) -> Self {
+                    Self { name, lintian_tags }
                 }
             }
 
-            impl Fixer for NewFileFixer {
-                fn name(&self) -> String {
-                    self.name.clone()
+            impl Detector for NewFileFixer {
+                fn name(&self) -> &'static str {
+                    self.name
                 }
 
-                fn lintian_tags(&self) -> Vec<String> {
-                    self.lintian_tags.clone()
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
                 }
 
-                fn as_any(&self) -> &dyn std::any::Any {
-                    self
-                }
-
-                fn run(
+                fn detect(
                     &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
+                    _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                    _timeout: Option<chrono::Duration>,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(
-                        workspace.base_path().join("configure.ac"),
-                        "AC_INIT(foo, bar)\n",
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::untagged(
+                        "Created new configure.ac.",
+                        "Created new configure.ac.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("configure.ac"),
+                            content: b"AC_INIT(foo, bar)\n".to_vec(),
+                        })],
                     )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Created new configure.ac.".to_string(),
-                        patch_name: Some("add-config".to_string()),
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                    .with_patch_name("add-config")])
                 }
             }
 
@@ -2889,7 +2771,6 @@ Arch: all
                         .unwrap()
                         .naive_utc(),
                 ),
-                None,
                 None,
                 None,
             );
@@ -2953,7 +2834,6 @@ Arch: all
                 &FixerPreferences::default(),
                 &mut None,
                 Path::new(""),
-                None,
                 None,
                 None,
                 None,

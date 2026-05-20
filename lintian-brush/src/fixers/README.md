@@ -45,7 +45,7 @@ The runtime then:
 - Applies the actions via `crate::appliers::apply_actions`.
 - Returns a `FixerResult` listing the fixed and overridden issues.
 
-Fixers may panic — `DetectorAdapter::run` catches the panic and reports
+Fixers may panic — `detector::detect_and_fix` catches the panic and reports
 it as `FixerError::Panic`.
 
 Each fixer should have some unit tests for its logic. In addition, it

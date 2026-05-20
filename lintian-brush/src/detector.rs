@@ -38,9 +38,9 @@ pub enum DetectorCost {
 /// works in the lintian-brush CLI (with a [`FsWorkspace`]) and in
 /// an LSP host that has no on-disk basedir for the open buffer.
 ///
-/// Each registered detector is wrapped in a [`DetectorAdapter`] at
-/// registration time so the lintian-brush CLI driver picks it up via
-/// [`crate::builtin_fixers::get_builtin_fixers`].
+/// The lintian-brush CLI driver picks up every registered detector via
+/// [`crate::builtin_fixers::get_builtin_fixers`] and applies it through
+/// [`detect_and_fix`].
 pub trait Detector: Send + Sync {
     /// Stable name of the detector. Matches the corresponding fixer name.
     fn name(&self) -> &'static str;
@@ -89,6 +89,90 @@ pub trait Detector: Send + Sync {
     ) -> String {
         crate::builtin_fixers::default_describe(fixed, actions)
     }
+
+    /// Detect issues in `workspace` and apply the resulting actions.
+    ///
+    /// Runs [`detect`](Self::detect) and feeds its diagnostics through
+    /// [`crate::builtin_fixers::apply_diagnostics_with`], using
+    /// [`describe`](Self::describe) for the resulting description.
+    ///
+    /// Returns [`FixerError::NoChanges`] if the detector emitted nothing,
+    /// and [`FixerError::NoChangesAfterOverrides`] if every diagnostic was
+    /// filtered out by lintian overrides.
+    fn apply(
+        &self,
+        workspace: &FsWorkspace,
+        preferences: &crate::FixerPreferences,
+    ) -> Result<crate::FixerResult, FixerError> {
+        let diagnostics = self.detect(workspace, preferences)?;
+        crate::builtin_fixers::apply_diagnostics_with(
+            workspace.base_path(),
+            &diagnostics,
+            preferences,
+            &|fixed, actions| self.describe(fixed, actions),
+        )
+    }
+}
+
+/// Run `f`, converting any panic into [`FixerError::Panic`].
+fn catch_panic<T>(f: impl FnOnce() -> Result<T, FixerError>) -> Result<T, FixerError> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        Ok(r) => r,
+        Err(panic_payload) => {
+            let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unknown panic payload".to_string()
+            };
+            let backtrace = std::backtrace::Backtrace::capture();
+            let backtrace = if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
+                Some(backtrace)
+            } else {
+                None
+            };
+            Err(FixerError::Panic { message, backtrace })
+        }
+    }
+}
+
+/// Run a [`Detector`]'s detection phase against an on-disk package,
+/// catching panics, and filter the diagnostics into a
+/// [`DiagnosticPlan`](crate::builtin_fixers::DiagnosticPlan).
+///
+/// This performs no tree mutation: it runs [`Detector::detect`] followed
+/// by [`crate::builtin_fixers::plan_diagnostics`]. A panicking detector
+/// is reported as [`FixerError::Panic`] rather than unwinding. The
+/// returned plan is applied separately via
+/// [`crate::builtin_fixers::apply_plan`], so a caller can decide whether
+/// there is anything worth doing before it mutates the working tree.
+///
+/// Detectors that need per-run configuration read it from
+/// `preferences.extra_env`.
+pub fn detect_and_plan(
+    detector: &dyn Detector,
+    workspace: &FsWorkspace,
+    preferences: &crate::FixerPreferences,
+) -> Result<crate::builtin_fixers::DiagnosticPlan, FixerError> {
+    catch_panic(|| {
+        let diagnostics = detector.detect(workspace, preferences)?;
+        crate::builtin_fixers::plan_diagnostics(workspace.base_path(), &diagnostics, preferences)
+    })
+}
+
+/// Run a [`Detector`] against an on-disk package, catching panics.
+///
+/// Wraps [`Detector::apply`] so that a panicking detector is reported as
+/// [`FixerError::Panic`] rather than unwinding. This is the end-to-end
+/// convenience; [`crate::run_lintian_fixer`] instead uses
+/// [`detect_and_plan`] so it can split detection from tree mutation.
+pub fn detect_and_fix(
+    detector: &dyn Detector,
+    workspace: &FsWorkspace,
+    preferences: &crate::FixerPreferences,
+) -> Result<crate::FixerResult, FixerError> {
+    catch_panic(|| detector.apply(workspace, preferences))
 }
 
 /// Inventory entry for a [`Detector`].
@@ -189,126 +273,10 @@ pub fn select_detectors(
     }
 }
 
-/// Bridge a [`Detector`] into the public [`crate::Fixer`] trait so the CLI
-/// driver picks it up via [`crate::builtin_fixers::get_builtin_fixers`].
-///
-/// Runs the detector against the caller-supplied [`FsWorkspace`] and applies
-/// the resulting actions through [`crate::appliers::apply_actions`].
-pub struct DetectorAdapter {
-    detector: Box<dyn Detector>,
-    name: &'static str,
-    lintian_tags: &'static [&'static str],
-}
-
-impl DetectorAdapter {
-    /// Wrap a [`Detector`] for use as a [`crate::Fixer`].
-    pub fn new(detector: Box<dyn Detector>) -> Self {
-        let name = detector.name();
-        let lintian_tags = detector.lintian_tags();
-        Self {
-            detector,
-            name,
-            lintian_tags,
-        }
-    }
-
-    /// Run the underlying detector against an on-disk package and apply
-    /// any actions it emits.
-    ///
-    /// Returns [`FixerError::NoChanges`] if the detector emitted nothing,
-    /// and [`FixerError::NoChangesAfterOverrides`] if every diagnostic was
-    /// filtered out by lintian overrides.
-    pub fn apply(
-        &self,
-        workspace: &FsWorkspace,
-        preferences: &crate::FixerPreferences,
-    ) -> Result<crate::FixerResult, FixerError> {
-        let diagnostics = self.detector.detect(workspace, preferences)?;
-        crate::builtin_fixers::apply_diagnostics_with(
-            workspace.base_path(),
-            &diagnostics,
-            preferences,
-            &|fixed, actions| self.detector.describe(fixed, actions),
-        )
-    }
-}
-
-impl std::fmt::Debug for DetectorAdapter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DetectorAdapter")
-            .field("name", &self.name)
-            .field("lintian_tags", &self.lintian_tags)
-            .finish()
-    }
-}
-
-impl crate::Fixer for DetectorAdapter {
-    fn name(&self) -> String {
-        self.name.to_string()
-    }
-
-    fn lintian_tags(&self) -> Vec<String> {
-        self.lintian_tags.iter().map(|s| s.to_string()).collect()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn run(
-        &self,
-        workspace: &FsWorkspace,
-        preferences: &crate::FixerPreferences,
-        _timeout: Option<chrono::Duration>,
-    ) -> Result<crate::FixerResult, FixerError> {
-        // Backup and apply any extra environment variables for native
-        // fixers.
-        let mut env_backup = Vec::new();
-        if let Some(extra_env) = &preferences.extra_env {
-            for (key, value) in extra_env {
-                env_backup.push((key.clone(), std::env::var(key).ok()));
-                std::env::set_var(key, value);
-            }
-        }
-
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.apply(workspace, preferences)
-        }));
-
-        for (key, old_value) in env_backup {
-            if let Some(value) = old_value {
-                std::env::set_var(&key, value);
-            } else {
-                std::env::remove_var(&key);
-            }
-        }
-
-        match result {
-            Ok(r) => r,
-            Err(panic_payload) => {
-                let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
-                    s.to_string()
-                } else if let Some(s) = panic_payload.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    "Unknown panic payload".to_string()
-                };
-                let backtrace = std::backtrace::Backtrace::capture();
-                let backtrace = if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
-                    Some(backtrace)
-                } else {
-                    None
-                };
-                Err(FixerError::Panic { message, backtrace })
-            }
-        }
-    }
-}
-
 /// Declare a [`Detector`] and register it.
 ///
 /// Generates the `Detector` impl and an inventory submission that the CLI
-/// driver picks up via the [`DetectorAdapter`].
+/// driver picks up via [`crate::builtin_fixers::get_builtin_fixers`].
 ///
 /// # Example
 ///
@@ -406,8 +374,6 @@ macro_rules! declare_detector {
         }
     };
 }
-
-/// Map a file-open error: report missing required files as `NoChanges` so
 
 #[cfg(test)]
 mod tests {

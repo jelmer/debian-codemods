@@ -1,5 +1,4 @@
-//! Driver glue between [`Detector`](crate::detector::Detector)s and
-//! the public [`crate::Fixer`] trait.
+//! Driver glue for running [`Detector`](crate::detector::Detector)s.
 //!
 //! This module owns:
 //!
@@ -9,9 +8,8 @@
 //!   [`crate::appliers::apply_actions`].
 //! * [`default_describe`] — the default commit message generator.
 //! * [`get_builtin_fixers`] — collects every registered
-//!   [`Detector`](crate::detector::Detector), wraps it in a
-//!   [`DetectorAdapter`](crate::detector::DetectorAdapter), and sorts
-//!   the result by `after`/`before` declarations.
+//!   [`Detector`](crate::detector::Detector) and sorts the result by
+//!   `after`/`before` declarations.
 
 use super::*;
 
@@ -48,20 +46,42 @@ pub fn apply_diagnostics(
     apply_diagnostics_with(basedir, diagnostics, preferences, &default_describe)
 }
 
-/// Like [`apply_diagnostics`], but lets the caller provide a custom
-/// describer. The describer receives the diagnostics that actually fired
-/// (after override / certainty filtering) and the flat list of actions
-/// that were applied, and must return the description string used in the
-/// resulting [`FixerResult`].
-pub fn apply_diagnostics_with(
+/// The outcome of filtering a detector's diagnostics, before any tree
+/// mutation has happened.
+///
+/// Produced by [`plan_diagnostics`] and consumed by [`apply_plan`].
+/// Splitting the pipeline this way lets a caller decide whether there is
+/// anything worth doing (the plan carries at least one action) before it
+/// commits to mutating the working tree.
+pub struct DiagnosticPlan {
+    /// Diagnostics that survived filtering, each paired with the
+    /// [`ActionPlan`](crate::diagnostic::ActionPlan) chosen for it.
+    pub fixed: Vec<(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)>,
+    /// Issues that were suppressed by a lintian override.
+    pub overridden_issues: Vec<LintianIssue>,
+    /// The flat list of actions from every chosen plan, in order.
+    pub all_actions: Vec<crate::diagnostic::Action>,
+    /// The lowest certainty across the fired diagnostics, if any carried
+    /// a certainty.
+    pub min_actual_certainty: Option<Certainty>,
+}
+
+/// Filter a detector's diagnostics into a [`DiagnosticPlan`].
+///
+/// Drops diagnostics suppressed by lintian overrides or below
+/// `preferences.minimum_certainty`, and picks the first
+/// [`ActionPlan`](crate::diagnostic::ActionPlan) whose `opinionated` flag
+/// is satisfied by `preferences.opinionated`.
+///
+/// This phase performs no tree mutation. It returns
+/// [`FixerError::NoChanges`] / [`FixerError::NoChangesAfterOverrides`] /
+/// [`FixerError::NotCertainEnough`] when nothing actionable survives,
+/// matching the errors [`apply_diagnostics_with`] used to return.
+pub fn plan_diagnostics(
     basedir: &std::path::Path,
     diagnostics: &[crate::diagnostic::Diagnostic],
     preferences: &FixerPreferences,
-    describe: &dyn Fn(
-        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
-        &[crate::diagnostic::Action],
-    ) -> String,
-) -> Result<FixerResult, FixerError> {
+) -> Result<DiagnosticPlan, FixerError> {
     use debian_analyzer::certainty_sufficient;
 
     if diagnostics.is_empty() {
@@ -121,6 +141,35 @@ pub fn apply_diagnostics_with(
         return Err(FixerError::NoChanges);
     }
 
+    Ok(DiagnosticPlan {
+        fixed,
+        overridden_issues,
+        all_actions,
+        min_actual_certainty,
+    })
+}
+
+/// Apply a [`DiagnosticPlan`], mutating the tree under `basedir`.
+///
+/// Runs every action in `plan.all_actions` and builds the resulting
+/// [`FixerResult`], using `describe` for its description. Returns
+/// [`FixerError::NoChanges`] if applying the actions produced no
+/// observable change.
+pub fn apply_plan(
+    basedir: &std::path::Path,
+    plan: DiagnosticPlan,
+    describe: &dyn Fn(
+        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
+        &[crate::diagnostic::Action],
+    ) -> String,
+) -> Result<FixerResult, FixerError> {
+    let DiagnosticPlan {
+        fixed,
+        overridden_issues,
+        all_actions,
+        min_actual_certainty,
+    } = plan;
+
     let changed = debian_workspace::appliers::apply_actions(basedir, &all_actions)?;
     if changed.is_empty() {
         // Detector said there was something to fix but applying produced no
@@ -143,6 +192,24 @@ pub fn apply_diagnostics_with(
         builder = builder.patch_name(name);
     }
     Ok(builder.build())
+}
+
+/// Like [`apply_diagnostics`], but lets the caller provide a custom
+/// describer. The describer receives the diagnostics that actually fired
+/// (after override / certainty filtering) and the flat list of actions
+/// that were applied, and must return the description string used in the
+/// resulting [`FixerResult`].
+pub fn apply_diagnostics_with(
+    basedir: &std::path::Path,
+    diagnostics: &[crate::diagnostic::Diagnostic],
+    preferences: &FixerPreferences,
+    describe: &dyn Fn(
+        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
+        &[crate::diagnostic::Action],
+    ) -> String,
+) -> Result<FixerResult, FixerError> {
+    let plan = plan_diagnostics(basedir, diagnostics, preferences)?;
+    apply_plan(basedir, plan, describe)
 }
 
 /// Topologically sort detector registrations based on their `after` /
@@ -275,25 +342,18 @@ fn topologically_sort_detectors<'a>(
     sorted.iter().map(|name| name_to_reg[name]).collect()
 }
 
-/// Get all registered builtin fixers.
+/// Get all registered builtin detectors.
 ///
 /// Iterates every [`Detector`](crate::detector::Detector) registered via
-/// [`declare_detector!`](crate::declare_detector), wraps each in a
-/// [`DetectorAdapter`](crate::detector::DetectorAdapter), and sorts the
-/// result by `after` / `before` declarations.
-pub fn get_builtin_fixers() -> Vec<Box<dyn Fixer>> {
+/// [`declare_detector!`](crate::declare_detector) and sorts the result by
+/// `after` / `before` declarations.
+pub fn get_builtin_fixers() -> Vec<Box<dyn crate::detector::Detector>> {
     let registrations: Vec<&'static crate::detector::DetectorRegistration> =
         inventory::iter::<crate::detector::DetectorRegistration>
             .into_iter()
             .collect();
     let sorted = topologically_sort_detectors(registrations);
-    sorted
-        .into_iter()
-        .map(|reg| {
-            let adapter = crate::detector::DetectorAdapter::new((reg.create)());
-            Box::new(adapter) as Box<dyn Fixer>
-        })
-        .collect()
+    sorted.into_iter().map(|reg| (reg.create)()).collect()
 }
 
 #[cfg(test)]
@@ -389,9 +449,8 @@ mod tests {
         );
     }
 
-    use crate::detector::{Detector, DetectorAdapter, DetectorRegistration};
+    use crate::detector::{detect_and_fix, Detector, DetectorRegistration};
     use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-    use crate::Fixer;
     use debian_workspace::workspace::Workspace;
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -613,14 +672,13 @@ mod tests {
             )
             .with_certainty(Certainty::Confident)],
         };
-        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             tmp.path(),
             Some("foo".into()),
             Some(version),
         );
-        let result = adapter.apply(&ws, &FixerPreferences::default()).unwrap();
+        let result = detector.apply(&ws, &FixerPreferences::default()).unwrap();
 
         assert_eq!(result.description, "Set Priority on source");
         assert_eq!(result.certainty, Some(Certainty::Confident));
@@ -641,14 +699,13 @@ mod tests {
             tags: &["x"],
             diagnostics: vec![],
         };
-        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             tmp.path(),
             Some("foo".into()),
             Some(version),
         );
-        let err = adapter
+        let err = detector
             .apply(&ws, &FixerPreferences::default())
             .unwrap_err();
         assert!(matches!(err, FixerError::NoChanges));
@@ -678,14 +735,13 @@ mod tests {
                 })],
             )],
         };
-        let adapter = DetectorAdapter::new(Box::new(detector));
         let version: Version = "1.0".parse().unwrap();
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             tmp.path(),
             Some("foo".into()),
             Some(version),
         );
-        let err = adapter
+        let err = detector
             .apply(&ws, &FixerPreferences::default())
             .unwrap_err();
         match err {
@@ -722,7 +778,6 @@ mod tests {
             )
             .with_certainty(Certainty::Possible)],
         };
-        let adapter = DetectorAdapter::new(Box::new(detector));
         let mut prefs = FixerPreferences::default();
         prefs.minimum_certainty = Some(Certainty::Confident);
         let version: Version = "1.0".parse().unwrap();
@@ -731,7 +786,7 @@ mod tests {
             Some("foo".into()),
             Some(version),
         );
-        let err = adapter.apply(&ws, &prefs).unwrap_err();
+        let err = detector.apply(&ws, &prefs).unwrap_err();
         assert!(matches!(err, FixerError::NotCertainEnough(..)));
         assert_eq!(
             fs::read_to_string(tmp.path().join("debian/control")).unwrap(),
@@ -739,7 +794,7 @@ mod tests {
         );
     }
 
-    /// A detector that panics, used to confirm `DetectorAdapter::run`
+    /// A detector that panics, used to confirm `detect_and_fix`
     /// catches the panic and converts it to `FixerError::Panic`.
     struct PanickyDetector;
 
@@ -760,8 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn detector_adapter_catches_panic() {
-        let adapter = DetectorAdapter::new(Box::new(PanickyDetector));
+    fn detect_and_fix_catches_panic() {
         let tmp = TempDir::new().unwrap();
         let prefs = FixerPreferences::default();
         let version: Version = "1.0".parse().unwrap();
@@ -770,7 +824,7 @@ mod tests {
             Some("test-package".into()),
             Some(version),
         );
-        let result = adapter.run(&ws, &prefs, None);
+        let result = detect_and_fix(&PanickyDetector, &ws, &prefs);
         match result.unwrap_err() {
             FixerError::Panic { message, .. } => {
                 assert_eq!(message, "Test panic from detector");

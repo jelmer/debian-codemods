@@ -1802,10 +1802,11 @@ fn run_debianize_fixers(
 ) -> Result<(), Error> {
     log::info!("Running lintian fixers on debianized package");
 
-    // Get available fixers
-    let fixers: Vec<Box<dyn lintian_brush::Fixer>> = lintian_brush::all_lintian_fixers().collect();
+    // Get available detectors
+    let detectors: Vec<Box<dyn lintian_brush::detector::Detector>> =
+        lintian_brush::all_lintian_fixers().collect();
 
-    log::info!("Found {} lintian fixers", fixers.len());
+    log::info!("Found {} lintian fixers", detectors.len());
 
     // Convert DebianizePreferences to FixerPreferences
     let fixer_preferences: lintian_brush::FixerPreferences = lintian_brush::FixerPreferences {
@@ -1819,10 +1820,10 @@ fn run_debianize_fixers(
         ..Default::default()
     };
 
-    // Run the fixers
+    // Run the detectors
     match lintian_brush::run_lintian_fixers(
         wt,
-        &fixers,
+        &detectors,
         None::<fn() -> bool>, // No custom changelog update logic
         preferences.verbose,
         preferences.committer.as_deref(),
@@ -1830,7 +1831,6 @@ fn run_debianize_fixers(
         Some(true), // use_dirty_tracker
         Some(subpath),
         None, // changes_by
-        None, // timeout
         None, // multi_progress
     ) {
         Ok(result) => {

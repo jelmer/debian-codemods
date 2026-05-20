@@ -110,7 +110,6 @@ fn test_all_fixers_handle_missing_source_stanza() {
         };
 
         let current_version: debversion::Version = "1.0-1".parse().unwrap();
-        let timeout = Some(chrono::Duration::seconds(30));
 
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             &testdir,
@@ -118,7 +117,7 @@ fn test_all_fixers_handle_missing_source_stanza() {
             Some(current_version.clone()),
         );
 
-        let result = fixer.run(&ws, &preferences, timeout);
+        let result = crate::detector::detect_and_fix(fixer.as_ref(), &ws, &preferences);
 
         match result {
             Ok(_) => {}                      // Fixer made changes, that's fine
@@ -401,44 +400,44 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
         .find(|f| f.name() == fixer_name)
         .unwrap_or_else(|| panic!("Fixer '{}' not found", fixer_name));
 
-    let timeout = Some(chrono::Duration::seconds(30)); // 30 second timeout for tests
     let ws = debian_workspace::fs_workspace::FsWorkspace::new(
         &testdir,
         Some("test-package".into()),
         Some(current_version.clone()),
     );
-    let (actual_result, exit_code) = match fixer.run(&ws, &preferences, timeout) {
-        Ok(result) => (Some(result), 0),
-        Err(FixerError::NoChanges) => {
-            eprintln!("Fixer returned NoChanges for test {}", test_name);
-            (None, 1) // Exit code 1 for no changes
-        }
-        Err(FixerError::NoChangesAfterOverrides(_)) => {
-            eprintln!(
-                "Fixer returned NoChangesAfterOverrides for test {}",
-                test_name
-            );
-            (None, 1) // Exit code 1 for no changes
-        }
-        Err(e) => {
-            if let FixerError::ScriptFailed {
-                path,
-                exit_code,
-                stderr,
-            } = &e
-            {
-                eprintln!(
-                    "Script failed: {} (exit code: {})",
-                    path.display(),
-                    exit_code
-                );
-                if !stderr.is_empty() {
-                    eprintln!("Stderr:\n{}", stderr);
-                }
+    let (actual_result, exit_code) =
+        match crate::detector::detect_and_fix(fixer.as_ref(), &ws, &preferences) {
+            Ok(result) => (Some(result), 0),
+            Err(FixerError::NoChanges) => {
+                eprintln!("Fixer returned NoChanges for test {}", test_name);
+                (None, 1) // Exit code 1 for no changes
             }
-            panic!("Fixer error: {:?}", e);
-        }
-    };
+            Err(FixerError::NoChangesAfterOverrides(_)) => {
+                eprintln!(
+                    "Fixer returned NoChangesAfterOverrides for test {}",
+                    test_name
+                );
+                (None, 1) // Exit code 1 for no changes
+            }
+            Err(e) => {
+                if let FixerError::ScriptFailed {
+                    path,
+                    exit_code,
+                    stderr,
+                } = &e
+                {
+                    eprintln!(
+                        "Script failed: {} (exit code: {})",
+                        path.display(),
+                        exit_code
+                    );
+                    if !stderr.is_empty() {
+                        eprintln!("Stderr:\n{}", stderr);
+                    }
+                }
+                panic!("Fixer error: {:?}", e);
+            }
+        };
 
     if exit_code != 0 && exit_code != 1 {
         panic!("Test {} failed with exit code {}", test_name, exit_code);
