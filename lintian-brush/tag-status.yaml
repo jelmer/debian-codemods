@@ -457,12 +457,9 @@
   detector: false
   status: build-stage
 - tag: capitalization-error-in-description
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix known capitalization errors (e.g. "linux" -> "Linux") in the
-    package description in debian/control. Lintian provides the expected
-    spelling; apply it with TemplatedControlEditor.
+  status: implemented
 - tag: capitalization-error-in-description-synopsis
   detector: false
   difficulty: easy

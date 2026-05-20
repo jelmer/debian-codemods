@@ -1,0 +1,5 @@
+Fix capitalization errors in package description.
+Certainty: possible
+Fixed-Lintian-Issues:
+ blah binary: capitalization-error-in-description linux Linux
+ blah binary: capitalization-error-in-description gnome GNOME
