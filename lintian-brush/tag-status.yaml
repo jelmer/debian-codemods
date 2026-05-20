@@ -67,11 +67,9 @@
   detector: false
   status: build-stage
 - tag: apache2-module-does-not-depend-on-apache2-api
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Add missing dependency on apache2-api virtual package.
-    Straightforward addition to Depends in debian/control.
+  status: implemented
 - tag: apache2-module-does-not-ship-load-file
   detector: false
   status: build-stage
