@@ -685,29 +685,21 @@ pub fn detect(
 }
 
 fn get_current_version(preferences: &crate::FixerPreferences) -> Option<debversion::Version> {
-    // Check CURRENT_VERSION from preferences.extra_env
-    if let Some(extra_env) = &preferences.extra_env {
-        debug!("extra_env contains: {:?}", extra_env);
-        if let Some(version_str) = extra_env.get("CURRENT_VERSION") {
-            debug!("Found CURRENT_VERSION in extra_env: {}", version_str);
-            if let Ok(version) = version_str.parse::<debversion::Version>() {
-                debug!("Parsed version from extra_env: {:?}", version);
-                return Some(version);
-            }
+    // CURRENT_VERSION is a lintian-brush-internal knob passed through
+    // preferences.extra_env; it is not a standard environment variable.
+    let extra_env = preferences.extra_env.as_ref()?;
+    let version_str = extra_env.get("CURRENT_VERSION")?;
+    debug!("Found CURRENT_VERSION in extra_env: {}", version_str);
+    match version_str.parse::<debversion::Version>() {
+        Ok(version) => {
+            debug!("Parsed version from extra_env: {:?}", version);
+            Some(version)
+        }
+        Err(_) => {
+            debug!("Could not parse CURRENT_VERSION: {}", version_str);
+            None
         }
     }
-
-    // Fallback: try environment variable
-    if let Ok(version_str) = std::env::var("CURRENT_VERSION") {
-        debug!("Found CURRENT_VERSION in env: {}", version_str);
-        if let Ok(version) = version_str.parse::<debversion::Version>() {
-            debug!("Parsed version from env: {:?}", version);
-            return Some(version);
-        }
-    }
-
-    debug!("No CURRENT_VERSION found");
-    None
 }
 
 fn is_native_package(current_version: &debversion::Version) -> Result<bool, FixerError> {
@@ -751,7 +743,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use crate::Version;
     use std::fs;
     use std::path::Path;
@@ -759,7 +751,7 @@ mod tests {
 
     fn run_apply(base: &Path, version_str: &str) -> Result<crate::FixerResult, FixerError> {
         let v: Version = version_str.parse().unwrap();
-        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        let adapter = DetectorImpl;
         let ws = debian_workspace::fs_workspace::FsWorkspace::new(
             base,
             Some("test-package".into()),

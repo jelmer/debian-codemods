@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 pub fn detect(
     ws: &dyn Workspace,
-    _preferences: &FixerPreferences,
+    preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let control_rel = PathBuf::from("debian/control");
     let control = match ws.parsed_control() {
@@ -22,7 +22,14 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let Some((fullname, email)) = get_maintainer_from_env(|s| std::env::var(s).ok()) else {
+    let get_env = |name: &str| {
+        preferences
+            .extra_env
+            .as_ref()
+            .and_then(|e| e.get(name).cloned())
+            .or_else(|| std::env::var(name).ok())
+    };
+    let Some((fullname, email)) = get_maintainer_from_env(get_env) else {
         return Err(FixerError::Other(
             "Could not determine maintainer from environment".to_string(),
         ));
@@ -75,7 +82,7 @@ declare_detector! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::detector::DetectorAdapter;
+    use crate::detector::Detector;
     use crate::{FixerPreferences, Version};
     use std::fs;
     use std::path::Path;
@@ -83,7 +90,7 @@ mod tests {
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {
         let version: Version = "1.0".parse().unwrap();
-        let adapter = DetectorAdapter::new(Box::new(DetectorImpl));
+        let adapter = DetectorImpl;
         {
             let ws = debian_workspace::fs_workspace::FsWorkspace::new(
                 base,

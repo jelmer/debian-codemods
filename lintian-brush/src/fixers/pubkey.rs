@@ -524,11 +524,18 @@ pub fn detect(
         let mut keyfile_content = Vec::new();
         let keys_vec: Vec<String> = needed_keys.iter().cloned().collect();
 
+        // KEYSERVER is a lintian-brush-internal override (used by tests to
+        // point at a local server); it is not a standard environment
+        // variable, so we only honour preferences.extra_env.
+        let keyserver = preferences
+            .extra_env
+            .as_ref()
+            .and_then(|e| e.get("KEYSERVER").cloned())
+            .unwrap_or_else(|| "https://keys.openpgp.org".to_string());
+
         let mut fetch_failed = false;
         for fingerprint in &keys_vec {
             tracing::debug!("Fetching key with fingerprint: {}", fingerprint);
-            let keyserver = std::env::var("KEYSERVER")
-                .unwrap_or_else(|_| "https://keys.openpgp.org".to_string());
             let url = format!("{}/vks/v1/by-fingerprint/{}", keyserver, fingerprint);
 
             let client = reqwest::blocking::Client::builder()
