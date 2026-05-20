@@ -1,0 +1,8 @@
+Source: examplepkg
+Build-Depends: debhelper-compat (= 13)
+Maintainer: Test <test@example.com>
+
+Package: examplepkg
+Architecture: any
+Description: Example package
+ Long description.

@@ -1,0 +1,3 @@
+Remove redundant relation in debian/control.
+Fixed-Lintian-Issues:
+ source: redundant-control-relation (in source paragraph) Build-Depends debhelper-compat

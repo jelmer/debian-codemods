@@ -1,0 +1,8 @@
+Source: examplepkg
+Maintainer: Test <test@example.com>
+
+Package: examplepkg
+Architecture: any
+Depends: libfoo1, libfoo1 (>= 1.0)
+Description: Example package
+ Long description.
