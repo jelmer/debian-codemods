@@ -159,7 +159,8 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
             | Deb822Action::MoveRelation { paragraph, .. }
-            | Deb822Action::MakeAlternativePrimary { paragraph, .. } => Some(paragraph),
+            | Deb822Action::MakeAlternativePrimary { paragraph, .. }
+            | Deb822Action::DropFieldComments { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => None,
         };
     }
@@ -334,6 +335,13 @@ fn apply_control_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::DropFieldComments {
+                paragraph, field, ..
+            } => {
+                if drop_deb822_field_comments(&editor, paragraph, field)? {
+                    any_change = true;
+                }
+            }
             Deb822Action::ReorderParagraphs { .. } => {
                 return Err(FixerError::Other(
                     "deb822 ReorderParagraphs is not supported via the typed control editor; use a generic-path action group".into(),
@@ -396,7 +404,8 @@ fn apply_copyright_deb822_group(
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
             | Deb822Action::MoveRelation { paragraph, .. }
-            | Deb822Action::MakeAlternativePrimary { paragraph, .. } => paragraph,
+            | Deb822Action::MakeAlternativePrimary { paragraph, .. }
+            | Deb822Action::DropFieldComments { paragraph, .. } => paragraph,
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => {
                 return false;
             }
@@ -768,6 +777,16 @@ fn apply_generic_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::DropFieldComments {
+                paragraph, field, ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if drop_paragraph_field_comments(&mut p, field) {
+                    any_change = true;
+                }
+            }
         }
     }
 
@@ -1027,6 +1046,52 @@ fn remove_deb822_field(
         }
         other => Err(FixerError::Other(format!(
             "deb822 RemoveField does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+/// Rewrite `field` to its comment-free value, dropping any `#`-prefixed
+/// lines that the deb822 parser kept embedded in the field's value.
+/// Returns true iff the field carried embedded comments that were removed.
+fn drop_paragraph_field_comments(p: &mut deb822_lossless::Paragraph, field: &str) -> bool {
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    match p.get_with_comments(field) {
+        Some(with_comments) if with_comments != value => {
+            p.set(field, &value);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Apply [`Deb822Action::DropFieldComments`] through the typed control editor.
+fn drop_deb822_field_comments(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(drop_paragraph_field_comments(source.as_mut_deb822(), field))
+        }
+        ParagraphSelector::Binary { package } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(package.as_str()) {
+                    continue;
+                }
+                return Ok(drop_paragraph_field_comments(p, field));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 DropFieldComments does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -3449,6 +3514,75 @@ mod tests {
         assert_eq!(
             fs::read_to_string(debian.join("control")).unwrap(),
             "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_field_comments_on_source() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\
+             Homepage: https://example.com/\n\
+             #Vcs-Git: git://git.debian.org/collab-maint/<pkg>.git\n\
+             #Vcs-Browser: http://git.debian.org/?p=collab-maint/<pkg>.git\n\
+             \n\
+             Package: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropFieldComments {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Homepage".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nHomepage: https://example.com/\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_field_comments_idempotent_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\nHomepage: https://example.com/\n\nPackage: foo\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropFieldComments {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Homepage".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn generic_deb822_drop_field_comments() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("meta"),
+            "Name: thing\nUrl: https://example.com/\n#Old-Url: https://old.example.com/\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropFieldComments {
+            file: PathBuf::from("meta"),
+            paragraph: ParagraphSelector::Index { index: 0 },
+            field: "Url".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(tmp.path().join("meta")).unwrap(),
+            "Name: thing\nUrl: https://example.com/\n",
         );
     }
 

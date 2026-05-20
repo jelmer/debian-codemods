@@ -116,7 +116,8 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | Deb822Action::EnsureRelation { file, .. }
             | Deb822Action::MoveRelation { file, .. }
             | Deb822Action::MakeAlternativePrimary { file, .. }
-            | Deb822Action::ReorderParagraphs { file, .. } => file,
+            | Deb822Action::ReorderParagraphs { file, .. }
+            | Deb822Action::DropFieldComments { file, .. } => file,
         },
         Action::Systemd(a) => match a {
             SystemdAction::SetField { file, .. }
@@ -439,6 +440,21 @@ pub enum Deb822Action {
         /// Desired order of `key_field` values among the participating
         /// paragraphs.
         order: Vec<String>,
+    },
+    /// Drop the commented-out lines embedded in a field's value.
+    ///
+    /// A deb822 field's value can be followed by `#`-prefixed lines that
+    /// the parser keeps attached to that field — e.g. the commented-out
+    /// `Vcs-*` lines old `dh_make` versions append after `Homepage`.
+    /// This rewrites the field to its comment-free value, dropping those
+    /// lines. A no-op if the field carries no embedded comment lines.
+    DropFieldComments {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Field name.
+        field: String,
     },
 }
 
