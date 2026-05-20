@@ -6052,11 +6052,9 @@
   detector: true
   status: implemented
 - tag: duplicate-contact
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove duplicate entries from Uploaders field in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: executable-manual-page
   detector: false
   status: build-stage
