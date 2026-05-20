@@ -1,7 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
-use debian_control::lossless::relations::{Relation, Relations};
+use debian_control::lossless::relations::Relations;
 use debian_workspace::Workspace;
 use std::path::PathBuf;
 
@@ -22,37 +22,23 @@ fn unfolded(value: &str) -> String {
     value.replace('\n', " ").trim().to_string()
 }
 
-/// If the first alternative group that names `default-mta` does not list
-/// it first, return the reordered text for that group: `default-mta`
-/// moved to the front, the other alternatives kept in their original
-/// order. Returns `None` when nothing needs reordering.
+/// True when the first relation entry of `value` that names `default-mta`
+/// does not list it as the leading alternative — the condition lintian
+/// flags.
 ///
-/// Only the first group naming `default-mta` is considered. That is the
-/// group `ReplaceRelation` (keyed on the package name) targets, and a
-/// dependency realistically names `default-mta` in just one group.
-fn reordered_group(value: &str) -> Option<String> {
+/// Only the first such entry matters: it is the one the
+/// [`MakeAlternativePrimary`](Deb822Action::MakeAlternativePrimary)
+/// action reorders, and a dependency realistically names `default-mta`
+/// in just one alternative group.
+fn default_mta_misordered(value: &str) -> bool {
     let (relations, _errors) = Relations::parse_relaxed(value, true);
     for entry in relations.entries() {
-        let alternatives: Vec<Relation> = entry.relations().collect();
-        let Some(idx) = alternatives
-            .iter()
-            .position(|r| r.try_name().as_deref() == Some(DEFAULT_MTA))
-        else {
-            continue;
-        };
-        // First group naming default-mta. Already leading -> nothing to do.
-        if idx == 0 {
-            return None;
+        let names: Vec<Option<String>> = entry.relations().map(|r| r.try_name()).collect();
+        if names.iter().any(|n| n.as_deref() == Some(DEFAULT_MTA)) {
+            return names.first().and_then(|n| n.as_deref()) != Some(DEFAULT_MTA);
         }
-        let mut ordered = vec![alternatives[idx].to_string().trim().to_string()];
-        for (i, r) in alternatives.iter().enumerate() {
-            if i != idx {
-                ordered.push(r.to_string().trim().to_string());
-            }
-        }
-        return Some(ordered.join(" | "));
     }
-    None
+    false
 }
 
 pub fn detect(
@@ -74,9 +60,9 @@ pub fn detect(
             let Some(value) = paragraph.get(field) else {
                 continue;
             };
-            let Some(to_entry) = reordered_group(&value) else {
+            if !default_mta_misordered(&value) {
                 continue;
-            };
+            }
             let issue = LintianIssue::source_with_info(
                 "default-mta-dependency-not-listed-first",
                 Visibility::Warning,
@@ -86,12 +72,11 @@ pub fn detect(
                 issue,
                 format!("default-mta is not listed first in {}.", field),
                 format!("Order default-mta first in {}.", field),
-                vec![Action::Deb822(Deb822Action::ReplaceRelation {
+                vec![Action::Deb822(Deb822Action::MakeAlternativePrimary {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Source,
                     field: (*field).to_string(),
-                    from_package: DEFAULT_MTA.to_string(),
-                    to_entry,
+                    package: DEFAULT_MTA.to_string(),
                 })],
             ));
         }
@@ -106,9 +91,9 @@ pub fn detect(
             let Some(value) = paragraph.get(field) else {
                 continue;
             };
-            let Some(to_entry) = reordered_group(&value) else {
+            if !default_mta_misordered(&value) {
                 continue;
-            };
+            }
             let issue = LintianIssue {
                 package: Some(pkg_name.clone()),
                 package_type: Some(PackageType::Binary),
@@ -123,14 +108,13 @@ pub fn detect(
                     field, pkg_name
                 ),
                 format!("Order default-mta first in {}.", field),
-                vec![Action::Deb822(Deb822Action::ReplaceRelation {
+                vec![Action::Deb822(Deb822Action::MakeAlternativePrimary {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Binary {
                         package: pkg_name.clone(),
                     },
                     field: (*field).to_string(),
-                    from_package: DEFAULT_MTA.to_string(),
-                    to_entry,
+                    package: DEFAULT_MTA.to_string(),
                 })],
             ));
         }
@@ -143,7 +127,9 @@ fn describe_aggregate(_fixed: &[(Diagnostic, ActionPlan)], actions: &[Action]) -
     let mut fields: Vec<&str> = actions
         .iter()
         .filter_map(|a| match a {
-            Action::Deb822(Deb822Action::ReplaceRelation { field, .. }) => Some(field.as_str()),
+            Action::Deb822(Deb822Action::MakeAlternativePrimary { field, .. }) => {
+                Some(field.as_str())
+            }
             _ => None,
         })
         .collect();
@@ -235,47 +221,26 @@ mod tests {
     }
 
     #[test]
-    fn test_reordered_group_default_mta_first() {
-        assert_eq!(reordered_group("default-mta | mail-transport-agent"), None);
-        assert_eq!(reordered_group("default-mta"), None);
+    fn test_misordered_false_when_default_mta_first() {
+        assert!(!default_mta_misordered(
+            "default-mta | mail-transport-agent"
+        ));
+        assert!(!default_mta_misordered("default-mta"));
     }
 
     #[test]
-    fn test_reordered_group_no_default_mta() {
-        assert_eq!(reordered_group("foo, bar"), None);
-        assert_eq!(reordered_group("mail-transport-agent"), None);
+    fn test_misordered_false_when_no_default_mta() {
+        assert!(!default_mta_misordered("foo, bar"));
+        assert!(!default_mta_misordered("mail-transport-agent"));
     }
 
     #[test]
-    fn test_reordered_group_moves_default_mta_to_front() {
-        assert_eq!(
-            reordered_group("mail-transport-agent | default-mta"),
-            Some("default-mta | mail-transport-agent".to_string()),
-        );
-    }
-
-    #[test]
-    fn test_reordered_group_keeps_other_alternatives_in_order() {
-        assert_eq!(
-            reordered_group("foo | bar | default-mta"),
-            Some("default-mta | foo | bar".to_string()),
-        );
-    }
-
-    #[test]
-    fn test_reordered_group_ignores_unrelated_leading_entries() {
-        assert_eq!(
-            reordered_group("libc6, mail-transport-agent | default-mta"),
-            Some("default-mta | mail-transport-agent".to_string()),
-        );
-    }
-
-    #[test]
-    fn test_reordered_group_preserves_version_constraint() {
-        assert_eq!(
-            reordered_group("mail-transport-agent | default-mta (>= 1)"),
-            Some("default-mta (>= 1) | mail-transport-agent".to_string()),
-        );
+    fn test_misordered_true_when_default_mta_not_first() {
+        assert!(default_mta_misordered("mail-transport-agent | default-mta"));
+        assert!(default_mta_misordered("foo | bar | default-mta"));
+        assert!(default_mta_misordered(
+            "libc6, mail-transport-agent | default-mta"
+        ));
     }
 
     #[test]
