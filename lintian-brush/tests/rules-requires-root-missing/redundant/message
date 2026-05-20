@@ -1,0 +1,4 @@
+Removed Rules-Requires-Root
+Certainty: possible
+Fixed-Lintian-Issues:
+ source: redundant-rules-requires-root-no-field [debian/control]
