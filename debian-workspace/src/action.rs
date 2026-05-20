@@ -115,6 +115,7 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | Deb822Action::DropSubstvar { file, .. }
             | Deb822Action::EnsureRelation { file, .. }
             | Deb822Action::MoveRelation { file, .. }
+            | Deb822Action::MakeAlternativePrimary { file, .. }
             | Deb822Action::ReorderParagraphs { file, .. } => file,
         },
         Action::Systemd(a) => match a {
@@ -400,6 +401,26 @@ pub enum Deb822Action {
         /// Destination relations field name.
         to_field: String,
         /// Package name identifying the entry to move.
+        package: String,
+    },
+    /// Reorder the alternatives in the relation entry that names
+    /// `package` so that `package` becomes the primary (first)
+    /// alternative. The other alternatives keep their relative order;
+    /// each alternative's version and architecture qualifiers are
+    /// preserved verbatim, and the `|` separators are normalised to the
+    /// conventional ` | `.
+    ///
+    /// Operates on the first entry of `field` that names `package`. A
+    /// no-op if `package` isn't named in `field`, or already heads its
+    /// entry.
+    MakeAlternativePrimary {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Depends`).
+        field: String,
+        /// Package name whose alternative should become primary.
         package: String,
     },
     /// Reorder a subset of paragraphs in a deb822 file. Paragraphs that
