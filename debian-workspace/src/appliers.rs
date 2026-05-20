@@ -158,7 +158,8 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
-            | Deb822Action::MoveRelation { paragraph, .. } => Some(paragraph),
+            | Deb822Action::MoveRelation { paragraph, .. }
+            | Deb822Action::MakeAlternativePrimary { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => None,
         };
     }
@@ -323,6 +324,16 @@ fn apply_control_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::MakeAlternativePrimary {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                if make_deb822_alternative_primary(&editor, paragraph, field, package)? {
+                    any_change = true;
+                }
+            }
             Deb822Action::ReorderParagraphs { .. } => {
                 return Err(FixerError::Other(
                     "deb822 ReorderParagraphs is not supported via the typed control editor; use a generic-path action group".into(),
@@ -384,7 +395,8 @@ fn apply_copyright_deb822_group(
             | Deb822Action::EnsureSubstvar { paragraph, .. }
             | Deb822Action::DropSubstvar { paragraph, .. }
             | Deb822Action::EnsureRelation { paragraph, .. }
-            | Deb822Action::MoveRelation { paragraph, .. } => paragraph,
+            | Deb822Action::MoveRelation { paragraph, .. }
+            | Deb822Action::MakeAlternativePrimary { paragraph, .. } => paragraph,
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => {
                 return false;
             }
@@ -733,6 +745,19 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if move_relation_in_paragraph(&mut p, from_field, to_field, package) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::MakeAlternativePrimary {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if make_alternative_primary_in_paragraph(&mut p, field, package) {
                     any_change = true;
                 }
             }
@@ -1121,6 +1146,55 @@ fn replace_relation_in_paragraph(
     true
 }
 
+/// Move the alternative naming `package` to the front of the first
+/// relation entry that names it, keeping the other alternatives in
+/// order. Returns true if the field changed; a no-op (false) when
+/// `package` isn't named in `field` or already heads its entry.
+fn make_alternative_primary_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    package: &str,
+) -> bool {
+    use debian_control::lossless::relations::{Entry, Relations};
+    use std::str::FromStr;
+
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    let Some((idx, entry)) = relations.iter_relations_for(package).next() else {
+        return false;
+    };
+
+    // Each alternative's name and its verbatim text (version and
+    // architecture qualifiers preserved).
+    let alternatives: Vec<(Option<String>, String)> = entry
+        .relations()
+        .map(|r| (r.try_name(), r.to_string().trim().to_string()))
+        .collect();
+    let Some(pos) = alternatives
+        .iter()
+        .position(|(name, _)| name.as_deref() == Some(package))
+    else {
+        return false;
+    };
+    if pos == 0 {
+        // Already the primary alternative.
+        return false;
+    }
+
+    let mut texts: Vec<String> = alternatives.into_iter().map(|(_, text)| text).collect();
+    let primary = texts.remove(pos);
+    texts.insert(0, primary);
+
+    let Ok(new_entry) = Entry::from_str(&texts.join(" | ")) else {
+        return false;
+    };
+    relations.replace(idx, new_entry);
+    p.set(field, &relations.to_string());
+    true
+}
+
 /// Compute the post-edit relations for a substvar ensure: parse the
 /// current field value, return the new relations if the substvar wasn't
 /// already present (else `None`).
@@ -1287,6 +1361,40 @@ fn replace_deb822_relation(
         }
         other => Err(FixerError::Other(format!(
             "deb822 ReplaceRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn make_deb822_alternative_primary(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    package: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(make_alternative_primary_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                package,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(make_alternative_primary_in_paragraph(p, field, package));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 MakeAlternativePrimary does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -3545,6 +3653,127 @@ mod tests {
         let changed = apply_action(tmp.path(), &action).unwrap();
         assert!(!changed);
         assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_make_alternative_primary_reorders() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: foo\nDepends: mail-transport-agent | default-mta\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::MakeAlternativePrimary {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            package: "default-mta".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: foo\nDepends: default-mta | mail-transport-agent\n",
+        );
+    }
+
+    #[test]
+    fn deb822_make_alternative_primary_idempotent_when_already_first() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: foo\nDepends: default-mta | mail-transport-agent\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::MakeAlternativePrimary {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            package: "default-mta".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_make_alternative_primary_noop_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: foo\nDepends: libc6\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::MakeAlternativePrimary {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            package: "default-mta".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_make_alternative_primary_keeps_other_alternatives_in_order() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13), exim4 | postfix | default-mta\n\nPackage: foo\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::MakeAlternativePrimary {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Source,
+            field: "Build-Depends".into(),
+            package: "default-mta".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13), default-mta | exim4 | postfix\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_make_alternative_primary_preserves_version_constraint() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: foo\nDepends: mail-transport-agent | default-mta (>= 1)\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::MakeAlternativePrimary {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "foo".into(),
+            },
+            field: "Depends".into(),
+            package: "default-mta".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: foo\nDepends: default-mta (>= 1) | mail-transport-agent\n",
+        );
     }
 
     #[test]

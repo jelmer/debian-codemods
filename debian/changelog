@@ -2,6 +2,7 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
 
   * Add fixer for apache2-module-does-not-depend-on-apache2-api.
   * Add fixer for duplicate-contact.
+  * Add fixer for default-mta-dependency-not-listed-first.
   * Rewrite the old-fsf-address-in-copyright-file fixer to strip the FSF
     postal address and reference https://www.gnu.org/licenses/ instead,
     handling both flagged addresses.
