@@ -1090,7 +1090,7 @@ dependencies = [
 
 [[package]]
 name = "debian-workspace"
-version = "0.1.0"
+version = "0.176.0"
 dependencies = [
  "chrono",
  "deb822-lossless",

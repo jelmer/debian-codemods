@@ -145,6 +145,115 @@ fn test_all_fixers_handle_missing_source_stanza() {
     }
 }
 
+/// Recursively compare two directory trees, returning a list of human-
+/// readable differences (empty when the trees match).
+///
+/// Mirrors the `diff --no-dereference -x '*~' -ur` invocation this used to
+/// shell out to: backup files (`*~`) are ignored, symlinks are compared by
+/// their target rather than dereferenced, and regular files are compared by
+/// content. Doing the comparison in-process avoids a fork/exec of `diff`,
+/// which raced under heavy test parallelism.
+fn compare_trees(expected: &Path, actual: &Path) -> Vec<String> {
+    let mut differences = Vec::new();
+    compare_dir(expected, actual, Path::new(""), &mut differences);
+    differences
+}
+
+/// Sorted names of the entries in `dir`, excluding `*~` backup files.
+/// Returns an empty list when `dir` doesn't exist.
+fn tree_entries(dir: &Path) -> Vec<std::ffi::OsString> {
+    let mut names: Vec<std::ffi::OsString> = match std::fs::read_dir(dir) {
+        Ok(rd) => rd
+            .map(|e| e.expect("Failed to read directory entry").file_name())
+            .filter(|name| !name.to_string_lossy().ends_with('~'))
+            .collect(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(e) => panic!("Error reading {}: {}", dir.display(), e),
+    };
+    names.sort();
+    names
+}
+
+/// Compare the directory `expected/rel` against `actual/rel`, appending any
+/// differences (described relative to the tree roots) to `differences`.
+fn compare_dir(expected: &Path, actual: &Path, rel: &Path, differences: &mut Vec<String>) {
+    let expected_names = tree_entries(&expected.join(rel));
+    let actual_names = tree_entries(&actual.join(rel));
+
+    let mut all: Vec<&std::ffi::OsString> =
+        expected_names.iter().chain(actual_names.iter()).collect();
+    all.sort();
+    all.dedup();
+
+    for name in all {
+        let child = rel.join(name);
+        let in_expected = expected_names.contains(name);
+        let in_actual = actual_names.contains(name);
+        match (in_expected, in_actual) {
+            (true, false) => differences.push(format!("Only in expected: {}", child.display())),
+            (false, true) => differences.push(format!("Only in actual: {}", child.display())),
+            (true, true) => compare_entry(expected, actual, &child, differences),
+            (false, false) => unreachable!(),
+        }
+    }
+}
+
+/// Compare the single entry at `rel` between the two trees.
+fn compare_entry(expected: &Path, actual: &Path, rel: &Path, differences: &mut Vec<String>) {
+    let expected_path = expected.join(rel);
+    let actual_path = actual.join(rel);
+    // `symlink_metadata` does not follow symlinks (matches `--no-dereference`).
+    let expected_meta = std::fs::symlink_metadata(&expected_path)
+        .unwrap_or_else(|e| panic!("Error stat-ing {}: {}", expected_path.display(), e));
+    let actual_meta = std::fs::symlink_metadata(&actual_path)
+        .unwrap_or_else(|e| panic!("Error stat-ing {}: {}", actual_path.display(), e));
+
+    let expected_type = expected_meta.file_type();
+    let actual_type = actual_meta.file_type();
+
+    if expected_type.is_symlink() || actual_type.is_symlink() {
+        if !expected_type.is_symlink() || !actual_type.is_symlink() {
+            differences.push(format!(
+                "{}: symlink vs non-symlink mismatch",
+                rel.display()
+            ));
+            return;
+        }
+        let expected_target = std::fs::read_link(&expected_path).unwrap();
+        let actual_target = std::fs::read_link(&actual_path).unwrap();
+        if expected_target != actual_target {
+            differences.push(format!(
+                "{}: symlink target differs ({} vs {})",
+                rel.display(),
+                expected_target.display(),
+                actual_target.display()
+            ));
+        }
+        return;
+    }
+
+    if expected_type.is_dir() != actual_type.is_dir() {
+        differences.push(format!("{}: directory vs file mismatch", rel.display()));
+        return;
+    }
+
+    if expected_type.is_dir() {
+        compare_dir(expected, actual, rel, differences);
+        return;
+    }
+
+    let expected_bytes = std::fs::read(&expected_path).unwrap();
+    let actual_bytes = std::fs::read(&actual_path).unwrap();
+    if expected_bytes != actual_bytes {
+        differences.push(format!(
+            "{}: content differs\n--- expected\n{}\n--- actual\n{}",
+            rel.display(),
+            String::from_utf8_lossy(&expected_bytes),
+            String::from_utf8_lossy(&actual_bytes),
+        ));
+    }
+}
+
 fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     let td = tempfile::tempdir().unwrap();
 
@@ -335,32 +444,16 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
         panic!("Test {} failed with exit code {}", test_name, exit_code);
     }
 
-    // Only check diff if we expect changes (exit_code == 0)
+    // Only check the result tree if we expect changes (exit_code == 0).
     if exit_code == 0 {
-        let diff_output = std::process::Command::new("diff")
-            .arg("--no-dereference")
-            .arg("-x")
-            .arg("*~")
-            .arg("-ur")
-            .arg({
-                if outdir.is_symlink() {
-                    path.join(std::fs::read_link(&outdir).unwrap())
-                } else {
-                    outdir.clone()
-                }
-            })
-            .arg(testdir)
-            .stdout(std::process::Stdio::piped())
-            .output()
-            .unwrap();
-
-        if diff_output.status.code() != Some(0) && diff_output.status.code() != Some(1) {
-            panic!("Unexpected diff status: {}", diff_output.status);
-        }
-
-        if !diff_output.stdout.is_empty() {
-            let diff = String::from_utf8_lossy(&diff_output.stdout);
-            eprintln!("Diff:\n{}", diff);
+        let expected_dir = if outdir.is_symlink() {
+            path.join(std::fs::read_link(&outdir).unwrap())
+        } else {
+            outdir.clone()
+        };
+        let differences = compare_trees(&expected_dir, &testdir);
+        if !differences.is_empty() {
+            eprintln!("Differences:\n{}", differences.join("\n"));
             panic!("Test {} failed", test_name);
         }
     }
