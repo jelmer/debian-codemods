@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+A = $(DEB_BUILD_OPTIONS)
+B = ${DEB_BUILD_OPTIONS}
+
+%:
+	dh $@
