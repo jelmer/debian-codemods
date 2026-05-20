@@ -1,0 +1,7 @@
+Source: foo
+
+Package: foo
+Architecture: all
+Depends: mail-transport-agent | default-mta
+Description: Foo package
+ A simple foo package.
