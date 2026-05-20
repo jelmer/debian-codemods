@@ -1473,10 +1473,9 @@
     Delete leftover dh_make template files (e.g. debian/*.ex,
     debian/*.EX) from the source tree.
 - tag: dh_installmanpages-is-obsolete
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Replace dh_installmanpages with dh_installman in debian/rules.
+  status: implemented
 - tag: diff-contains-arch-control-dir
   detector: false
   difficulty: easy

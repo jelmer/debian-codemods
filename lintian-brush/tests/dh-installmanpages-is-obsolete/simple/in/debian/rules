@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+build: build-stamp
+
+build-stamp:
+	dh_testdir
+	$(MAKE)
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp
+	$(MAKE) clean
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/foo
+	dh_installmanpages
+
+binary-arch: build install
+
+binary: binary-arch
+.PHONY: build clean binary binary-arch install

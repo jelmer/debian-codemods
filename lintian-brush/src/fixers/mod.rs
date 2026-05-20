@@ -66,6 +66,7 @@ mod description_synopsis_starts_with_article;
 mod desktop_entry_contains_encoding_key;
 mod desktop_entry_file_has_crs;
 mod dh_clean_k_is_deprecated;
+mod dh_installmanpages_is_obsolete;
 mod dh_quilt_addon_but_quilt_source_format;
 mod dm_upload_allowed;
 mod dpatch_build_dep_but_no_patch_list;
