@@ -1,0 +1,3 @@
+Order default-mta first in Depends.
+Fixed-Lintian-Issues:
+ foo binary: default-mta-dependency-not-listed-first Depends: mail-transport-agent | default-mta
