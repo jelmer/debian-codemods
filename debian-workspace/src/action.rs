@@ -1,6 +1,6 @@
 use debian_control::relations::VersionConstraint;
 use debversion::Version;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// One self-consistent set of actions that fixes a [`Diagnostic`].
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -85,6 +85,117 @@ impl IndentPattern {
             IndentPattern::Fixed { spaces } => deb822_lossless::IndentPattern::Fixed(*spaces),
             IndentPattern::FieldNameLength => deb822_lossless::IndentPattern::FieldNameLength,
         }
+    }
+}
+
+/// The file an action targets, for grouping actions by file before they are
+/// applied.
+///
+/// `Rename` returns its *source* path here and `RunCommand` returns its
+/// monitored scope directory; neither is the full set of paths the action
+/// modifies. The authoritative modified set is what
+/// [`apply_actions`](crate::appliers::apply_actions) returns after running
+/// the appliers: the appliers observe what actually changed (a `Rename`
+/// touches both endpoints, a `RunCommand` touches whatever its command
+/// wrote).
+pub(crate) fn action_file(action: &Action) -> &Path {
+    match action {
+        Action::Deb822(a) => match a {
+            Deb822Action::SetField { file, .. }
+            | Deb822Action::SetFieldWithIndent { file, .. }
+            | Deb822Action::RemoveField { file, .. }
+            | Deb822Action::RenameField { file, .. }
+            | Deb822Action::RemoveParagraph { file, .. }
+            | Deb822Action::AppendParagraph { file, .. }
+            | Deb822Action::NormalizeFieldSpacing { file, .. }
+            | Deb822Action::DropRelation { file, .. }
+            | Deb822Action::ReplaceRelation { file, .. }
+            | Deb822Action::SetRelationVersionConstraint { file, .. }
+            | Deb822Action::EnsureSubstvar { file, .. }
+            | Deb822Action::DropSubstvar { file, .. }
+            | Deb822Action::EnsureRelation { file, .. }
+            | Deb822Action::MoveRelation { file, .. }
+            | Deb822Action::ReorderParagraphs { file, .. } => file,
+        },
+        Action::Systemd(a) => match a {
+            SystemdAction::SetField { file, .. }
+            | SystemdAction::RemoveField { file, .. }
+            | SystemdAction::RenameField { file, .. }
+            | SystemdAction::Add { file, .. }
+            | SystemdAction::RemoveValue { file, .. } => file,
+        },
+        Action::DesktopIni(a) => match a {
+            DesktopIniAction::SetField { file, .. }
+            | DesktopIniAction::RemoveField { file, .. }
+            | DesktopIniAction::RemoveAll { file, .. }
+            | DesktopIniAction::RenameField { file, .. } => file,
+        },
+        Action::Yaml(a) => match a {
+            YamlAction::SetField { file, .. }
+            | YamlAction::SetFieldOrdered { file, .. }
+            | YamlAction::RemoveField { file, .. }
+            | YamlAction::RenameField { file, .. } => file,
+        },
+        Action::Changelog(a) => match a {
+            ChangelogAction::ReplaceEntryChanges { file, .. }
+            | ChangelogAction::SetEntryDate { file, .. }
+            | ChangelogAction::RemoveBullet { file, .. }
+            | ChangelogAction::ReplaceBullet { file, .. }
+            | ChangelogAction::SetEntryVersion { file, .. } => file,
+        },
+        Action::Watch(a) => match a {
+            WatchAction::SetEntryMatchingPattern { file, .. }
+            | WatchAction::RemoveEntryOption { file, .. }
+            | WatchAction::SetEntryOption { file, .. }
+            | WatchAction::SetEntryUrl { file, .. }
+            | WatchAction::ConvertEntryToTemplate { file, .. } => file,
+        },
+        Action::Makefile(a) => match a {
+            MakefileAction::ReplaceRecipe { file, .. }
+            | MakefileAction::RemoveRecipe { file, .. }
+            | MakefileAction::SetVariable { file, .. }
+            | MakefileAction::SetVariableOperator { file, .. }
+            | MakefileAction::RemoveVariable { file, .. }
+            | MakefileAction::RemoveRule { file, .. }
+            | MakefileAction::RemovePhonyTarget { file, .. }
+            | MakefileAction::RenameRuleTarget { file, .. }
+            | MakefileAction::AddRule { file, .. }
+            | MakefileAction::AddPhonyTarget { file, .. }
+            | MakefileAction::AddInclude { file, .. }
+            | MakefileAction::ReplaceVariableWithInclude { file, .. }
+            | MakefileAction::InsertIncludeBeforeVariable { file, .. } => file,
+        },
+        Action::Dep3(a) => match a {
+            Dep3Action::SetField { file, .. }
+            | Dep3Action::RemoveField { file, .. }
+            | Dep3Action::RenameField { file, .. } => file,
+        },
+        Action::LintianOverrides(a) => match a {
+            LintianOverridesAction::AddLine { file, .. }
+            | LintianOverridesAction::DropLine { file, .. }
+            | LintianOverridesAction::RenameTag { file, .. }
+            | LintianOverridesAction::SetLineInfo { file, .. } => file,
+        },
+        Action::Maintscript(a) => match a {
+            MaintscriptAction::DropEntry { file, .. } => file,
+        },
+        Action::Debcargo(a) => match a {
+            DebcargoAction::SetSourceField { file, .. }
+            | DebcargoAction::SetTopLevelBool { file, .. } => file,
+        },
+        Action::RunCommand(a) => match a {
+            RunCommandAction::Run { scope, .. } => scope,
+        },
+        Action::Filesystem(a) => match a {
+            FilesystemAction::SetMode { file, .. }
+            | FilesystemAction::Delete { file }
+            | FilesystemAction::Rename { file, .. }
+            | FilesystemAction::RemoveDirIfEmpty { file }
+            | FilesystemAction::Write { file, .. }
+            | FilesystemAction::ReplaceText { file, .. }
+            | FilesystemAction::Substitute { file, .. }
+            | FilesystemAction::NormalizeLineEndings { file } => file,
+        },
     }
 }
 
