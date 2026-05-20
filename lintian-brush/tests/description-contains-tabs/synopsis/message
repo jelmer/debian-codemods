@@ -1,0 +1,4 @@
+Replace tabs with spaces in Description.
+Certainty: certain
+Fixed-Lintian-Issues:
+ blah binary: description-contains-tabs
