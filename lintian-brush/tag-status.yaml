@@ -613,12 +613,9 @@
   difficulty: hard
   comment: requires archive info
 - tag: control-file-contains-dh_make-vcs-comment
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Remove commented-out "# Vcs-Git:" / "# Vcs-Browser:" template lines
-    from debian/control. Requires raw text manipulation since deb822
-    parsers typically discard comments.
 - tag: control-file-has-bad-owner
   detector: false
   status: build-stage

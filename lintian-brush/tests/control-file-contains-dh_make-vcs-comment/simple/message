@@ -1,0 +1,4 @@
+Remove commented-out dh_make Vcs lines from debian/control.
+Fixed-Lintian-Issues:
+ source: control-file-contains-dh-make-vcs-comment #Vcs-Git: git://git.debian.org/collab-maint/<pkg>.git
+Certainty: certain

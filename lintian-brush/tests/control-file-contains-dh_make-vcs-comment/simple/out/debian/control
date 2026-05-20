@@ -1,0 +1,12 @@
+Source: test-package
+Section: misc
+Priority: optional
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://example.com/
+
+Package: test-package
+Architecture: all
+Depends: ${misc:Depends}
+Description: test package
+ A test package.
