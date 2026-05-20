@@ -1,0 +1,4 @@
+Remove 2 redundant relations in debian/control.
+Fixed-Lintian-Issues:
+ source: redundant-control-relation (in source paragraph) Build-Depends dh-sequence-python3
+ examplepkg binary: redundant-control-relation (in section for examplepkg) Depends libfoo1
