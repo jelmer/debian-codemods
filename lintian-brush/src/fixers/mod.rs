@@ -14,6 +14,7 @@ mod chown_with_dot;
 mod circular_installation_prerequisite;
 mod comma_separated_files_in_dep5_copyright;
 mod common_license;
+mod control_file_contains_dh_make_vcs_comment;
 mod copyright_continued_lines_with_space;
 mod copyright_format_uri;
 mod copyright_has_crs;

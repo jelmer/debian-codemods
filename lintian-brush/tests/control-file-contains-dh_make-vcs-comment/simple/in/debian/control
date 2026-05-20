@@ -1,0 +1,14 @@
+Source: test-package
+Section: misc
+Priority: optional
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://example.com/
+#Vcs-Git: git://git.debian.org/collab-maint/<pkg>.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/<pkg>.git
+
+Package: test-package
+Architecture: all
+Depends: ${misc:Depends}
+Description: test package
+ A test package.
