@@ -1,4 +1,4 @@
-Update FSF postal address.
+Replace FSF postal address with a reference to https://www.gnu.org/licenses/.
 Fixed-Lintian-Issues:
  source: old-fsf-address-in-copyright-file
 Certainty: certain

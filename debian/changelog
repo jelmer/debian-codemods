@@ -1,3 +1,11 @@
+debian-codemods (0.180) UNRELEASED; urgency=medium
+
+  * Rewrite the old-fsf-address-in-copyright-file fixer to strip the FSF
+    postal address and reference https://www.gnu.org/licenses/ instead,
+    handling both flagged addresses.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 May 2026 00:04:36 +0100
+
 debian-codemods (0.179) unstable; urgency=medium
 
   * Ship librust-lintian-brush-dev, librust-multiarch-hints-dev,

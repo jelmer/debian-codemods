@@ -23,7 +23,7 @@ serde_json = "1"
 tempfile = "3"
 configparser = "3"
 url = "2"
-debian-copyright = "0.1.48"
+debian-copyright = "0.1.50"
 debian-changelog = "0.2.13"
 debian-control = ">=0.3.9,<0.4"
 debian-workspace = { path = "debian-workspace", version = "0.176.0" }
