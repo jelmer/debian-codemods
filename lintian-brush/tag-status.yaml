@@ -1338,11 +1338,9 @@
   comment: |
     Would need to write a synopsis from scratch. Requires human input.
 - tag: description-synopsis-starts-with-article
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove leading article ("A ", "An ", "The ") from the Description
-    synopsis in debian/control.
+  status: implemented
 - tag: description-too-short
   detector: false
   difficulty: hard
