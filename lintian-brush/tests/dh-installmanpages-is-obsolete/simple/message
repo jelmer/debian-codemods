@@ -1,0 +1,3 @@
+debian/rules: Use dh_installman rather than dh_installmanpages.
+Fixed-Lintian-Issues:
+ source: dh_installmanpages-is-obsolete [debian/rules]
