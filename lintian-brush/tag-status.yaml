@@ -1164,11 +1164,9 @@
     Add "| mail-transport-agent" alternative to the default-mta
     dependency in debian/control.
 - tag: default-mta-dependency-not-listed-first
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Reorder Depends so that default-mta comes before
-    mail-transport-agent in the alternatives list.
+  status: implemented
 - tag: dep5-copyright-license-name-not-unique
   detector: false
   difficulty: medium
