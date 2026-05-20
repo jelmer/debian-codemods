@@ -1,0 +1,12 @@
+Source: libapache2-mod-foo
+Section: httpd
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13), apache2-dev
+Standards-Version: 4.6.2
+
+Package: libapache2-mod-foo
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Foo module for the Apache2 HTTP server
+ This module adds foo support to the Apache2 web server.

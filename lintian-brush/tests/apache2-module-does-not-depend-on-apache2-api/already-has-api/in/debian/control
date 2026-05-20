@@ -1,0 +1,12 @@
+Source: libapache2-mod-qux
+Section: httpd
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13), apache2-dev
+Standards-Version: 4.6.2
+
+Package: libapache2-mod-qux
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, apache2-api-20120211
+Description: Qux module for the Apache2 HTTP server
+ This module adds qux support to the Apache2 web server.
