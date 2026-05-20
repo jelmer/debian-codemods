@@ -60,6 +60,7 @@ mod dep3_format_patch_author_or_from_is_better;
 mod dep5_file_paragraph_references_header_paragraph;
 mod depends_on_old_emacs;
 mod depends_on_python_minimal;
+mod description_contains_tabs;
 mod description_synopsis_starts_with_article;
 mod desktop_entry_contains_encoding_key;
 mod desktop_entry_file_has_crs;
