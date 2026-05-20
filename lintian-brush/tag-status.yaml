@@ -1280,11 +1280,9 @@
     Remove invalid control characters from Description in
     debian/control.
 - tag: description-contains-tabs
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Replace tab characters with spaces in Description field of
-    debian/control.
+  status: implemented
 - tag: description-is-debmake-template
   detector: false
   difficulty: easy
