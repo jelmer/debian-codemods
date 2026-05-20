@@ -46,20 +46,42 @@ pub fn apply_diagnostics(
     apply_diagnostics_with(basedir, diagnostics, preferences, &default_describe)
 }
 
-/// Like [`apply_diagnostics`], but lets the caller provide a custom
-/// describer. The describer receives the diagnostics that actually fired
-/// (after override / certainty filtering) and the flat list of actions
-/// that were applied, and must return the description string used in the
-/// resulting [`FixerResult`].
-pub fn apply_diagnostics_with(
+/// The outcome of filtering a detector's diagnostics, before any tree
+/// mutation has happened.
+///
+/// Produced by [`plan_diagnostics`] and consumed by [`apply_plan`].
+/// Splitting the pipeline this way lets a caller decide whether there is
+/// anything worth doing (the plan carries at least one action) before it
+/// commits to mutating the working tree.
+pub struct DiagnosticPlan {
+    /// Diagnostics that survived filtering, each paired with the
+    /// [`ActionPlan`](crate::diagnostic::ActionPlan) chosen for it.
+    pub fixed: Vec<(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)>,
+    /// Issues that were suppressed by a lintian override.
+    pub overridden_issues: Vec<LintianIssue>,
+    /// The flat list of actions from every chosen plan, in order.
+    pub all_actions: Vec<crate::diagnostic::Action>,
+    /// The lowest certainty across the fired diagnostics, if any carried
+    /// a certainty.
+    pub min_actual_certainty: Option<Certainty>,
+}
+
+/// Filter a detector's diagnostics into a [`DiagnosticPlan`].
+///
+/// Drops diagnostics suppressed by lintian overrides or below
+/// `preferences.minimum_certainty`, and picks the first
+/// [`ActionPlan`](crate::diagnostic::ActionPlan) whose `opinionated` flag
+/// is satisfied by `preferences.opinionated`.
+///
+/// This phase performs no tree mutation. It returns
+/// [`FixerError::NoChanges`] / [`FixerError::NoChangesAfterOverrides`] /
+/// [`FixerError::NotCertainEnough`] when nothing actionable survives,
+/// matching the errors [`apply_diagnostics_with`] used to return.
+pub fn plan_diagnostics(
     basedir: &std::path::Path,
     diagnostics: &[crate::diagnostic::Diagnostic],
     preferences: &FixerPreferences,
-    describe: &dyn Fn(
-        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
-        &[crate::diagnostic::Action],
-    ) -> String,
-) -> Result<FixerResult, FixerError> {
+) -> Result<DiagnosticPlan, FixerError> {
     use debian_analyzer::certainty_sufficient;
 
     if diagnostics.is_empty() {
@@ -119,6 +141,35 @@ pub fn apply_diagnostics_with(
         return Err(FixerError::NoChanges);
     }
 
+    Ok(DiagnosticPlan {
+        fixed,
+        overridden_issues,
+        all_actions,
+        min_actual_certainty,
+    })
+}
+
+/// Apply a [`DiagnosticPlan`], mutating the tree under `basedir`.
+///
+/// Runs every action in `plan.all_actions` and builds the resulting
+/// [`FixerResult`], using `describe` for its description. Returns
+/// [`FixerError::NoChanges`] if applying the actions produced no
+/// observable change.
+pub fn apply_plan(
+    basedir: &std::path::Path,
+    plan: DiagnosticPlan,
+    describe: &dyn Fn(
+        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
+        &[crate::diagnostic::Action],
+    ) -> String,
+) -> Result<FixerResult, FixerError> {
+    let DiagnosticPlan {
+        fixed,
+        overridden_issues,
+        all_actions,
+        min_actual_certainty,
+    } = plan;
+
     let changed = debian_workspace::appliers::apply_actions(basedir, &all_actions)?;
     if changed.is_empty() {
         // Detector said there was something to fix but applying produced no
@@ -141,6 +192,24 @@ pub fn apply_diagnostics_with(
         builder = builder.patch_name(name);
     }
     Ok(builder.build())
+}
+
+/// Like [`apply_diagnostics`], but lets the caller provide a custom
+/// describer. The describer receives the diagnostics that actually fired
+/// (after override / certainty filtering) and the flat list of actions
+/// that were applied, and must return the description string used in the
+/// resulting [`FixerResult`].
+pub fn apply_diagnostics_with(
+    basedir: &std::path::Path,
+    diagnostics: &[crate::diagnostic::Diagnostic],
+    preferences: &FixerPreferences,
+    describe: &dyn Fn(
+        &[(crate::diagnostic::Diagnostic, crate::diagnostic::ActionPlan)],
+        &[crate::diagnostic::Action],
+    ) -> String,
+) -> Result<FixerResult, FixerError> {
+    let plan = plan_diagnostics(basedir, diagnostics, preferences)?;
+    apply_plan(basedir, plan, describe)
 }
 
 /// Topologically sort detector registrations based on their `after` /

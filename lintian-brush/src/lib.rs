@@ -1070,20 +1070,16 @@ pub fn run_lintian_fixer(
         Some(current_version.clone()),
     );
 
-    let make_changes = |_basedir: &std::path::Path| -> Result<_, FixerError> {
-        tracing::debug!("Running detector {}", detector.name());
-        let result = crate::detector::detect_and_fix(detector, &ws, preferences)?;
-        if let Some(certainty) = result.certainty {
-            if !certainty_sufficient(certainty, preferences.minimum_certainty) {
-                return Err(FixerError::NotCertainEnough(
-                    certainty,
-                    preferences.minimum_certainty,
-                    result.overridden_lintian_issues,
-                ));
-            }
-        }
+    // Detect first: run the detector and filter its diagnostics into a
+    // plan. Only if something actionable survives do we enter
+    // `apply_or_revert` and mutate the tree.
+    tracing::debug!("Running detector {}", detector.name());
+    let plan = crate::detector::detect_and_plan(detector, &ws, preferences)?;
 
-        Ok(result)
+    let make_changes = |basedir: &std::path::Path| -> Result<_, FixerError> {
+        crate::builtin_fixers::apply_plan(basedir, plan, &|fixed, actions| {
+            detector.describe(fixed, actions)
+        })
     };
 
     let (mut result, changes, mut specific_files) = match apply_or_revert(
@@ -1765,7 +1761,6 @@ mod tests {
     use breezyshim::tree::{MutableTree, Tree, WorkingTree};
     use breezyshim::workingtree::GenericWorkingTree;
     use breezyshim::Branch;
-    use debian_workspace::Workspace;
     use std::path::Path;
 
     pub const COMMITTER: &str = "Testsuite <lintian-brush@example.com>";
@@ -1917,11 +1912,10 @@ mod tests {
         use super::*;
 
         use crate::detector::Detector;
+        use crate::diagnostic::{Action, Diagnostic, FilesystemAction, RunCommandAction};
 
         /// Test detector that appends a line to `debian/control` and
-        /// reports a fixed `some-tag` issue. It overrides
-        /// [`Detector::apply`] directly rather than going through the
-        /// diagnostic pipeline.
+        /// reports a fixed `some-tag` issue.
         struct DummyFixer {
             name: &'static str,
             lintian_tags: &'static [&'static str],
@@ -1944,40 +1938,40 @@ mod tests {
 
             fn detect(
                 &self,
-                _ws: &dyn debian_workspace::Workspace,
+                ws: &dyn debian_workspace::Workspace,
                 _preferences: &FixerPreferences,
-            ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                unimplemented!("DummyFixer overrides apply()")
+            ) -> Result<Vec<Diagnostic>, FixerError> {
+                let control = std::path::Path::new("debian/control");
+                let mut content = ws.read_file(control)?.unwrap_or_default().into_owned();
+                content.extend_from_slice(b"a new line\n");
+                let issue = LintianIssue {
+                    package: ws.package().map(|s| s.to_string()),
+                    ..LintianIssue::source("some-tag", Visibility::Warning)
+                };
+                Ok(vec![Diagnostic::with_actions(
+                    issue,
+                    "Fixed some tag.",
+                    "Append a line to debian/control.",
+                    vec![Action::Filesystem(FilesystemAction::Write {
+                        file: control.to_path_buf(),
+                        content,
+                    })],
+                )
+                .with_certainty(Certainty::Certain)])
             }
 
-            fn apply(
+            fn describe(
                 &self,
-                workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                _preferences: &FixerPreferences,
-            ) -> Result<FixerResult, FixerError> {
-                let control_path = workspace.base_path().join("debian/control");
-                let mut control_content = std::fs::read_to_string(&control_path).unwrap();
-                control_content.push_str("a new line\n");
-                std::fs::write(control_path, control_content).unwrap();
-                Ok(FixerResult {
-                    description: "Fixed some tag.\nExtended description.".to_string(),
-                    patch_name: None,
-                    certainty: Some(Certainty::Certain),
-                    fixed_lintian_issues: vec![LintianIssue {
-                        tag: Some("some-tag".to_string()),
-                        package: workspace.package().map(|s| s.to_string()),
-                        info: None,
-                        package_type: Some(PackageType::Source),
-                        visibility: None,
-                    }],
-                    overridden_lintian_issues: vec![],
-                    revision_id: None,
-                })
+                _fixed: &[(Diagnostic, crate::diagnostic::ActionPlan)],
+                _actions: &[Action],
+            ) -> String {
+                "Fixed some tag.\nExtended description.".to_string()
             }
         }
 
-        /// Test detector whose [`Detector::apply`] writes some files and
-        /// then fails, used to check failure bookkeeping.
+        /// Test detector whose action writes some files and then fails,
+        /// used to check failure bookkeeping and that the tree is
+        /// reverted afterwards.
         struct FailingFixer {
             name: &'static str,
             lintian_tags: &'static [&'static str],
@@ -2002,23 +1996,25 @@ mod tests {
                 &self,
                 _ws: &dyn debian_workspace::Workspace,
                 _preferences: &FixerPreferences,
-            ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                unimplemented!("FailingFixer overrides apply()")
-            }
-
-            fn apply(
-                &self,
-                workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                _preferences: &FixerPreferences,
-            ) -> Result<FixerResult, FixerError> {
-                let basedir = workspace.base_path();
-                std::fs::write(basedir.join("debian/foo"), "blah").unwrap();
-                std::fs::write(basedir.join("debian/control"), "foo\n").unwrap();
-                Err(FixerError::ScriptFailed {
-                    stderr: "Not successful".to_string(),
-                    path: std::path::PathBuf::from("/dev/null"),
-                    exit_code: 1,
-                })
+            ) -> Result<Vec<Diagnostic>, FixerError> {
+                // The command writes two files and then exits non-zero,
+                // so applying it fails and the tree is reverted.
+                Ok(vec![Diagnostic::with_actions(
+                    LintianIssue::source("some-tag", Visibility::Warning),
+                    "Some tag.",
+                    "Run a failing command.",
+                    vec![Action::RunCommand(RunCommandAction::Run {
+                        argv: vec![
+                            "sh".to_string(),
+                            "-c".to_string(),
+                            "echo blah > debian/foo; echo foo > debian/control; \
+                             echo 'Not successful' >&2; exit 1"
+                                .to_string(),
+                        ],
+                        scope: std::path::PathBuf::from("."),
+                        env: vec![],
+                    })],
+                )])
             }
         }
 
@@ -2164,7 +2160,7 @@ Arch: all
                         package: Some("blah".to_string()),
                         info: None,
                         package_type: Some(PackageType::Source),
-                        visibility: None,
+                        visibility: Some(Visibility::Warning),
                     }],
                     None,
                 ),
@@ -2227,7 +2223,6 @@ Arch: all
         fn test_simple_modify_too_uncertain() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct UncertainFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2252,24 +2247,17 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: Some(Certainty::Possible),
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Possible)])
                 }
             }
 
@@ -2305,7 +2293,6 @@ Arch: all
         fn test_simple_modify_acceptably_uncertain() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct UncertainFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2330,24 +2317,17 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: Some(Certainty::Possible),
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Possible)])
                 }
             }
 
@@ -2382,7 +2362,6 @@ Arch: all
         fn test_new_file() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct NewFileFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2405,32 +2384,22 @@ Arch: all
 
                 fn detect(
                     &self,
-                    _ws: &dyn debian_workspace::Workspace,
+                    ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(workspace.base_path().join("debian/somefile"), "test").unwrap();
-                    Ok(FixerResult {
-                        description: "Created new file.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![LintianIssue {
-                            tag: Some("some-tag".to_string()),
-                            package: workspace.package().map(|s| s.to_string()),
-                            info: None,
-                            package_type: Some(PackageType::Source),
-                            visibility: None,
-                        }],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    let issue = LintianIssue {
+                        package: ws.package().map(|s| s.to_string()),
+                        ..LintianIssue::source("some-tag", Visibility::Warning)
+                    };
+                    Ok(vec![Diagnostic::with_actions(
+                        issue,
+                        "Created new file.",
+                        "Created new file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )])
                 }
             }
 
@@ -2480,7 +2449,6 @@ Arch: all
         fn test_rename_file() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
             struct RenameFileFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2505,29 +2473,16 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    let basedir = workspace.base_path();
-                    std::fs::rename(
-                        basedir.join("debian/control"),
-                        basedir.join("debian/control.blah"),
-                    )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Renamed a file.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Rename {
+                            file: std::path::PathBuf::from("debian/control"),
+                            to: std::path::PathBuf::from("debian/control.blah"),
+                        })],
+                    )])
                 }
             }
 
@@ -2568,7 +2523,7 @@ Arch: all
         fn test_empty_change() {
             let (td, tree) = setup(None);
 
-            #[derive(Debug)]
+            /// Detector that finds nothing to fix.
             struct EmptyFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2593,23 +2548,8 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    _workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    Ok(FixerResult {
-                        description: "I didn't actually change anything.".to_string(),
-                        patch_name: None,
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![])
                 }
             }
 
@@ -2673,28 +2613,16 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(
-                        workspace.base_path().join("configure.ac"),
-                        "AC_INIT(foo, bar)\n",
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::untagged(
+                        "Created new configure.ac.",
+                        "Created new configure.ac.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("configure.ac"),
+                            content: b"AC_INIT(foo, bar)\n".to_vec(),
+                        })],
                     )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Created new configure.ac.".to_string(),
-                        patch_name: Some("add-config".to_string()),
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                    .with_patch_name("add-config")])
                 }
             }
 
@@ -2791,7 +2719,6 @@ Arch: all
                 .commit()
                 .unwrap();
 
-            #[derive(Debug)]
             struct NewFileFixer {
                 name: &'static str,
                 lintian_tags: &'static [&'static str],
@@ -2816,28 +2743,16 @@ Arch: all
                     &self,
                     _ws: &dyn debian_workspace::Workspace,
                     _preferences: &FixerPreferences,
-                ) -> Result<Vec<crate::diagnostic::Diagnostic>, FixerError> {
-                    unimplemented!("test detector overrides apply()")
-                }
-
-                fn apply(
-                    &self,
-                    workspace: &debian_workspace::fs_workspace::FsWorkspace,
-                    _preferences: &FixerPreferences,
-                ) -> Result<FixerResult, FixerError> {
-                    std::fs::write(
-                        workspace.base_path().join("configure.ac"),
-                        "AC_INIT(foo, bar)\n",
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::untagged(
+                        "Created new configure.ac.",
+                        "Created new configure.ac.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("configure.ac"),
+                            content: b"AC_INIT(foo, bar)\n".to_vec(),
+                        })],
                     )
-                    .unwrap();
-                    Ok(FixerResult {
-                        description: "Created new configure.ac.".to_string(),
-                        patch_name: Some("add-config".to_string()),
-                        certainty: None,
-                        fixed_lintian_issues: vec![],
-                        overridden_lintian_issues: vec![],
-                        revision_id: None,
-                    })
+                    .with_patch_name("add-config")])
                 }
             }
 

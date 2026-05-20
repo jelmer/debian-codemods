@@ -114,22 +114,9 @@ pub trait Detector: Send + Sync {
     }
 }
 
-/// Run a [`Detector`] against an on-disk package, catching panics.
-///
-/// This is the entry point used by [`crate::run_lintian_fixer`]. It wraps
-/// [`Detector::apply`] so that a panicking detector is reported as
-/// [`FixerError::Panic`] rather than unwinding. Detectors that need
-/// per-run configuration read it from `preferences.extra_env`.
-pub fn detect_and_fix(
-    detector: &dyn Detector,
-    workspace: &FsWorkspace,
-    preferences: &crate::FixerPreferences,
-) -> Result<crate::FixerResult, FixerError> {
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        detector.apply(workspace, preferences)
-    }));
-
-    match result {
+/// Run `f`, converting any panic into [`FixerError::Panic`].
+fn catch_panic<T>(f: impl FnOnce() -> Result<T, FixerError>) -> Result<T, FixerError> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(panic_payload) => {
             let message = if let Some(s) = panic_payload.downcast_ref::<&str>() {
@@ -148,6 +135,44 @@ pub fn detect_and_fix(
             Err(FixerError::Panic { message, backtrace })
         }
     }
+}
+
+/// Run a [`Detector`]'s detection phase against an on-disk package,
+/// catching panics, and filter the diagnostics into a
+/// [`DiagnosticPlan`](crate::builtin_fixers::DiagnosticPlan).
+///
+/// This performs no tree mutation: it runs [`Detector::detect`] followed
+/// by [`crate::builtin_fixers::plan_diagnostics`]. A panicking detector
+/// is reported as [`FixerError::Panic`] rather than unwinding. The
+/// returned plan is applied separately via
+/// [`crate::builtin_fixers::apply_plan`], so a caller can decide whether
+/// there is anything worth doing before it mutates the working tree.
+///
+/// Detectors that need per-run configuration read it from
+/// `preferences.extra_env`.
+pub fn detect_and_plan(
+    detector: &dyn Detector,
+    workspace: &FsWorkspace,
+    preferences: &crate::FixerPreferences,
+) -> Result<crate::builtin_fixers::DiagnosticPlan, FixerError> {
+    catch_panic(|| {
+        let diagnostics = detector.detect(workspace, preferences)?;
+        crate::builtin_fixers::plan_diagnostics(workspace.base_path(), &diagnostics, preferences)
+    })
+}
+
+/// Run a [`Detector`] against an on-disk package, catching panics.
+///
+/// Wraps [`Detector::apply`] so that a panicking detector is reported as
+/// [`FixerError::Panic`] rather than unwinding. This is the end-to-end
+/// convenience; [`crate::run_lintian_fixer`] instead uses
+/// [`detect_and_plan`] so it can split detection from tree mutation.
+pub fn detect_and_fix(
+    detector: &dyn Detector,
+    workspace: &FsWorkspace,
+    preferences: &crate::FixerPreferences,
+) -> Result<crate::FixerResult, FixerError> {
+    catch_panic(|| detector.apply(workspace, preferences))
 }
 
 /// Inventory entry for a [`Detector`].
