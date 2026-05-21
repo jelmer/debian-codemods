@@ -1,0 +1,6 @@
+#!/usr/bin/make -f
+
+OPTS = ${DEB_BUILD_OPTIONS}
+
+%:
+	dh $@

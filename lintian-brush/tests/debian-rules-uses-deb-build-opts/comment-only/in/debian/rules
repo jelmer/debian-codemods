@@ -1,0 +1,6 @@
+#!/usr/bin/make -f
+
+# historically used $(DEB_BUILD_OPTS) here
+
+%:
+	dh $@
