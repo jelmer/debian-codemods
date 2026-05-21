@@ -945,7 +945,7 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 
 [[package]]
 name = "deb-transition-apply"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -1054,9 +1054,9 @@ dependencies = [
 
 [[package]]
 name = "debian-changelog"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "353f53345811eb427de4ce67697eaa532c8ee0d4c23198c4761c05fa15fc0edf"
+checksum = "8432f86dfdbd2ec36002df08c6e08d616389a503683f07a446c50e4c52425ba9"
 dependencies = [
  "chrono",
  "debversion",
@@ -1069,9 +1069,9 @@ dependencies = [
 
 [[package]]
 name = "debian-control"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1ee0cb3083232cafc0cc51f9df8c3ef94fae8f0d5e8dd05bc9a6379cfee7d53"
+checksum = "89c15968faa2af77e39dc0c05482a178dd48df6678acff69f5c449904a236415"
 dependencies = [
  "chrono",
  "deb822-fast",
@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "debian-workspace"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -1186,9 +1186,9 @@ dependencies = [
 
 [[package]]
 name = "debversion"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8ba0e270fb9f27dbb4c46e08d2ad27e69501d6ca573bfdf9e0aa793e7377929"
+checksum = "f79ef0d110ecfe7c87db7ff3a87756cd31d601073f440619963bea29f06694dc"
 dependencies = [
  "chrono",
  "lazy-regex",
@@ -2500,7 +2500,7 @@ dependencies = [
 
 [[package]]
 name = "import-uncommitted"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -2927,7 +2927,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -3241,7 +3241,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -4626,7 +4626,7 @@ dependencies = [
 
 [[package]]
 name = "scrub-obsolete"
-version = "0.176.0"
+version = "0.180.0"
 dependencies = [
  "async-trait",
  "breezyshim",
