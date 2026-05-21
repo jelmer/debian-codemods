@@ -4,6 +4,7 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
   * Add fixer for duplicate-contact.
   * Add fixer for default-mta-dependency-not-listed-first.
   * Add fixer for dh_installmanpages-is-obsolete.
+  * Add fixer for debian-rules-uses-deb-build-opts.
   * Rewrite the old-fsf-address-in-copyright-file fixer to strip the FSF
     postal address and reference https://www.gnu.org/licenses/ instead,
     handling both flagged addresses.

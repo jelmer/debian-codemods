@@ -1002,11 +1002,9 @@
   detector: true
   status: implemented
 - tag: debian-rules-uses-deb-build-opts
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Replace DEB_BUILD_OPTS with DEB_BUILD_OPTIONS in debian/rules.
-    Simple string substitution.
+  status: implemented
 - tag: debian-rules-uses-deprecated-makefile
   detector: false
   difficulty: medium
