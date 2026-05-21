@@ -19,6 +19,9 @@ fn main() {
     // Generate obsolete sites list
     generate_obsolete_sites(&out_dir);
 
+    // Generate the picky capitalization corrections list
+    generate_spelling_corrections_case(&out_dir);
+
     // Read test directories to discover test names
     let test_dirs = fs::read_dir(test_dir).unwrap();
 
@@ -82,7 +85,44 @@ fn main() {
     println!("cargo:rerun-if-changed=tests");
     println!("cargo:rerun-if-changed=renamed-tags.json");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/obsolete-sites/obsolete-sites");
+    println!("cargo:rerun-if-changed=/usr/share/lintian/data/spelling/corrections-case");
     println!("cargo:rerun-if-changed=spdx.json");
+}
+
+/// Embed lintian's picky capitalization corrections.
+///
+/// lintian's `check_spelling_picky` reads `data/spelling/corrections-case`,
+/// a list of `mistake||correction` pairs applied (case-sensitively) to
+/// English prose such as package descriptions. We mirror that list so the
+/// `capitalization-error-in-description` fixer reproduces lintian's hints
+/// without shelling out.
+fn generate_spelling_corrections_case(out_dir: &std::ffi::OsStr) {
+    let dest_path = Path::new(out_dir).join("spelling_corrections_case.rs");
+
+    let content = fs::read_to_string("/usr/share/lintian/data/spelling/corrections-case")
+        .expect("Could not find lintian spelling corrections-case data file");
+
+    let mut code = String::new();
+    code.push_str(
+        "/// Picky capitalization corrections, mirroring lintian's\n\
+         /// `data/spelling/corrections-case`. Each entry is `(mistake, correction)`.\n",
+    );
+    code.push_str("pub static SPELLING_CORRECTIONS_CASE: &[(&str, &str)] = &[\n");
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let (mistake, correction) = trimmed
+            .split_once("||")
+            .unwrap_or_else(|| panic!("Malformed corrections-case line: {trimmed}"));
+        code.push_str(&format!("    ({mistake:?}, {correction:?}),\n"));
+    }
+
+    code.push_str("];\n");
+
+    fs::write(&dest_path, code).unwrap();
 }
 
 fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {

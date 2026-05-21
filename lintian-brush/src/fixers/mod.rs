@@ -9,6 +9,7 @@ mod build_depends_on_build_essential;
 mod build_depends_on_obsolete_package;
 mod build_depends_on_python_sphinx_only;
 mod built_using_for_golang;
+mod capitalization_error_in_description;
 mod changelog_has_duplicate_line;
 mod chown_with_dot;
 mod circular_installation_prerequisite;
