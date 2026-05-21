@@ -25,6 +25,7 @@ url = { version = "2" }
 lintian-overrides.workspace = true
 debian-analyzer = { workspace = true }
 dep3 = "0.2.0"
+patchkit = "0.2.2"
 systemd-unit-edit = { workspace = true }
 desktop-edit = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

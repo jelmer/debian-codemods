@@ -95,6 +95,7 @@ mod homepage_for_cpan_package_contains_version;
 mod homepage_in_binary_package;
 mod homepage_url_ends_with_dot_git;
 mod initial_upload_closes_no_bugs;
+mod invalid_dep3_format_patch_wrong_last_update;
 mod invalid_short_name_in_dep5_copyright;
 mod invalid_standards_version;
 mod libmodule_build_perl_needs_to_be_in_build_depends;

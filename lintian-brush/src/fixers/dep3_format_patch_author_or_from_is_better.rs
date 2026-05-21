@@ -2,38 +2,25 @@ use crate::declare_detector;
 use crate::diagnostic::{Action, Dep3Action, Diagnostic};
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
-use dep3::lossless::PatchHeader;
-use patchkit::quilt::{Series, SeriesEntry};
+use patchkit::quilt::SeriesEntry;
 use std::path::PathBuf;
 
 pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let patches_rel = PathBuf::from("debian/patches");
-    let series_bytes = match ws.read_file(&patches_rel.join("series"))? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let Some(series) = ws.parsed_patches_series()? else {
+        return Ok(Vec::new());
     };
-    let series = Series::read(&series_bytes[..])
-        .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
+    let patches_rel = PathBuf::from("debian/patches");
 
     let mut diagnostics = Vec::new();
     for entry in &series.entries {
         let SeriesEntry::Patch { name, .. } = entry else {
             continue;
         };
-        let patch_rel_full = patches_rel.join(name);
-        let Some(patch_bytes) = ws.read_file(&patch_rel_full)? else {
-            continue;
-        };
-        let Ok(content) = std::str::from_utf8(&patch_bytes) else {
-            continue;
-        };
-
-        let header_end = find_header_end(&content);
-        let header_str = &content[..header_end];
-        let Ok(header) = header_str.parse::<PatchHeader>() else {
+        let patch_rel = patches_rel.join(name);
+        let Some((Some(header), _)) = ws.parsed_patch(&patch_rel)? else {
             continue;
         };
         let Some((_category, origin)) = header.origin() else {
@@ -49,7 +36,6 @@ pub fn detect(
             Visibility::Info,
             vec![format!("[debian/patches/{}]", name)],
         );
-        let patch_rel = patches_rel.join(name);
         diagnostics.push(
             Diagnostic::with_actions(
                 issue,
@@ -72,21 +58,6 @@ pub fn detect(
     }
 
     Ok(diagnostics)
-}
-
-fn find_header_end(content: &str) -> usize {
-    let mut offset = 0;
-    for line in content.split_inclusive('\n') {
-        let trimmed = line.trim_end_matches(['\r', '\n']);
-        if trimmed.starts_with("---")
-            || trimmed.starts_with("diff ")
-            || trimmed.starts_with("Index:")
-        {
-            return offset;
-        }
-        offset += line.len();
-    }
-    content.len()
 }
 
 declare_detector! {
