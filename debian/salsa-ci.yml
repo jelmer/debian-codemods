@@ -21,6 +21,10 @@ variables:
   SALSA_CI_MMDEBSTRAP_EXTRA_ARGS: --include=ca-certificates
   SALSA_CI_IMAGES_BASE_PACKAGES: ca-certificates
 
+  # Run a pipeline when a tag is pushed. salsa-ci suppresses tag pipelines by
+  # default; the publish-crates job below needs the tag pipeline to exist.
+  SALSA_CI_ENABLE_PIPELINE_ON_TAGS: "true"
+
 stages:
   - lint
   - provisioning
