@@ -72,16 +72,33 @@ publish-crates:
     - if: $CI_COMMIT_TAG
   timeout: 3h
   before_script:
-    # System libraries needed by the cargo publish verification build.
+    # lintian ships the data files that lintian-brush's build.rs reads from
+    # /usr/share/lintian; the rest are libraries the verification build links.
     - apt-get update
-    - apt-get install -y --no-install-recommends pkg-config libssl-dev python3-dev clang libclang-dev nettle-dev liblzma-dev
+    - apt-get install -y --no-install-recommends pkg-config libssl-dev python3-dev clang libclang-dev nettle-dev liblzma-dev lintian
   script:
-    # debian-workspace must be published first; multiarch-hints and
-    # lintian-brush depend on it. cargo publish waits for each new version to
-    # appear in the registry index before returning, so the dependents resolve.
-    - cargo publish --locked -p debian-workspace
-    - cargo publish --locked -p multiarch-hints
-    - cargo publish --locked -p lintian-brush
+    # Publish in dependency order: debian-workspace first, then the crates that
+    # depend on it. cargo publish waits for each new version to appear in the
+    # index before returning, so the dependents resolve.
+    #
+    # A crate whose current version is already on crates.io is skipped, so the
+    # job can be re-run safely if an earlier run published some crates before
+    # failing.
+    - |
+      set -e
+      for crate in debian-workspace multiarch-hints lintian-brush; do
+        echo "=== Publishing ${crate} ==="
+        if cargo publish --locked -p "${crate}" > "${crate}.publish.log" 2>&1; then
+          cat "${crate}.publish.log"
+        else
+          cat "${crate}.publish.log"
+          if grep -q 'already uploaded' "${crate}.publish.log"; then
+            echo "${crate} is already on crates.io at this version; skipping."
+          else
+            exit 1
+          fi
+        fi
+      done
 
 # Scheduled update jobs - these run on a schedule and create MRs with updates
 update-spdx:
