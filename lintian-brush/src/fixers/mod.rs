@@ -42,6 +42,7 @@ mod debian_rules_parses_dpkg_parsechangelog;
 mod debian_rules_sets_dpkg_architecture_variable;
 mod debian_rules_should_not_use_pwd;
 mod debian_rules_uses_as_needed_linker_flag;
+mod debian_rules_uses_deb_build_opts;
 mod debian_rules_uses_deprecated_systemd_override;
 mod debian_rules_uses_special_shell_variable;
 mod debian_rules_uses_unnecessary_dh_argument;
