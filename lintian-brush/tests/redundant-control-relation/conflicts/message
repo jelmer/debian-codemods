@@ -1,0 +1,3 @@
+Remove redundant relation in debian/control.
+Fixed-Lintian-Issues:
+ examplepkg binary: redundant-control-relation (in section for examplepkg) Conflicts oldpkg (>= 2.0)

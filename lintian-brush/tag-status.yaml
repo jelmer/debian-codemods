@@ -6647,11 +6647,9 @@
     Remove redundant build dependencies from debian/control where one
     dependency implies another. Uses TemplatedControlEditor and Relations API.
 - tag: redundant-control-relation
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove redundant relations from debian/control where one relation
-    implies another. Uses TemplatedControlEditor and Relations API.
+  status: implemented
 - tag: runtime-test-file-uses-supported-python-versions-without-test-depends
   detector: false
   difficulty: easy

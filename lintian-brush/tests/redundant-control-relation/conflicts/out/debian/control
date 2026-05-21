@@ -1,0 +1,8 @@
+Source: examplepkg
+Maintainer: Test <test@example.com>
+
+Package: examplepkg
+Architecture: any
+Conflicts: oldpkg
+Description: Example package
+ Long description.
