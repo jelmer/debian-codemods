@@ -71,8 +71,9 @@ pub fn detect(
             value: new_section,
         })];
 
-        if default_priority.as_deref() == Some("optional") {
-            // Source already declares Priority: optional; drop the binary's
+        if default_priority.is_none() || default_priority.as_deref() == Some("optional") {
+            // The source default is already optional (whether declared
+            // explicitly or left unset); drop the binary's redundant
             // override so it inherits.
             actions.push(Action::Deb822(Deb822Action::RemoveField {
                 file: PathBuf::from("debian/control"),
@@ -221,6 +222,35 @@ mod tests {
         assert_eq!(
             fs::read_to_string(&control_path).unwrap(),
             "Source: lintian-brush\nPriority: optional\n\nPackage: lintian-brush\nSection: oldlibs\nDescription: transitional package for blah\n Test test\n",
+        );
+    }
+
+    #[test]
+    fn test_transitional_package_drops_priority_when_source_priority_unset() {
+        // The source stanza declares no Priority, so the default is
+        // optional. A binary's explicit Priority: optional is therefore
+        // redundant and must be dropped, not preserved -- otherwise this
+        // fixer and redundant-priority-optional-field oscillate forever.
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_path = debian_dir.join("control");
+        fs::write(
+            &control_path,
+            "Source: lintian-brush\n\nPackage: lintian-brush\nPriority: optional\nSection: libs\nDescription: transitional package for blah\n Test test\n",
+        )
+        .unwrap();
+
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Move transitional package lintian-brush to oldlibs/optional per policy 4.0.1.",
+        );
+
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: lintian-brush\n\nPackage: lintian-brush\nSection: oldlibs\nDescription: transitional package for blah\n Test test\n",
         );
     }
 
