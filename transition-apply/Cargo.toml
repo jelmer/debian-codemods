@@ -7,7 +7,7 @@ license = "GPL-3.0+"
 [lib]
 
 [dependencies]
-breezyshim.workspace = true
+breezyshim = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"], optional = true }
 deb822-lossless.workspace = true
 debian-analyzer = { workspace = true, features = ["svp"] }
@@ -22,7 +22,8 @@ regex.workspace = true
 svp-client.workspace = true
 
 [features]
-cli = ["dep:clap", "dep:env_logger"]
+default = ["cli"]
+cli = ["dep:clap", "dep:env_logger", "dep:breezyshim"]
 
 [[bin]]
 name = "deb-transition-apply"
