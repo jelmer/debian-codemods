@@ -480,4 +480,95 @@ mod tests {
             "[source]\nvcs_git = \"https://salsa.debian.org/rust-team/debcargo-conf.git\"\n"
         );
     }
+
+    fn workspace(dir: &Path) -> FsWorkspace {
+        FsWorkspace::new(
+            dir,
+            Some("foo".into()),
+            Some(Version::from_str("1.0").unwrap()),
+        )
+    }
+
+    #[test]
+    fn patches_series_absent_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        assert!(
+            workspace(tmp.path())
+                .parsed_patches_series()
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn patches_series_parsed() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(patches.join("series"), "one.patch\ntwo.patch\n").unwrap();
+
+        let series = workspace(tmp.path())
+            .parsed_patches_series()
+            .unwrap()
+            .unwrap();
+        assert_eq!(series.entries.len(), 2);
+    }
+
+    #[test]
+    fn patch_absent_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        assert!(
+            workspace(tmp.path())
+                .parsed_patch(Path::new("debian/patches/missing.patch"))
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn patch_header_and_diff_parsed() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(
+            patches.join("fix.patch"),
+            "Description: Fix a typo\nLast-Update: 2024-01-02\n\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-teh\n+the\n",
+        )
+        .unwrap();
+
+        let (header, patch) = workspace(tmp.path())
+            .parsed_patch(Path::new("debian/patches/fix.patch"))
+            .unwrap()
+            .unwrap();
+        let header = header.expect("patch has a DEP-3 header");
+        assert_eq!(
+            header.as_deb822().get("Description").as_deref(),
+            Some("Fix a typo")
+        );
+        assert_eq!(patch.patch_files().count(), 1);
+    }
+
+    #[test]
+    fn patch_without_header_returns_none_header() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        fs::write(
+            patches.join("bare.patch"),
+            "--- a/f\n+++ b/f\n@@ -1 +1 @@\n-teh\n+the\n",
+        )
+        .unwrap();
+
+        let (header, patch) = workspace(tmp.path())
+            .parsed_patch(Path::new("debian/patches/bare.patch"))
+            .unwrap()
+            .unwrap();
+        assert!(header.is_none());
+        assert_eq!(patch.patch_files().count(), 1);
+    }
 }

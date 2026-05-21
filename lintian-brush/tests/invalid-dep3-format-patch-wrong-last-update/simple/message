@@ -1,0 +1,4 @@
+Reformat the Last-Update date as ISO YYYY-MM-DD.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: invalid-dep3-format-patch-wrong-last-update [debian/patches/fix-typo.patch]

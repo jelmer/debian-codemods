@@ -28,7 +28,10 @@ use debian_changelog::ChangeLog;
 use debian_control::lossless::Control;
 use debian_copyright::lossless::Copyright;
 use debian_watch::parse::ParsedWatchFile;
+use dep3::lossless::PatchHeader;
 use makefile_lossless::Makefile;
+use patchkit::edit::Patch;
+use patchkit::quilt::Series;
 use toml_edit::DocumentMut;
 
 use crate::{Error, Version};
@@ -120,6 +123,58 @@ pub trait Workspace {
     /// `Makefile::read_relaxed`, mirroring the behaviour every fixer
     /// currently expects from `debian/rules` parsing.
     fn parsed_rules(&self) -> Result<Makefile, Error>;
+
+    /// Read and parse `debian/patches/series`, the quilt patch series.
+    ///
+    /// Returns `Ok(None)` if the file does not exist (the package ships
+    /// no quilt patches). Returns `Err` only if the file exists but
+    /// cannot be read as a series.
+    fn parsed_patches_series(&self) -> Result<Option<Series>, Error> {
+        let rel = Path::new("debian/patches/series");
+        match self.read_file(rel)? {
+            None => Ok(None),
+            Some(bytes) => {
+                let series = Series::read(&bytes[..]).map_err(Error::Io)?;
+                Ok(Some(series))
+            }
+        }
+    }
+
+    /// Read a quilt patch file and return its parsed DEP-3 header
+    /// together with the parsed diff.
+    ///
+    /// `rel` is the patch's path relative to the package root (e.g.
+    /// `debian/patches/fix-foo.patch`), as obtained by joining
+    /// `debian/patches` with a name from [`parsed_patches_series`].
+    ///
+    /// Returns `Ok(None)` when the file does not exist. On success the
+    /// tuple's first element is the patch's DEP-3 header, or `None` when
+    /// the patch carries no header (a bare diff) or its header does not
+    /// parse — the header is optional metadata. The second element is
+    /// the lossless parse of the diff body; that parser is
+    /// error-recovering, so a [`Patch`] is produced even for a malformed
+    /// diff.
+    ///
+    /// Returns `Err(Error::Parse)` if the file exists but is not valid
+    /// UTF-8.
+    ///
+    /// [`parsed_patches_series`]: Self::parsed_patches_series
+    fn parsed_patch(&self, rel: &Path) -> Result<Option<(Option<PatchHeader>, Patch)>, Error> {
+        let Some(bytes) = self.read_file(rel)? else {
+            return Ok(None);
+        };
+        let content = std::str::from_utf8(&bytes)
+            .map_err(|e| Error::Parse(format!("{} is not valid UTF-8: {}", rel.display(), e)))?;
+        let header_end = dep3::lossless::header_end(content);
+        let header_text = &content[..header_end];
+        let header = if header_text.trim().is_empty() {
+            None
+        } else {
+            header_text.parse::<PatchHeader>().ok()
+        };
+        let patch = patchkit::edit::parse(&content[header_end..]).tree();
+        Ok(Some((header, patch)))
+    }
 
     /// Read the trimmed contents of `debian/source/format`.
     ///
