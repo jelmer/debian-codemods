@@ -16,6 +16,7 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
   * Emit the redundant-rules-requires-root-no-field tag when removing a
     redundant Rules-Requires-Root: no field.
   * Add fixer for invalid-dep3-format-patch-wrong-last-update.
+  * Add fixer for unused-entry-in-debian-source-include-binaries.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 May 2026 00:04:36 +0100
 
