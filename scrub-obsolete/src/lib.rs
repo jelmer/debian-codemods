@@ -1,7 +1,4 @@
 use crate::action::Action;
-use breezyshim::commit::NullCommitReporter;
-use breezyshim::error::Error as BrzError;
-use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
 use deb822_lossless::Paragraph;
 use debian_analyzer::editor::EditorError;
 use debian_control::lossless::relations::{Entry, Relation, Relations};
@@ -10,8 +7,6 @@ use debian_control::{Binary, Source};
 use debian_workspace::action::{
     Action as WsAction, Deb822Action, MaintscriptAction as WsMaintscriptAction, ParagraphSelector,
 };
-use debian_workspace::appliers::apply_actions;
-use debian_workspace::fs_workspace::FsWorkspace;
 use debian_workspace::workspace::Workspace;
 use debversion::Version;
 use std::collections::HashMap;
@@ -34,23 +29,6 @@ pub type ParagraphChanges = (Option<String>, Vec<FieldChange>);
 pub type ControlChanges = Vec<ParagraphChanges>;
 
 pub const DEFAULT_VALUE_MULTIARCH_HINT: usize = 30;
-
-pub fn note_changelog_policy(policy: bool, msg: &str) {
-    lazy_static::lazy_static! {
-        static ref CHANGELOG_POLICY_NOTED: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
-    }
-    if let Ok(mut policy_noted) = CHANGELOG_POLICY_NOTED.lock() {
-        if !*policy_noted {
-            let extra = if policy {
-                "Specify --no-update-changelog to override."
-            } else {
-                "Specify --update-changelog to override."
-            };
-            log::info!("{} {}", msg, extra);
-        }
-        *policy_noted = true;
-    }
-}
 
 fn depends_obsolete(
     latest_version: &Version,
@@ -612,6 +590,25 @@ pub struct ScrubObsoleteResult {
 }
 
 impl ScrubObsoleteResult {
+    /// Build a result for the given detected control and maintscript
+    /// changes. `specific_files` starts empty; record the applied files
+    /// afterwards with [`set_specific_files`](Self::set_specific_files).
+    pub fn new(
+        control_actions: ControlChanges,
+        maintscript_removed: Vec<(PathBuf, Vec<MaintscriptAction>, String)>,
+    ) -> Self {
+        ScrubObsoleteResult {
+            specific_files: vec![],
+            control_actions,
+            maintscript_removed,
+        }
+    }
+
+    /// Record the tree-relative files touched while applying the changes.
+    pub fn set_specific_files(&mut self, files: Vec<PathBuf>) {
+        self.specific_files = files;
+    }
+
     pub fn any_changes(&self) -> bool {
         !self.control_actions.is_empty() || !self.maintscript_removed.is_empty()
     }
@@ -747,7 +744,6 @@ impl DetectedChanges {
 pub enum ScrubObsoleteError {
     NotDebianPackage(PathBuf),
     EditorError(EditorError),
-    BrzError(BrzError),
     SqlxError(sqlx::Error),
     IoError(std::io::Error),
     /// A debian-workspace error surfaced from the workspace abstraction or
@@ -764,7 +760,6 @@ impl std::fmt::Display for ScrubObsoleteError {
                 write!(f, "Not a Debian package: {:?}", path)
             }
             ScrubObsoleteError::EditorError(e) => write!(f, "Editor error: {}", e),
-            ScrubObsoleteError::BrzError(e) => write!(f, "Breezy error: {}", e),
             ScrubObsoleteError::SqlxError(e) => write!(f, "SQLx error: {}", e),
             ScrubObsoleteError::IoError(e) => write!(f, "I/O error: {}", e),
             ScrubObsoleteError::Workspace(e) => write!(f, "Workspace error: {}", e),
@@ -778,12 +773,6 @@ impl std::error::Error for ScrubObsoleteError {}
 impl From<EditorError> for ScrubObsoleteError {
     fn from(e: EditorError) -> Self {
         ScrubObsoleteError::EditorError(e)
-    }
-}
-
-impl From<BrzError> for ScrubObsoleteError {
-    fn from(e: BrzError) -> Self {
-        ScrubObsoleteError::BrzError(e)
     }
 }
 
@@ -803,134 +792,6 @@ impl From<debian_workspace::Error> for ScrubObsoleteError {
     fn from(e: debian_workspace::Error) -> Self {
         ScrubObsoleteError::Workspace(e)
     }
-}
-
-/// Scrub obsolete entries.
-#[allow(clippy::too_many_arguments)]
-#[allow(clippy::result_large_err)]
-pub fn scrub_obsolete(
-    wt: &GenericWorkingTree,
-    subpath: &Path,
-    compat_release: &str,
-    upgrade_release: &str,
-    update_changelog: Option<bool>,
-    #[allow(unused_variables)] allow_reformatting: bool,
-    keep_minimum_depends_versions: bool,
-    #[allow(unused_variables)] transitions: Option<HashMap<String, String>>,
-) -> Result<ScrubObsoleteResult, ScrubObsoleteError> {
-    let debian_path = subpath.join("debian");
-    let base_path = wt.abspath(subpath)?;
-
-    // scrub-obsolete doesn't surface package/version metadata to its
-    // detectors, so leave them unset rather than fabricating sentinels.
-    let ws = FsWorkspace::new(&base_path, None, None);
-
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    let detected = rt.block_on(detect_scrub_obsolete(
-        &ws,
-        compat_release,
-        upgrade_release,
-        keep_minimum_depends_versions,
-    ))?;
-
-    let mut result = ScrubObsoleteResult {
-        specific_files: vec![],
-        control_actions: detected.control_actions,
-        maintscript_removed: detected.maintscript_removed,
-    };
-
-    if !result.any_changes() {
-        return Ok(result);
-    }
-
-    let changed_files = apply_actions(ws.base_path(), &detected.workspace_actions)?;
-    // The applier returns paths relative to base_path; promote them to
-    // tree-relative paths via the breezy working tree.
-    let safe_files: Vec<&Path> = changed_files.iter().map(|p| p.as_path()).collect();
-    let mut specific_files: Vec<PathBuf> = wt
-        .safe_relpath_files(safe_files.as_slice(), true, false)?
-        .into_iter()
-        .collect();
-
-    let summary = result.itemized();
-
-    let changelog_path = debian_path.join("changelog");
-
-    let update_changelog = if let Some(update_changelog) = update_changelog {
-        update_changelog
-    } else if let Some(dch_guess) =
-        debian_analyzer::detect_gbp_dch::guess_update_changelog(wt, &debian_path, None)
-    {
-        note_changelog_policy(dch_guess.update_changelog, &dch_guess.explanation);
-        dch_guess.update_changelog
-    } else {
-        // If we can't guess, default to updating the changelog.
-        true
-    };
-
-    if update_changelog {
-        let mut lines = vec![];
-        for (release, entries) in summary.iter() {
-            let rev_aliases = debian_analyzer::release_info::release_aliases(release, None);
-            let mut line = format!("Remove constraints unnecessary since {}", release);
-            for alias in rev_aliases {
-                line += &format!(" ({})", alias);
-            }
-            line += ":";
-            lines.push(line);
-            lines.extend(entries.iter().map(|x| format!("* {}", x)));
-        }
-        debian_analyzer::add_changelog_entry(
-            wt,
-            &changelog_path,
-            lines
-                .iter()
-                .map(|x| x.as_str())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?;
-        specific_files.push(changelog_path);
-    }
-
-    result.specific_files = specific_files.clone();
-
-    let mut lines = vec![];
-    for (release, _entries) in summary.iter() {
-        let rev_aliases = debian_analyzer::release_info::release_aliases(release, None);
-        let mut line = format!("Remove constraints unnecessary since {}", release);
-        for alias in rev_aliases {
-            line += &format!(" ({})", alias);
-        }
-        line += ":";
-
-        lines.push(line);
-    }
-    lines.extend(["".to_string(), "Changes-By: deb-scrub-obsolete".to_string()]);
-
-    let committer = debian_analyzer::get_committer(wt);
-
-    match wt
-        .build_commit()
-        .specific_files(
-            specific_files
-                .iter()
-                .map(|x| x.as_path())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-        .message(&lines.join("\n"))
-        .allow_pointless(false)
-        .reporter(&NullCommitReporter::new())
-        .committer(&committer)
-        .commit()
-    {
-        Ok(_) | Err(BrzError::PointlessCommit) => {}
-        Err(e) => {
-            return Err(e.into());
-        }
-    }
-
-    Ok(result)
 }
 
 /// Identify obsolete entries in a maintscript file.
