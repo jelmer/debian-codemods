@@ -56,7 +56,13 @@ pub fn detect(
             .with_certainty(Certainty::Possible)]);
         }
     } else if current.as_deref() == Some("no") && oldest_dpkg >= dpkg_1_22_13 {
-        return Ok(vec![Diagnostic::untagged(
+        let issue = LintianIssue::source_with_info(
+            "redundant-rules-requires-root-no-field",
+            Visibility::Pedantic,
+            vec!["[debian/control]".to_string()],
+        );
+        return Ok(vec![Diagnostic::with_actions(
+            issue,
             "Rules-Requires-Root: no is redundant on modern dpkg.",
             "Removed Rules-Requires-Root",
             vec![Action::Deb822(Deb822Action::RemoveField {
@@ -73,7 +79,10 @@ pub fn detect(
 
 declare_detector! {
     name: "rules-requires-root-missing",
-    tags: ["silent-on-rules-requiring-root"],
+    tags: [
+        "silent-on-rules-requiring-root",
+        "redundant-rules-requires-root-no-field",
+    ],
     triggers: [
         debian_workspace::Trigger::File("debian/debcargo.toml"),
         debian_workspace::Trigger::Deb822Field {
@@ -201,6 +210,10 @@ mod tests {
         };
         let result = run_apply(tmp.path(), &prefs).unwrap();
         assert_eq!(result.description, "Removed Rules-Requires-Root");
+        assert_eq!(
+            result.fixed_lintian_tags(),
+            vec!["redundant-rules-requires-root-no-field"],
+        );
         assert_eq!(
             fs::read_to_string(&control).unwrap(),
             "Source: test-package\nMaintainer: Test <test@example.com>\n\nPackage: test-package\nArchitecture: all\nDescription: Test package\n test\n",
