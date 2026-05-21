@@ -999,11 +999,9 @@
   detector: true
   status: implemented
 - tag: debian-rules-uses-deb-build-opts
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Replace DEB_BUILD_OPTS with DEB_BUILD_OPTIONS in debian/rules.
-    Simple string substitution.
+  status: implemented
 - tag: debian-rules-uses-deprecated-makefile
   detector: false
   difficulty: medium
@@ -7025,11 +7023,9 @@
   detector: false
   status: build-stage
 - tag: redundant-rules-requires-root-no-field
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove redundant Rules-Requires-Root: no from debian/control when
-    it is already the default. Uses TemplatedControlEditor.
+  status: implemented
 - tag: uses-gbp-conf
   detector: false
   status: classification

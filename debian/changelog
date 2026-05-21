@@ -4,6 +4,7 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
   * Add fixer for duplicate-contact.
   * Add fixer for default-mta-dependency-not-listed-first.
   * Add fixer for dh_installmanpages-is-obsolete.
+  * Add fixer for debian-rules-uses-deb-build-opts.
   * Rewrite the old-fsf-address-in-copyright-file fixer to strip the FSF
     postal address and reference https://www.gnu.org/licenses/ instead,
     handling both flagged addresses.
@@ -11,6 +12,8 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
   * Add fixer for description-contains-tabs.
   * Add fixer for control-file-contains-dh_make-vcs-comment.
   * Add fixer for capitalization-error-in-description.
+  * Emit the redundant-rules-requires-root-no-field tag when removing a
+    redundant Rules-Requires-Root: no field.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 May 2026 00:04:36 +0100
 
