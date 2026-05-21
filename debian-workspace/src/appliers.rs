@@ -2869,7 +2869,18 @@ fn apply_dep3_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
     if header.to_string() == original {
         return Ok(false);
     }
-    let new_content = format!("{}{}", header, body);
+    let mut header_text = header.to_string();
+    let new_content = if body.is_empty() {
+        header_text
+    } else {
+        // Reparsing the header as a deb822 paragraph drops the blank
+        // line that separated it from the diff body; DEP-3 mandates
+        // exactly one, so re-add it.
+        if !header_text.ends_with('\n') {
+            header_text.push('\n');
+        }
+        format!("{}\n{}", header_text, body)
+    };
     std::fs::write(&abs, new_content)?;
     Ok(true)
 }
@@ -4482,5 +4493,55 @@ mod tests {
         let after = fs::read_to_string(&path).unwrap();
         assert!(after.contains("Name=Foo"));
         assert!(after.contains("Name[de]=Fooey"));
+    }
+
+    #[test]
+    fn dep3_set_field_keeps_blank_line_before_body() {
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        let path = patches.join("fix.patch");
+        fs::write(
+            &path,
+            "Description: Fix a typo\nAuthor: Jane Doe <jane@example.com>\n\n--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-teh\n+the\n",
+        )
+        .unwrap();
+
+        let action = Action::Dep3(Dep3Action::SetField {
+            file: PathBuf::from("debian/patches/fix.patch"),
+            field: "Description".into(),
+            value: "Fix a misspelling".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            after,
+            "Description: Fix a misspelling\nAuthor: Jane Doe <jane@example.com>\n\n--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-teh\n+the\n",
+        );
+    }
+
+    #[test]
+    fn dep3_set_field_header_only_patch() {
+        let tmp = TempDir::new().unwrap();
+        let patches = tmp.path().join("debian/patches");
+        fs::create_dir_all(&patches).unwrap();
+        let path = patches.join("fix.patch");
+        fs::write(
+            &path,
+            "Description: Fix a typo\nAuthor: Jane Doe <jane@example.com>\n",
+        )
+        .unwrap();
+
+        let action = Action::Dep3(Dep3Action::SetField {
+            file: PathBuf::from("debian/patches/fix.patch"),
+            field: "Description".into(),
+            value: "Fix a misspelling".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            after,
+            "Description: Fix a misspelling\nAuthor: Jane Doe <jane@example.com>\n",
+        );
     }
 }
