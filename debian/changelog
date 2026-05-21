@@ -11,6 +11,7 @@ debian-codemods (0.180) UNRELEASED; urgency=medium
   * Add fixer for description-synopsis-starts-with-article.
   * Add fixer for description-contains-tabs.
   * Add fixer for control-file-contains-dh_make-vcs-comment.
+  * Add fixer for capitalization-error-in-description.
   * Emit the redundant-rules-requires-root-no-field tag when removing a
     redundant Rules-Requires-Root: no field.
 
