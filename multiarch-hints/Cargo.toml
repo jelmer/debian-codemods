@@ -20,7 +20,7 @@ debian-analyzer = { workspace = true, features = ["svp"] }
 debian-workspace = { workspace = true }
 debversion = { workspace = true, features = ["serde"] }
 lazy-regex = { workspace = true }
-breezyshim.workspace = true
+breezyshim = { workspace = true, optional = true }
 serde_json.workspace = true
 tempfile.workspace = true
 env_logger = { workspace = true, optional = true }
@@ -34,11 +34,16 @@ svp-client = { workspace = true }
 
 [features]
 default = ["cli"]
-cli = ["dep:clap", "dep:env_logger"]
+cli = ["dep:clap", "dep:env_logger", "dep:breezyshim"]
 # Async hint download for hosts that run on a tokio runtime (e.g. an LSP).
 async = ["dep:tokio"]
 
 [[bin]]
 name = "apply-multiarch-hints"
 path = "src/main.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "dump-multiarch-hints"
+path = "src/bin/dump-multiarch-hints.rs"
 required-features = ["cli"]
