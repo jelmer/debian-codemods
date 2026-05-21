@@ -4,7 +4,6 @@ use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use patchkit::quilt::{Series, SeriesEntry};
 use std::collections::HashSet;
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 const SEP: char = '\t';
@@ -26,13 +25,9 @@ pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let series_rel = PathBuf::from("debian/patches/series");
-    let series_bytes = match ws.read_file(&series_rel)? {
-        Some(b) => b,
-        None => return Ok(Vec::new()),
+    let Some(series) = ws.parsed_patches_series()? else {
+        return Ok(Vec::new());
     };
-    let series = Series::read(Cursor::new(series_bytes))
-        .map_err(|e| FixerError::Other(format!("Failed to read series file: {}", e)))?;
 
     let commented_out = mentioned_in_comments(&series);
 

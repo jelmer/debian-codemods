@@ -6961,10 +6961,9 @@
     Fix the Bug-Debian URL in DEP-3 patch header to use the correct
     https://bugs.debian.org/ format.
 - tag: invalid-dep3-format-patch-wrong-last-update
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Last-Update date format in DEP-3 patch header.
+  status: implemented
 - tag: aliased-location
   detector: false
   status: build-stage

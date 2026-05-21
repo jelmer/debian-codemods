@@ -1,0 +1,9 @@
+Description: Fix a typo in the documentation
+Author: Jane Doe <jane@example.com>
+Last-Update: Tue, 1 Jul 2003 10:52:37 +0200
+
+--- a/doc/readme.txt
++++ b/doc/readme.txt
+@@ -1 +1 @@
+-teh quick brown fox
++the quick brown fox

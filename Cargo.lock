@@ -1132,6 +1132,7 @@ dependencies = [
  "inventory",
  "lintian-overrides",
  "makefile-lossless",
+ "patchkit",
  "serde",
  "serde_json",
  "systemd-unit-edit",
