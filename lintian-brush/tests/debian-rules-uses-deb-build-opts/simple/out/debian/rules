@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
+CFLAGS += -O0
+endif
+
+%:
+	dh $@
