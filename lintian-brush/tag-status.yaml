@@ -5683,8 +5683,9 @@
     Remove unused template entries from debian/templates that are not
     referenced by any maintainer script.
 - tag: unused-entry-in-debian-source-include-binaries
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Remove entries from debian/source/include-binaries that don't match
     any actual files.

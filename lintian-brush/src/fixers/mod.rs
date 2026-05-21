@@ -169,6 +169,7 @@ mod typo_in_debhelper_override_target;
 mod unnecessary_team_upload;
 mod unnecessary_testsuite_autopkgtest_field;
 mod unused_build_dependency_on_cdbs;
+mod unused_entry_in_debian_source_include_binaries;
 mod unused_license_paragraph_in_dep5_copyright;
 mod unused_override;
 mod unversioned_copyright_format_uri;

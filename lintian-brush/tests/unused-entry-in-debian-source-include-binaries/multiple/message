@@ -1,0 +1,5 @@
+Remove 2 unused entries from debian/source/include-binaries.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: unused-entry-in-debian-source-include-binaries debian/gone2.png [debian/source/include-binaries:3]
+ source: unused-entry-in-debian-source-include-binaries debian/gone1.png [debian/source/include-binaries:1]
