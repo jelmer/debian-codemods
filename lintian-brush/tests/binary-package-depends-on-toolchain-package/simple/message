@@ -1,0 +1,4 @@
+Drop unnecessary dependency on toolchain package debhelper.
+Fixed-Lintian-Issues:
+ foo binary: binary-package-depends-on-toolchain-package Depends: debhelper
+Certainty: possible
