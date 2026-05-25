@@ -154,8 +154,10 @@ fn main() -> Result<(), i32> {
     let allow_reformatting = allow_reformatting.unwrap_or(false);
 
     if is_debcargo_package(&wt, &subpath) {
+        std::mem::drop(lock_write);
         svp.report_fatal("nothing-to-do", "Package uses debcargo", None, None);
     } else if !control_file_present(&wt, &subpath) {
+        std::mem::drop(lock_write);
         svp.report_fatal(
             "missing-control-file",
             "Unable to find debian/control",
@@ -164,7 +166,7 @@ fn main() -> Result<(), i32> {
         );
     }
 
-    let result = match scrub_obsolete::scrub_obsolete(
+    let scrub_outcome = scrub_obsolete::scrub_obsolete(
         &wt,
         &subpath,
         &compat_release,
@@ -173,7 +175,11 @@ fn main() -> Result<(), i32> {
         allow_reformatting,
         args.keep_minimum_depends_versions,
         None,
-    ) {
+    );
+
+    std::mem::drop(lock_write);
+
+    let result = match scrub_outcome {
         Ok(r) => r,
         Err(scrub_obsolete::ScrubObsoleteError::EditorError(
             EditorError::FormattingUnpreservable(p, e),
@@ -242,8 +248,6 @@ fn main() -> Result<(), i32> {
             svp.report_fatal("other-error", &format!("Error: {}", e), None, None);
         }
     };
-
-    std::mem::drop(lock_write);
 
     if result.any_changes() {
         svp.report_nothing_to_do(Some("no obsolete constraints"), None);
