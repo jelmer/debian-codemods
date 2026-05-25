@@ -391,7 +391,7 @@ fn main() -> Result<(), i32> {
 
     let lock_write = wt.lock_write();
 
-    let debianize_result = match debianize::debianize(
+    let debianize_outcome = debianize::debianize(
         &wt,
         &subpath,
         Some(&upstream_branch as &dyn PyBranch),
@@ -399,7 +399,11 @@ fn main() -> Result<(), i32> {
         &preferences,
         args.upstream_version.as_deref(),
         &metadata,
-    ) {
+    );
+
+    std::mem::drop(lock_write);
+
+    let debianize_result = match debianize_outcome {
         Ok(debianize_result) => debianize_result,
         Err(Error::SubdirectoryNotFound {
             subpath,
@@ -540,8 +544,6 @@ fn main() -> Result<(), i32> {
             );
         }
     };
-
-    std::mem::drop(lock_write);
 
     if args.install {
         args.iterate_fix = true;
