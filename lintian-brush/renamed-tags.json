@@ -95,6 +95,7 @@
     "insane-line-length-in-source-file": "very-long-line-length-in-source-file",
     "ldconfig-symlink-missing-for-shlib": "lacks-versioned-link-to-shared-library",
     "library-in-debug-or-profile-should-not-be-stripped": "stripped-library",
+    "license-problem-convert-utf-code": "license-problem-old-unicode",
     "link-to-undocumented-manpage": "undocumented-manual-page",
     "maintainer": "mail-contact",
     "maintainer-address-causes-mail-loops-or-bounces": "mail-address-loops-or-bounces",
