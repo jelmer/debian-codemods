@@ -36,7 +36,7 @@ update-spdx:
 	$(MAKE) -C lintian-brush update-spdx
 
 update-lintian-brush-readme:
-	$(MAKE) -C lintian-brush README.md
+	$(MAKE) -C lintian-brush update-readme
 
 next:
 	$(MAKE) -C lintian-brush next
