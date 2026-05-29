@@ -215,6 +215,8 @@ fn process_setup_py(context: &mut ProcessorContext) -> Result<(), Error> {
 
     let mut build_depends = source.build_depends().unwrap_or_default();
     ensure_relation(&mut build_depends, "python3-all".parse().unwrap());
+    // TODO: We should double check that the package really uses setuptools and not a different
+    // python build mechanism
     ensure_relation(&mut build_depends, "python3-setuptools".parse().unwrap());
     source.set_build_depends(&build_depends);
     let (build_deps, test_deps) = context.get_project_wide_deps();
@@ -604,6 +606,30 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
+/// Populate the `[features]` section of a Cargo.toml document.
+///
+/// If the document has a `features` entry that is not a table (for example,
+/// because the upstream Cargo.toml left it as some other value), it is left
+/// untouched rather than panicking.
+fn populate_cargo_features(
+    cargo: &mut debian_analyzer::debcargo::toml_edit::DocumentMut,
+    features: &HashMap<String, Vec<String>>,
+) {
+    if let Some(features_section) = cargo["features"].as_table_mut() {
+        for (feature, reqs) in features.iter() {
+            features_section[feature] = debian_analyzer::debcargo::toml_edit::value(
+                debian_analyzer::debcargo::toml_edit::Array::new(),
+            );
+
+            for req in reqs.iter() {
+                features_section[feature].as_array_mut().unwrap().push(
+                    debian_analyzer::debcargo::toml_edit::Value::from(req.to_string()),
+                );
+            }
+        }
+    }
+}
+
 fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
@@ -682,20 +708,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
             debian_analyzer::debcargo::toml_edit::value(crate_version.to_string());
     }
     if let Some(features) = features {
-        let features_section = control.cargo.as_mut().unwrap()["features"]
-            .as_table_mut()
-            .unwrap();
-        for (feature, reqs) in features.iter() {
-            features_section[feature] = debian_analyzer::debcargo::toml_edit::value(
-                debian_analyzer::debcargo::toml_edit::Array::new(),
-            );
-
-            for req in reqs.iter() {
-                features_section[feature].as_array_mut().unwrap().push(
-                    debian_analyzer::debcargo::toml_edit::Value::from(req.to_string()),
-                );
-            }
-        }
+        populate_cargo_features(control.cargo.as_mut().unwrap(), &features);
     }
     control.debcargo["semver_suffix"] = debian_analyzer::debcargo::toml_edit::value(semver_suffix);
     control.debcargo["overlay"] = debian_analyzer::debcargo::toml_edit::value(".");
@@ -921,5 +934,59 @@ mod tests {
         assert!(default_config.env.is_empty());
         assert_eq!(default_config.buildsystem, None);
         assert_eq!(default_config.build_directory, None);
+    }
+
+    #[test]
+    fn test_populate_cargo_features() {
+        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
+        cargo["features"] = debian_analyzer::debcargo::toml_edit::Item::Table(
+            debian_analyzer::debcargo::toml_edit::Table::new(),
+        );
+
+        let mut features = HashMap::new();
+        features.insert(
+            "default".to_string(),
+            vec!["std".to_string(), "alloc".to_string()],
+        );
+        features.insert("std".to_string(), vec![]);
+
+        populate_cargo_features(&mut cargo, &features);
+
+        let features_section = cargo["features"].as_table().unwrap();
+        let default = features_section["default"].as_array().unwrap();
+        let default_values: Vec<&str> = default.iter().map(|v| v.as_str().unwrap()).collect();
+        assert_eq!(default_values, vec!["std", "alloc"]);
+
+        let std = features_section["std"].as_array().unwrap();
+        assert_eq!(std.len(), 0);
+    }
+
+    #[test]
+    fn test_populate_cargo_features_missing_section_is_noop() {
+        // `as_table_mut` on an absent key returns None without inserting, so a
+        // document without a `features` section is left without one.
+        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
+
+        let mut features = HashMap::new();
+        features.insert("foo".to_string(), vec!["bar".to_string()]);
+
+        populate_cargo_features(&mut cargo, &features);
+
+        assert!(cargo.get("features").is_none());
+    }
+
+    #[test]
+    fn test_populate_cargo_features_non_table_left_untouched() {
+        // If the `features` entry is not a table, it must be left untouched
+        // rather than panicking.
+        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
+        cargo["features"] = debian_analyzer::debcargo::toml_edit::value("not-a-table");
+
+        let mut features = HashMap::new();
+        features.insert("foo".to_string(), vec!["bar".to_string()]);
+
+        populate_cargo_features(&mut cargo, &features);
+
+        assert_eq!(cargo["features"].as_str(), Some("not-a-table"));
     }
 }
