@@ -44,12 +44,7 @@ impl<'a> ProcessorContext<'a> {
                 .branch()
                 .generate_revision_history(&breezyshim::RevisionId::null())
                 .unwrap();
-            if !self.wt.has_filename(&self.subpath) {
-                self.wt.mkdir(&self.subpath)?;
-            }
-            if !self.wt.is_versioned(&self.subpath) {
-                self.wt.add(&[&self.subpath])?;
-            }
+            ensure_versioned_directory(self.wt, &self.subpath)?;
         }
         Ok(())
     }
@@ -98,6 +93,20 @@ impl<'a> ProcessorContext<'a> {
         }
         (build_ret, test_ret)
     }
+}
+
+/// Ensure `subpath` exists in the working tree and is version-controlled.
+///
+/// Creates the directory if it is missing, and adds it to version control if it
+/// is not already tracked.
+fn ensure_versioned_directory(wt: &dyn PyWorkingTree, subpath: &Path) -> Result<(), Error> {
+    if !wt.has_filename(subpath) {
+        wt.mkdir(subpath)?;
+    }
+    if !wt.is_versioned(subpath) {
+        wt.add(&[subpath])?;
+    }
+    Ok(())
 }
 
 fn enable_dh_addon(source: &mut Source, addon: &str) {
@@ -630,6 +639,30 @@ fn populate_cargo_features(
     }
 }
 
+/// Pick the version string to look up on crates.io.
+///
+/// For snapshot upstream versions (an upstream version of `"0"`, or one that
+/// contains `"git"`), the Debian-derived version is not a real release, so the
+/// version recorded in the upstream metadata is preferred, falling back to
+/// `"0.0.0"` when none is recorded. Otherwise the Debian-derived base version is
+/// used as-is.
+fn cargo_version_to_use<'a>(base_version: &'a str, metadata_version: Option<&'a str>) -> &'a str {
+    if base_version == "0" || base_version.contains("git") {
+        metadata_version.unwrap_or("0.0.0")
+    } else {
+        base_version
+    }
+}
+
+/// Determine whether `available` is a newer release series than `desired`.
+///
+/// Only the major and minor components are compared: a crate published with a
+/// higher major-or-minor version than the one being packaged needs a semver
+/// suffix in Debian.
+fn crate_version_is_newer(available: &semver::Version, desired: &semver::Version) -> bool {
+    (available.major, available.minor) > (desired.major, desired.minor)
+}
+
 fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
@@ -648,12 +681,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     let base_version = crate::names::debian_to_upstream_version(&context.upstream_version);
 
     // For snapshot versions, try to extract the actual version from Cargo.toml
-    let version_to_use = if base_version == "0" || base_version.contains("git") {
-        // Try to get version from Cargo.toml metadata
-        context.metadata.version().unwrap_or("0.0.0")
-    } else {
-        base_version
-    };
+    let version_to_use = cargo_version_to_use(base_version, context.metadata.version());
 
     let desired_version = VersionInfo::parse(version_to_use).map_err(|e| {
         Error::Other(format!(
@@ -683,9 +711,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     let mut semver_suffix = false;
     for version_info in data.versions {
         let available_version = &version_info.num;
-        if (available_version.major, available_version.minor)
-            > (desired_version.major, desired_version.minor)
-        {
+        if crate_version_is_newer(available_version, &desired_version) {
             semver_suffix = true;
             break;
         }
@@ -988,5 +1014,146 @@ mod tests {
         populate_cargo_features(&mut cargo, &features);
 
         assert_eq!(cargo["features"].as_str(), Some("not-a-table"));
+    }
+
+    fn init_working_tree(path: &Path) -> breezyshim::workingtree::GenericWorkingTree {
+        use breezyshim::controldir::ControlDirFormat;
+        breezyshim::init();
+
+        let format = ControlDirFormat::default();
+        let transport =
+            breezyshim::transport::get_transport(&url::Url::from_file_path(path).unwrap(), None)
+                .unwrap();
+
+        let controldir = format.initialize_on_transport(&transport).unwrap();
+        controldir.create_repository(None).unwrap();
+        controldir.create_branch(None).unwrap();
+        controldir.create_workingtree().unwrap()
+    }
+
+    #[test]
+    fn test_ensure_versioned_directory_creates_and_adds() {
+        use breezyshim::tree::Tree;
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        let subpath = Path::new("debian");
+        assert!(!wt.has_filename(subpath));
+
+        ensure_versioned_directory(&wt, subpath).unwrap();
+
+        assert!(wt.has_filename(subpath));
+        assert!(wt.is_versioned(subpath));
+    }
+
+    #[test]
+    fn test_ensure_versioned_directory_existing_unversioned_dir() {
+        use breezyshim::tree::Tree;
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        // Create the directory on disk without versioning it.
+        std::fs::create_dir(td.path().join("debian")).unwrap();
+        let subpath = Path::new("debian");
+        assert!(wt.has_filename(subpath));
+        assert!(!wt.is_versioned(subpath));
+
+        ensure_versioned_directory(&wt, subpath).unwrap();
+
+        assert!(wt.has_filename(subpath));
+        assert!(wt.is_versioned(subpath));
+    }
+
+    #[test]
+    fn test_check_python3_support_classifier() {
+        use breezyshim::tree::MutableTree;
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        wt.put_file_bytes_non_atomic(
+            Path::new("setup.py"),
+            b"setup(classifiers=['Programming Language :: Python :: 3'])",
+        )
+        .unwrap();
+
+        assert!(check_python3_support(&wt, Path::new("")).unwrap());
+    }
+
+    #[test]
+    fn test_check_python3_support_no_setup_py_defaults_true() {
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        // With no packaging files present, the conservative default is true.
+        assert!(check_python3_support(&wt, Path::new("")).unwrap());
+    }
+
+    #[test]
+    fn test_check_python3_support_pyproject() {
+        use breezyshim::tree::MutableTree;
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        wt.put_file_bytes_non_atomic(
+            Path::new("pyproject.toml"),
+            b"[project]\nrequires-python = \">=3.8\"\n",
+        )
+        .unwrap();
+
+        assert!(check_python3_support(&wt, Path::new("")).unwrap());
+    }
+
+    #[test]
+    fn test_cargo_version_to_use_release() {
+        // A real release version is used verbatim, regardless of metadata.
+        assert_eq!(cargo_version_to_use("1.2.3", Some("9.9.9")), "1.2.3");
+        assert_eq!(cargo_version_to_use("1.2.3", None), "1.2.3");
+    }
+
+    #[test]
+    fn test_cargo_version_to_use_zero_snapshot() {
+        // A "0" base version is a snapshot: prefer the metadata version.
+        assert_eq!(cargo_version_to_use("0", Some("4.5.6")), "4.5.6");
+        assert_eq!(cargo_version_to_use("0", None), "0.0.0");
+    }
+
+    #[test]
+    fn test_cargo_version_to_use_git_snapshot() {
+        // A version containing "git" is a snapshot: prefer the metadata version.
+        assert_eq!(
+            cargo_version_to_use("0+git20250809.4f78468", Some("2.0.0")),
+            "2.0.0"
+        );
+        assert_eq!(cargo_version_to_use("0+git20250809.4f78468", None), "0.0.0");
+    }
+
+    #[test]
+    fn test_crate_version_is_newer() {
+        use semver::Version;
+        let desired = Version::new(1, 2, 0);
+
+        // Higher major or minor is newer.
+        assert!(crate_version_is_newer(&Version::new(2, 0, 0), &desired));
+        assert!(crate_version_is_newer(&Version::new(1, 3, 0), &desired));
+
+        // Same major/minor is not newer, even with a higher patch.
+        assert!(!crate_version_is_newer(&Version::new(1, 2, 0), &desired));
+        assert!(!crate_version_is_newer(&Version::new(1, 2, 9), &desired));
+
+        // Lower major or minor is not newer.
+        assert!(!crate_version_is_newer(&Version::new(0, 9, 0), &desired));
+        assert!(!crate_version_is_newer(&Version::new(1, 1, 9), &desired));
+    }
+
+    #[test]
+    fn test_check_python3_support_tox() {
+        use breezyshim::tree::MutableTree;
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+
+        wt.put_file_bytes_non_atomic(Path::new("tox.ini"), b"[tox]\nenvlist = py39,py310\n")
+            .unwrap();
+
+        assert!(check_python3_support(&wt, Path::new("")).unwrap());
     }
 }
