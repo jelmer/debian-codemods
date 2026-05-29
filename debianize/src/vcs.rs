@@ -444,6 +444,114 @@ pub fn update_official_vcs(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use breezyshim::tree::{MutableTree, Tree};
+    use breezyshim::workingtree::{GenericWorkingTree, WorkingTree};
+
+    fn init_working_tree(path: &Path) -> GenericWorkingTree {
+        use breezyshim::controldir::ControlDirFormat;
+        breezyshim::init();
+
+        let format = ControlDirFormat::default();
+        let transport =
+            breezyshim::transport::get_transport(&url::Url::from_file_path(path).unwrap(), None)
+                .unwrap();
+
+        let controldir = format.initialize_on_transport(&transport).unwrap();
+        controldir.create_repository(None).unwrap();
+        controldir.create_branch(None).unwrap();
+        controldir.create_workingtree().unwrap()
+    }
+
+    /// Create a working tree with a committed debian/control file.
+    fn tree_with_control(control: &str) -> (tempfile::TempDir, GenericWorkingTree) {
+        let td = tempfile::tempdir().unwrap();
+        let wt = init_working_tree(td.path());
+        wt.mkdir(Path::new("debian")).unwrap();
+        wt.put_file_bytes_non_atomic(Path::new("debian/control"), control.as_bytes())
+            .unwrap();
+        wt.add(&[Path::new("debian"), Path::new("debian/control")])
+            .unwrap();
+        wt.build_commit()
+            .message("Initial")
+            .committer("Test <test@example.com>")
+            .commit()
+            .unwrap();
+        (td, wt)
+    }
+
+    const CONTROL: &str = "Source: test-package\nMaintainer: Test User <test@example.com>\n\nPackage: test-package\nArchitecture: all\n";
+
+    #[test]
+    fn test_update_official_vcs_explicit_url() {
+        let (_td, wt) = tree_with_control(CONTROL);
+        let result = update_official_vcs(
+            &wt,
+            Path::new(""),
+            Some("https://github.com/user/test-package.git"),
+            Some("Test <test@example.com>"),
+            false,
+            false,
+        )
+        .unwrap();
+        assert_eq!(result, "https://github.com/user/test-package.git");
+
+        let content =
+            String::from_utf8(wt.get_file_text(Path::new("debian/control")).unwrap()).unwrap();
+        assert!(content.contains("Vcs-Git: https://github.com/user/test-package.git"));
+        assert!(content.contains("Vcs-Browser: https://github.com/user/test-package"));
+    }
+
+    #[test]
+    fn test_update_official_vcs_uncommitted_changes() {
+        let (_td, wt) = tree_with_control(CONTROL);
+        // Introduce an uncommitted change.
+        wt.put_file_bytes_non_atomic(Path::new("debian/control"), b"Source: changed\n")
+            .unwrap();
+        let result = update_official_vcs(
+            &wt,
+            Path::new(""),
+            Some("https://github.com/user/test-package.git"),
+            Some("Test <test@example.com>"),
+            false,
+            false,
+        );
+        assert!(matches!(result, Err(Error::UncommittedChanges)));
+    }
+
+    #[test]
+    fn test_update_official_vcs_already_specified() {
+        let control = "Source: test-package\nMaintainer: Test User <test@example.com>\nVcs-Git: https://example.com/existing.git\n\nPackage: test-package\nArchitecture: all\n";
+        let (_td, wt) = tree_with_control(control);
+        let result = update_official_vcs(
+            &wt,
+            Path::new(""),
+            Some("https://github.com/user/test-package.git"),
+            Some("Test <test@example.com>"),
+            false,
+            false,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_official_vcs_guessed_from_maintainer() {
+        // No explicit URL: the salsa URL is guessed from the team maintainer.
+        let control = "Source: test-package\nMaintainer: Debian Rust Team <pkg-rust-maintainers@lists.alioth.debian.org>\n\nPackage: test-package\nArchitecture: all\n";
+        let (_td, wt) = tree_with_control(control);
+        let result = update_official_vcs(
+            &wt,
+            Path::new(""),
+            None,
+            Some("Test <test@example.com>"),
+            false,
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            result,
+            "https://salsa.debian.org/rust-team/test-package.git"
+        );
+    }
 
     #[test]
     fn test_guess_repository_url_debian_org() {
@@ -503,6 +611,191 @@ mod tests {
         assert_eq!(
             result,
             Some("https://salsa.debian.org/team/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_no_vcs_location_display() {
+        assert_eq!(
+            NoVcsLocation.to_string(),
+            "No VCS location specified or determined"
+        );
+    }
+
+    #[test]
+    fn test_vcs_already_specified_display() {
+        let err = VcsAlreadySpecified {
+            vcs_type: "Git".to_string(),
+            url: "https://example.com/repo.git".to_string(),
+        };
+        assert_eq!(
+            err.to_string(),
+            "Vcs is already specified: Git https://example.com/repo.git"
+        );
+    }
+
+    #[test]
+    fn test_determine_browser_url_non_git_vcs() {
+        let url = Url::parse("https://example.com/repo.git").unwrap();
+        assert_eq!(determine_browser_url("svn", &url), None);
+    }
+
+    #[test]
+    fn test_determine_browser_url_gitlab_git_ssh() {
+        // gitlab host, "git+ssh://git@host/user/repo.git" form: neither plain
+        // https:// nor ssh://, but contains "@", so it reaches the `@`-split
+        // fallback. The host-and-path part has no colon, so the rewrite does
+        // not fire and only the ".git" suffix is stripped.
+        let url = Url::parse("git+ssh://git@gitlab.example.com/user/repo.git").unwrap();
+        assert_eq!(
+            determine_browser_url("git", &url),
+            Some("git+ssh://git@gitlab.example.com/user/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_determine_browser_url_gitlab_git_ssh_with_port() {
+        // A port in the authority gives the host-and-path part a colon, so the
+        // `colon_parts.len() == 2` rewrite fires, turning it into an https URL.
+        let url = Url::parse("git+ssh://git@gitlab.example.com:22/user/repo.git").unwrap();
+        assert_eq!(
+            determine_browser_url("git", &url),
+            Some("https://gitlab.example.com/22/user/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_determine_browser_url_other_host_git_protocol() {
+        let url = Url::parse("git://git.example.com/user/repo.git").unwrap();
+        assert_eq!(
+            determine_browser_url("git", &url),
+            Some("https://git.example.com/user/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_determine_browser_url_other_host_https() {
+        let url = Url::parse("https://git.example.com/user/repo.git").unwrap();
+        assert_eq!(
+            determine_browser_url("git", &url),
+            Some("https://git.example.com/user/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_source_package_vcs_git() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        source.set_vcs_git("https://example.com/repo.git");
+        assert_eq!(
+            source_package_vcs(&source).unwrap(),
+            (
+                "Git".to_string(),
+                "https://example.com/repo.git".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_source_package_vcs_svn() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        source.set_vcs_svn("svn://example.com/repo");
+        assert_eq!(
+            source_package_vcs(&source).unwrap(),
+            ("Svn".to_string(), "svn://example.com/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_source_package_vcs_bzr() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        source.set_vcs_bzr("bzr://example.com/repo");
+        assert_eq!(
+            source_package_vcs(&source).unwrap(),
+            ("Bzr".to_string(), "bzr://example.com/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_source_package_vcs_none() {
+        let mut control = Control::new();
+        let source = control.add_source("test");
+        assert!(source_package_vcs(&source).is_err());
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_git() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "git", "https://github.com/user/repo.git").unwrap();
+        assert_eq!(
+            source.vcs_git(),
+            Some("https://github.com/user/repo.git".to_string())
+        );
+        // The browser URL is derived for a recognised host.
+        assert_eq!(
+            source.vcs_browser(),
+            Some("https://github.com/user/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_svn() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "svn", "svn://example.com/repo").unwrap();
+        assert_eq!(source.vcs_svn(), Some("svn://example.com/repo".to_string()));
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_bzr() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "bzr", "bzr://example.com/repo").unwrap();
+        assert_eq!(source.vcs_bzr(), Some("bzr://example.com/repo".to_string()));
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_hg() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "hg", "https://example.com/repo").unwrap();
+        assert_eq!(
+            source.vcs_hg(),
+            Some("https://example.com/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_cvs() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "cvs", ":pserver:example.com:/cvsroot").unwrap();
+        assert_eq!(
+            source.vcs_cvs(),
+            Some(":pserver:example.com:/cvsroot".to_string())
+        );
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_darcs() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        update_control_for_vcs_url(&mut source, "darcs", "https://example.com/repo").unwrap();
+        assert_eq!(
+            source.vcs_darcs(),
+            Some("https://example.com/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_update_control_for_vcs_url_unsupported() {
+        let mut control = Control::new();
+        let mut source = control.add_source("test");
+        assert!(
+            update_control_for_vcs_url(&mut source, "fossil", "https://example.com/repo").is_err()
         );
     }
 }
