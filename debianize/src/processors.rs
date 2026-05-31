@@ -40,11 +40,7 @@ impl<'a> ProcessorContext<'a> {
                 log::debug!("No kickstart_from_dist function provided, skipping dist import");
             }
         } else {
-            self.wt
-                .branch()
-                .generate_revision_history(&breezyshim::RevisionId::null())
-                .unwrap();
-            ensure_versioned_directory(self.wt, &self.subpath)?;
+            prepare_empty_subpath(self.wt, &self.subpath)?;
         }
         Ok(())
     }
@@ -95,11 +91,14 @@ impl<'a> ProcessorContext<'a> {
     }
 }
 
-/// Ensure `subpath` exists in the working tree and is version-controlled.
+/// Prepare an empty tree for a non-sourceful debianization.
 ///
-/// Creates the directory if it is missing, and adds it to version control if it
-/// is not already tracked.
-fn ensure_versioned_directory(wt: &dyn PyWorkingTree, subpath: &Path) -> Result<(), Error> {
+/// Resets the branch to an empty revision history and ensures `subpath` exists
+/// as a versioned directory in the working tree.
+fn prepare_empty_subpath(wt: &dyn PyWorkingTree, subpath: &Path) -> Result<(), Error> {
+    wt.branch()
+        .generate_revision_history(&breezyshim::RevisionId::null())
+        .unwrap();
     if !wt.has_filename(subpath) {
         wt.mkdir(subpath)?;
     }
@@ -1019,12 +1018,10 @@ mod tests {
     fn init_working_tree(path: &Path) -> breezyshim::workingtree::GenericWorkingTree {
         use breezyshim::controldir::ControlDirFormat;
         breezyshim::init();
-
         let format = ControlDirFormat::default();
         let transport =
             breezyshim::transport::get_transport(&url::Url::from_file_path(path).unwrap(), None)
                 .unwrap();
-
         let controldir = format.initialize_on_transport(&transport).unwrap();
         controldir.create_repository(None).unwrap();
         controldir.create_branch(None).unwrap();
@@ -1032,7 +1029,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ensure_versioned_directory_creates_and_adds() {
+    fn test_prepare_empty_subpath_creates_versioned_dir() {
         use breezyshim::tree::Tree;
         let td = tempfile::tempdir().unwrap();
         let wt = init_working_tree(td.path());
@@ -1040,25 +1037,25 @@ mod tests {
         let subpath = Path::new("debian");
         assert!(!wt.has_filename(subpath));
 
-        ensure_versioned_directory(&wt, subpath).unwrap();
+        prepare_empty_subpath(&wt, subpath).unwrap();
 
         assert!(wt.has_filename(subpath));
         assert!(wt.is_versioned(subpath));
     }
 
     #[test]
-    fn test_ensure_versioned_directory_existing_unversioned_dir() {
-        use breezyshim::tree::Tree;
+    fn test_prepare_empty_subpath_existing_dir_left_versioned() {
+        use breezyshim::tree::{MutableTree, Tree};
         let td = tempfile::tempdir().unwrap();
         let wt = init_working_tree(td.path());
 
-        // Create the directory on disk without versioning it.
-        std::fs::create_dir(td.path().join("debian")).unwrap();
+        // A pre-existing, already-versioned subpath must remain versioned and
+        // must not cause an error.
         let subpath = Path::new("debian");
+        wt.mkdir(subpath).unwrap();
         assert!(wt.has_filename(subpath));
-        assert!(!wt.is_versioned(subpath));
 
-        ensure_versioned_directory(&wt, subpath).unwrap();
+        prepare_empty_subpath(&wt, subpath).unwrap();
 
         assert!(wt.has_filename(subpath));
         assert!(wt.is_versioned(subpath));
