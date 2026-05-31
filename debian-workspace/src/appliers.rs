@@ -4544,4 +4544,1137 @@ mod tests {
             "Description: Fix a misspelling\nAuthor: Jane Doe <jane@example.com>\n",
         );
     }
+
+    #[test]
+    fn normalize_crlf_converts_crlf_pairs() {
+        assert_eq!(normalize_crlf(b"a\r\nb\r\n"), b"a\nb\n".to_vec());
+    }
+
+    #[test]
+    fn normalize_crlf_leaves_lone_cr_and_lf_alone() {
+        // A lone CR (no following LF) is preserved, a lone LF is preserved,
+        // and a CR at the very end (no room for a following LF) is preserved.
+        assert_eq!(normalize_crlf(b"a\rb\nc\r"), b"a\rb\nc\r".to_vec());
+    }
+
+    #[test]
+    fn normalize_crlf_preserves_non_crlf_bytes_and_length() {
+        // No CRLF present: output is byte-identical to input (kills the
+        // mutants that replace the whole body with vec![]/vec![0]/vec![1]
+        // and the index/arithmetic mutants).
+        let input: &[u8] = b"plain ascii line\nsecond line\n";
+        assert_eq!(normalize_crlf(input), input.to_vec());
+    }
+
+    #[test]
+    fn normalize_crlf_handles_consecutive_crlf() {
+        assert_eq!(normalize_crlf(b"\r\n\r\nx"), b"\n\nx".to_vec());
+    }
+
+    #[test]
+    fn normalize_crlf_keeps_embedded_non_utf8_byte() {
+        // 0xFF is not valid UTF-8; it must be passed through untouched while
+        // the surrounding CRLF is still converted.
+        assert_eq!(normalize_crlf(b"\xff\r\n"), vec![0xff, b'\n']);
+    }
+
+    #[test]
+    fn dep3_header_end_stops_at_diff_marker() {
+        let content = "Description: x\nAuthor: y\n--- a/f\n+++ b/f\n";
+        // The header is everything up to and including the blank that precedes
+        // the `---` line; here there is no blank, so the offset points right at
+        // the `---` line.
+        let end = dep3_header_end(content);
+        assert_eq!(&content[..end], "Description: x\nAuthor: y\n");
+        assert_eq!(&content[end..], "--- a/f\n+++ b/f\n");
+    }
+
+    #[test]
+    fn dep3_header_end_stops_at_index_marker() {
+        let content = "Description: x\nIndex: foo\n";
+        let end = dep3_header_end(content);
+        assert_eq!(&content[..end], "Description: x\n");
+    }
+
+    #[test]
+    fn dep3_header_end_no_body_returns_full_len() {
+        let content = "Description: x\nAuthor: y\n";
+        assert_eq!(dep3_header_end(content), content.len());
+    }
+
+    #[test]
+    fn dep3_header_end_diff_word_marker() {
+        // The `diff ` (with trailing space) alternative of the `||` chain must
+        // also terminate the header; a `diff` without trailing space (e.g.
+        // "different") must not.
+        let content = "Description: x\ndifferent: not a marker\ndiff -u a b\n";
+        let end = dep3_header_end(content);
+        assert_eq!(&content[..end], "Description: x\ndifferent: not a marker\n");
+    }
+
+    fn write_rules(tmp: &TempDir, content: &str) -> PathBuf {
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("rules");
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    #[test]
+    fn makefile_replace_recipe_changes_matching_target_only() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(
+            &tmp,
+            "build:\n\techo old\n\noverride_dh_auto_test:\n\techo old\n",
+        );
+        let action = Action::Makefile(MakefileAction::ReplaceRecipe {
+            file: PathBuf::from("debian/rules"),
+            target: "build".into(),
+            recipe: "echo old".into(),
+            new_recipe: "echo new".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        // Only the `build` target's recipe is rewritten; the other target's
+        // identical recipe is untouched (kills the `&t == target` -> `!=` and
+        // the `!...any` deletion mutants in ReplaceRecipe).
+        assert!(after.contains("echo new"));
+        // The other target still has exactly one `echo old` left.
+        assert_eq!(after.matches("echo old").count(), 1);
+    }
+
+    #[test]
+    fn makefile_replace_recipe_no_matching_target_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "build:\n\techo old\n");
+        let action = Action::Makefile(MakefileAction::ReplaceRecipe {
+            file: PathBuf::from("debian/rules"),
+            target: "install".into(),
+            recipe: "\techo old".into(),
+            new_recipe: "echo new".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_remove_recipe_removes_matching_line() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "build:\n\techo keep\n\techo drop\n");
+        let action = Action::Makefile(MakefileAction::RemoveRecipe {
+            file: PathBuf::from("debian/rules"),
+            target: "build".into(),
+            recipe: "echo drop".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("echo keep"));
+        assert!(!after.contains("echo drop"));
+    }
+
+    #[test]
+    fn makefile_remove_recipe_wrong_target_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "build:\n\techo drop\n");
+        let action = Action::Makefile(MakefileAction::RemoveRecipe {
+            file: PathBuf::from("debian/rules"),
+            target: "install".into(),
+            recipe: "\techo drop".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_set_variable_updates_existing_value() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "FOO = old\nBAR = keep\n");
+        let action = Action::Makefile(MakefileAction::SetVariable {
+            file: PathBuf::from("debian/rules"),
+            name: "FOO".into(),
+            value: "new".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(after, "FOO = new\nBAR = keep\n");
+    }
+
+    #[test]
+    fn makefile_set_variable_idempotent_after_apply() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "FOO = old\n");
+        let action = Action::Makefile(MakefileAction::SetVariable {
+            file: PathBuf::from("debian/rules"),
+            name: "FOO".into(),
+            value: "new".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        // Re-applying with the now-current value is a no-op: the `!=` guard
+        // sees an equal value and reports no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_set_variable_missing_name_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "FOO = old\n");
+        let action = Action::Makefile(MakefileAction::SetVariable {
+            file: PathBuf::from("debian/rules"),
+            name: "MISSING".into(),
+            value: "new".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_set_variable_operator_changes_operator() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "FOO = old\n");
+        let action = Action::Makefile(MakefileAction::SetVariableOperator {
+            file: PathBuf::from("debian/rules"),
+            name: "FOO".into(),
+            operator: "?=".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(after, "FOO ?= old\n");
+    }
+
+    #[test]
+    fn makefile_set_variable_operator_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "FOO ?= old\n");
+        let action = Action::Makefile(MakefileAction::SetVariableOperator {
+            file: PathBuf::from("debian/rules"),
+            name: "FOO".into(),
+            operator: "?=".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_remove_variable_present() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "FOO = old\nBAR = keep\n");
+        let action = Action::Makefile(MakefileAction::RemoveVariable {
+            file: PathBuf::from("debian/rules"),
+            name: "FOO".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(after, "BAR = keep\n");
+    }
+
+    #[test]
+    fn makefile_remove_variable_missing_name_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "FOO = old\n");
+        let action = Action::Makefile(MakefileAction::RemoveVariable {
+            file: PathBuf::from("debian/rules"),
+            name: "MISSING".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_remove_rule_by_target() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "build:\n\techo b\n\ninstall:\n\techo i\n");
+        let action = Action::Makefile(MakefileAction::RemoveRule {
+            file: PathBuf::from("debian/rules"),
+            target: "build".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(after, "install:\n\techo i\n");
+    }
+
+    #[test]
+    fn makefile_remove_rule_missing_target_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "build:\n\techo b\n");
+        let action = Action::Makefile(MakefileAction::RemoveRule {
+            file: PathBuf::from("debian/rules"),
+            target: "missing".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_add_rule_appends_new_rule() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "build:\n\techo b\n");
+        let action = Action::Makefile(MakefileAction::AddRule {
+            file: PathBuf::from("debian/rules"),
+            target: "install".into(),
+            prerequisites: vec!["build".into()],
+        });
+        // AddRule always reports a change (it does not dedupe).
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("install:"));
+    }
+
+    #[test]
+    fn makefile_add_phony_target_appends_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, ".PHONY: build\nbuild:\n\techo b\n");
+        let action = Action::Makefile(MakefileAction::AddPhonyTarget {
+            file: PathBuf::from("debian/rules"),
+            target: "install".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("install"));
+    }
+
+    #[test]
+    fn makefile_add_phony_target_idempotent_when_present() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, ".PHONY: build\nbuild:\n\techo b\n");
+        let action = Action::Makefile(MakefileAction::AddPhonyTarget {
+            file: PathBuf::from("debian/rules"),
+            target: "build".into(),
+        });
+        // `.PHONY` already lists `build`: the `already` guard short-circuits.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_rename_rule_target_renames() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "old:\n\techo x\n");
+        let action = Action::Makefile(MakefileAction::RenameRuleTarget {
+            file: PathBuf::from("debian/rules"),
+            from_target: "old".into(),
+            to_target: "new".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("new:"));
+        assert!(!after.contains("old:"));
+    }
+
+    #[test]
+    fn makefile_rename_rule_target_missing_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "build:\n\techo x\n");
+        let action = Action::Makefile(MakefileAction::RenameRuleTarget {
+            file: PathBuf::from("debian/rules"),
+            from_target: "absent".into(),
+            to_target: "new".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_add_include_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "#!/usr/bin/make -f\nbuild:\n\techo b\n");
+        let action = Action::Makefile(MakefileAction::AddInclude {
+            file: PathBuf::from("debian/rules"),
+            path: "/usr/share/dpkg/pkg-info.mk".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("include /usr/share/dpkg/pkg-info.mk"));
+        // The shebang stays first (the leading-comment-block split logic).
+        assert!(after.starts_with("#!/usr/bin/make -f\n"));
+    }
+
+    #[test]
+    fn makefile_add_include_idempotent_when_present() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(
+            &tmp,
+            "include /usr/share/dpkg/pkg-info.mk\nbuild:\n\techo b\n",
+        );
+        let action = Action::Makefile(MakefileAction::AddInclude {
+            file: PathBuf::from("debian/rules"),
+            path: "/usr/share/dpkg/pkg-info.mk".into(),
+        });
+        // `included_files().any(...)` short-circuits to no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn filesystem_substitute_replaces_occurrences() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "foo bar foo\n").unwrap();
+        let action = Action::Filesystem(FilesystemAction::Substitute {
+            file: PathBuf::from("f.txt"),
+            from: "foo".into(),
+            to: "baz".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&path).unwrap(), "baz bar baz\n");
+    }
+
+    #[test]
+    fn filesystem_substitute_absent_pattern_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "nothing here\n").unwrap();
+        let action = Action::Filesystem(FilesystemAction::Substitute {
+            file: PathBuf::from("f.txt"),
+            from: "absent".into(),
+            to: "x".into(),
+        });
+        // `!content.contains(from)` short-circuits to no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&path).unwrap(), "nothing here\n");
+    }
+
+    #[test]
+    fn filesystem_normalize_line_endings_converts() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "a\r\nb\r\n").unwrap();
+        let action = Action::Filesystem(FilesystemAction::NormalizeLineEndings {
+            file: PathBuf::from("f.txt"),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read(&path).unwrap(), b"a\nb\n".to_vec());
+    }
+
+    #[test]
+    fn filesystem_normalize_line_endings_already_lf_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "a\nb\n").unwrap();
+        let action = Action::Filesystem(FilesystemAction::NormalizeLineEndings {
+            file: PathBuf::from("f.txt"),
+        });
+        // `converted == bytes` short-circuits to no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn filesystem_remove_dir_if_empty_removes_empty_dir() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("emptydir");
+        fs::create_dir_all(&dir).unwrap();
+        let action = Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+            file: PathBuf::from("emptydir"),
+        });
+        let changed = apply_actions(tmp.path(), &[action]).unwrap();
+        assert_eq!(changed, vec![PathBuf::from("emptydir")]);
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn filesystem_remove_dir_if_empty_nonempty_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("full");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("file"), "x").unwrap();
+        let action = Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+            file: PathBuf::from("full"),
+        });
+        // DirectoryNotEmpty must be swallowed (no error) and report no change.
+        let changed = apply_actions(tmp.path(), &[action]).unwrap();
+        assert_eq!(changed, Vec::<PathBuf>::new());
+        assert!(dir.exists());
+    }
+
+    #[test]
+    fn filesystem_remove_dir_if_empty_missing_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let action = Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
+            file: PathBuf::from("nope"),
+        });
+        let changed = apply_actions(tmp.path(), &[action]).unwrap();
+        assert_eq!(changed, Vec::<PathBuf>::new());
+    }
+
+    #[test]
+    fn filesystem_replace_text_noop_when_already_equal() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "hello world\n").unwrap();
+        let action = Action::Filesystem(FilesystemAction::ReplaceText {
+            file: PathBuf::from("f.txt"),
+            range: TextRange { start: 0, end: 5 },
+            replacement: "hello".into(),
+        });
+        // The slice already equals the replacement: no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn filesystem_replace_text_out_of_bounds_errors() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("f.txt");
+        fs::write(&path, "abc").unwrap();
+        let action = Action::Filesystem(FilesystemAction::ReplaceText {
+            file: PathBuf::from("f.txt"),
+            range: TextRange { start: 0, end: 99 },
+            replacement: "x".into(),
+        });
+        // end > len triggers the out-of-bounds error branch.
+        assert!(apply_action(tmp.path(), &action).is_err());
+    }
+
+    #[test]
+    fn filesystem_delete_existing_file_reports_change() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("gone.txt");
+        fs::write(&path, "x").unwrap();
+        let action = Action::Filesystem(FilesystemAction::Delete {
+            file: PathBuf::from("gone.txt"),
+        });
+        let changed = apply_actions(tmp.path(), &[action]).unwrap();
+        assert_eq!(changed, vec![PathBuf::from("gone.txt")]);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn watch_set_entry_option_updates_matching_url() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(
+            &path,
+            "version=4\nhttps://example.com/foo foo-(.+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        let action = Action::Watch(WatchAction::SetEntryOption {
+            file: PathBuf::from("debian/watch"),
+            url: "https://example.com/foo".into(),
+            option: "pgpmode".into(),
+            value: "auto".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert!(fs::read_to_string(&path).unwrap().contains("pgpmode=auto"));
+    }
+
+    #[test]
+    fn watch_set_entry_option_wrong_url_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(
+            &path,
+            "version=4\nhttps://example.com/foo foo-(.+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        let action = Action::Watch(WatchAction::SetEntryOption {
+            file: PathBuf::from("debian/watch"),
+            url: "https://other.example.com/bar".into(),
+            option: "pgpmode".into(),
+            value: "auto".into(),
+        });
+        // URL doesn't match: `&entry.url() != url` keeps skipping -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn watch_set_entry_url_changes_url() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(
+            &path,
+            "version=4\nhttps://example.com/old foo-(.+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        let action = Action::Watch(WatchAction::SetEntryUrl {
+            file: PathBuf::from("debian/watch"),
+            url: "https://example.com/old".into(),
+            new_url: "https://example.com/new".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("https://example.com/new"));
+        assert!(!after.contains("https://example.com/old"));
+    }
+
+    #[test]
+    fn watch_set_entry_url_idempotent_when_already_target() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(
+            &path,
+            "version=4\nhttps://example.com/same foo-(.+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        let action = Action::Watch(WatchAction::SetEntryUrl {
+            file: PathBuf::from("debian/watch"),
+            url: "https://example.com/same".into(),
+            new_url: "https://example.com/same".into(),
+        });
+        // `entry.url() == new_url` breaks before any mutation.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn watch_remove_entry_option_removes_present_option() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(
+            &path,
+            "version=4\nopts=pgpmode=auto https://example.com/foo foo-(.+)\\.tar\\.gz\n",
+        )
+        .unwrap();
+        let action = Action::Watch(WatchAction::RemoveEntryOption {
+            file: PathBuf::from("debian/watch"),
+            url: "https://example.com/foo".into(),
+            option: "pgpmode".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert!(!fs::read_to_string(&path).unwrap().contains("pgpmode"));
+    }
+
+    #[test]
+    fn maintscript_drop_entry_removes_matching_entry() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("maintscript");
+        fs::write(
+            &path,
+            "rm_conffile /etc/keep.conf 1.0\nrm_conffile /etc/drop.conf 1.0\n",
+        )
+        .unwrap();
+        let action = Action::Maintscript(MaintscriptAction::DropEntry {
+            file: PathBuf::from("debian/maintscript"),
+            entry: "rm_conffile /etc/drop.conf 1.0".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("/etc/keep.conf"));
+        assert!(!after.contains("/etc/drop.conf"));
+    }
+
+    #[test]
+    fn maintscript_drop_entry_no_match_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("maintscript");
+        let content = "rm_conffile /etc/keep.conf 1.0\n";
+        fs::write(&path, content).unwrap();
+        let action = Action::Maintscript(MaintscriptAction::DropEntry {
+            file: PathBuf::from("debian/maintscript"),
+            entry: "rm_conffile /etc/absent.conf 1.0".into(),
+        });
+        // No entry matches: `position` returns None, `!any_change` -> Ok(false).
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
+    }
+
+    #[test]
+    fn maintscript_drop_only_entry_removes_file() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("maintscript");
+        fs::write(&path, "rm_conffile /etc/only.conf 1.0\n").unwrap();
+        let action = Action::Maintscript(MaintscriptAction::DropEntry {
+            file: PathBuf::from("debian/maintscript"),
+            entry: "rm_conffile /etc/only.conf 1.0".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        // The script is now empty -> file removed (`script.is_empty()` branch).
+        assert!(!path.exists());
+    }
+
+    fn write_changelog(tmp: &TempDir, content: &str) -> PathBuf {
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("changelog");
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    const CL_BASE: &str = "foo (1.0-1) unstable; urgency=medium\n\n  * Initial release.\n\n -- Jane Doe <jane@example.com>  Mon, 01 Jan 2024 00:00:00 +0000\n";
+
+    #[test]
+    fn changelog_set_entry_date_updates_matching_version() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_changelog(&tmp, CL_BASE);
+        let action = Action::Changelog(ChangelogAction::SetEntryDate {
+            file: PathBuf::from("debian/changelog"),
+            version: "1.0-1".into(),
+            rfc2822: "Tue, 02 Jan 2024 12:00:00 +0000".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Tue, 02 Jan 2024 12:00:00 +0000"));
+        assert!(!after.contains("Mon, 01 Jan 2024 00:00:00 +0000"));
+    }
+
+    #[test]
+    fn changelog_set_entry_date_wrong_version_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_changelog(&tmp, CL_BASE);
+        let action = Action::Changelog(ChangelogAction::SetEntryDate {
+            file: PathBuf::from("debian/changelog"),
+            version: "9.9-9".into(),
+            rfc2822: "Tue, 02 Jan 2024 12:00:00 +0000".into(),
+        });
+        // No entry with that version: `==` comparison never matches -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&path).unwrap(), CL_BASE);
+    }
+
+    #[test]
+    fn changelog_set_entry_date_idempotent_when_already_set() {
+        let tmp = TempDir::new().unwrap();
+        write_changelog(&tmp, CL_BASE);
+        let action = Action::Changelog(ChangelogAction::SetEntryDate {
+            file: PathBuf::from("debian/changelog"),
+            version: "1.0-1".into(),
+            rfc2822: "Mon, 01 Jan 2024 00:00:00 +0000".into(),
+        });
+        // Timestamp already equal: `timestamp() == Some(rfc2822)` -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn changelog_replace_entry_changes_rewrites_bullets() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_changelog(&tmp, CL_BASE);
+        let action = Action::Changelog(ChangelogAction::ReplaceEntryChanges {
+            file: PathBuf::from("debian/changelog"),
+            version: "1.0-1".into(),
+            lines: vec!["  * New summary.".into()],
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("New summary."));
+        assert!(!after.contains("Initial release."));
+    }
+
+    #[test]
+    fn changelog_replace_entry_changes_idempotent_after_apply() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_changelog(&tmp, CL_BASE);
+        let action = Action::Changelog(ChangelogAction::ReplaceEntryChanges {
+            file: PathBuf::from("debian/changelog"),
+            version: "1.0-1".into(),
+            lines: vec!["  * Brand new.".into()],
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Brand new."));
+        // Re-applying the same change lines is a no-op: `current == *lines`
+        // short-circuits (kills the `==` -> `!=` mutant on that guard).
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn changelog_remove_bullet_wrong_text_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let content = "foo (1.0-1) unstable; urgency=medium\n\n  * Keep this.\n\n -- Jane Doe <jane@example.com>  Mon, 01 Jan 2024 00:00:00 +0000\n";
+        write_changelog(&tmp, content);
+        let action = Action::Changelog(ChangelogAction::RemoveBullet {
+            file: PathBuf::from("debian/changelog"),
+            version: "1.0-1".into(),
+            author: None,
+            text: "Not present.".into(),
+            occurrence: 0,
+        });
+        // `bullet_text == *text` never matches -> nothing removed.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    fn write_overrides(tmp: &TempDir, content: &str) -> PathBuf {
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("source.lintian-overrides");
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    #[test]
+    fn overrides_add_line_appends_new_override() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_overrides(&tmp, "foo: existing-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::AddLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            package: Some("foo".into()),
+            tag: "new-tag".into(),
+            info: None,
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("existing-tag"));
+        assert!(after.contains("new-tag"));
+    }
+
+    #[test]
+    fn overrides_add_line_idempotent_when_present() {
+        let tmp = TempDir::new().unwrap();
+        write_overrides(&tmp, "foo: existing-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::AddLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            package: Some("foo".into()),
+            tag: "existing-tag".into(),
+            info: None,
+        });
+        // already_present short-circuits -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn overrides_add_line_with_info_distinguishes_from_bare() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_overrides(&tmp, "foo: some-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::AddLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            package: Some("foo".into()),
+            tag: "some-tag".into(),
+            info: Some("usr/bin/baz".into()),
+        });
+        // Same package+tag but different info: must be treated as a new line.
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("usr/bin/baz"));
+    }
+
+    #[test]
+    fn overrides_drop_line_removes_matching() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_overrides(&tmp, "foo: keep-tag\nfoo: drop-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::DropLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            selector: OverrideLineSelector {
+                package: Some("foo".into()),
+                tag: "drop-tag".into(),
+                info: None,
+            },
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("keep-tag"));
+        assert!(!after.contains("drop-tag"));
+    }
+
+    #[test]
+    fn overrides_drop_line_wrong_package_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_overrides(&tmp, "foo: drop-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::DropLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            selector: OverrideLineSelector {
+                package: Some("other".into()),
+                tag: "drop-tag".into(),
+                info: None,
+            },
+        });
+        // Package mismatch in override_line_matches -> no match -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn overrides_rename_tag_changes_matching_tag() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_overrides(&tmp, "foo: old-name\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::RenameTag {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            from_tag: "old-name".into(),
+            to_tag: "new-name".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("new-name"));
+        assert!(!after.contains("old-name"));
+    }
+
+    #[test]
+    fn overrides_drop_only_meaningful_line_removes_file() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_overrides(&tmp, "foo: only-tag\n");
+        let action = Action::LintianOverrides(LintianOverridesAction::DropLine {
+            file: PathBuf::from("debian/source.lintian-overrides"),
+            selector: OverrideLineSelector {
+                package: Some("foo".into()),
+                tag: "only-tag".into(),
+                info: None,
+            },
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        // Nothing meaningful left -> file removed (`!has_content` branch).
+        assert!(!path.exists());
+    }
+
+    const COPYRIGHT_DEP5: &str = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: GPL-2+\n\nFiles: debian/*\nCopyright: 2024 Bar\nLicense: GPL-3+\n\nLicense: GPL-2+\n Full text of GPL-2+.\n";
+
+    fn write_copyright(tmp: &TempDir, content: &str) -> PathBuf {
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("copyright");
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    #[test]
+    fn copyright_typed_set_header_field() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::CopyrightHeader,
+            file: PathBuf::from("debian/copyright"),
+            field: "Source".into(),
+            value: "https://example.org/foo".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Source: https://example.org/foo"));
+    }
+
+    #[test]
+    fn copyright_typed_set_header_field_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::CopyrightHeader,
+            file: PathBuf::from("debian/copyright"),
+            field: "Upstream-Name".into(),
+            value: "foo".into(),
+        });
+        // Header field already equals value -> no change (kills the `==` -> `!=`
+        // mutant on the header equality guard).
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn copyright_typed_set_files_field() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::CopyrightFiles { glob: "*".into() },
+            file: PathBuf::from("debian/copyright"),
+            field: "Copyright".into(),
+            value: "2024 Foo and others".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Copyright: 2024 Foo and others"));
+        // The debian/* paragraph's Copyright is untouched.
+        assert!(after.contains("Copyright: 2024 Bar"));
+    }
+
+    #[test]
+    fn copyright_typed_set_files_field_idempotent_when_equal() {
+        let tmp = TempDir::new().unwrap();
+        write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::CopyrightFiles { glob: "*".into() },
+            file: PathBuf::from("debian/copyright"),
+            field: "Copyright".into(),
+            value: "2024 Foo".into(),
+        });
+        // Files paragraph field already equals value -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn copyright_typed_set_license_field() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::CopyrightLicense {
+                name: "GPL-2+".into(),
+            },
+            file: PathBuf::from("debian/copyright"),
+            field: "Comment".into(),
+            value: "see the license".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("Comment: see the license"));
+    }
+
+    #[test]
+    fn copyright_typed_remove_files_field() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_copyright(
+            &tmp,
+            "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nComment: drop me\nLicense: GPL-2+\n",
+        );
+        let action = Action::Deb822(Deb822Action::RemoveField {
+            paragraph: ParagraphSelector::CopyrightFiles { glob: "*".into() },
+            file: PathBuf::from("debian/copyright"),
+            field: "Comment".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(!after.contains("Comment: drop me"));
+        assert!(after.contains("Copyright: 2024 Foo"));
+    }
+
+    #[test]
+    fn copyright_typed_remove_header_field_absent_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_copyright(&tmp, COPYRIGHT_DEP5);
+        let action = Action::Deb822(Deb822Action::RemoveField {
+            paragraph: ParagraphSelector::CopyrightHeader,
+            file: PathBuf::from("debian/copyright"),
+            field: "Nonexistent".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    // A generic (non-control, non-copyright) deb822 file exercised through the
+    // pick_generic_paragraph / find_generic_paragraph_index / reorder paths.
+    fn write_generic_deb822(tmp: &TempDir, content: &str) -> PathBuf {
+        let path = tmp.path().join("meta.deb822");
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    const GENERIC_DEB822: &str =
+        "Name: alpha\nValue: one\n\nName: beta\nValue: two\n\nName: gamma\nValue: three\n";
+
+    #[test]
+    fn generic_set_field_by_key_selects_right_paragraph() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::ByKey {
+                field: "Name".into(),
+                value: "beta".into(),
+            },
+            file: PathBuf::from("meta.deb822"),
+            field: "Value".into(),
+            value: "TWO".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        // Only beta's Value changed; alpha and gamma are untouched.
+        assert_eq!(
+            after,
+            "Name: alpha\nValue: one\n\nName: beta\nValue: TWO\n\nName: gamma\nValue: three\n"
+        );
+    }
+
+    #[test]
+    fn generic_set_field_by_key_idempotent_when_equal() {
+        let tmp = TempDir::new().unwrap();
+        write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::ByKey {
+                field: "Name".into(),
+                value: "beta".into(),
+            },
+            file: PathBuf::from("meta.deb822"),
+            field: "Value".into(),
+            value: "two".into(),
+        });
+        // p.get(field) already equals value -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn generic_set_field_by_index_selects_right_paragraph() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::Index { index: 2 },
+            file: PathBuf::from("meta.deb822"),
+            field: "Value".into(),
+            value: "THREE".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            after,
+            "Name: alpha\nValue: one\n\nName: beta\nValue: two\n\nName: gamma\nValue: THREE\n"
+        );
+    }
+
+    #[test]
+    fn generic_set_field_by_index_out_of_range_errors() {
+        let tmp = TempDir::new().unwrap();
+        write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::SetField {
+            paragraph: ParagraphSelector::Index { index: 99 },
+            file: PathBuf::from("meta.deb822"),
+            field: "Value".into(),
+            value: "x".into(),
+        });
+        // pick_generic_paragraph returns None -> SetField errors.
+        assert!(apply_action(tmp.path(), &action).is_err());
+    }
+
+    #[test]
+    fn generic_remove_paragraph_by_index() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::RemoveParagraph {
+            paragraph: ParagraphSelector::Index { index: 1 },
+            file: PathBuf::from("meta.deb822"),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(!after.contains("beta"));
+        assert!(after.contains("alpha"));
+        assert!(after.contains("gamma"));
+    }
+
+    #[test]
+    fn generic_remove_paragraph_by_key_missing_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::RemoveParagraph {
+            paragraph: ParagraphSelector::ByKey {
+                field: "Name".into(),
+                value: "missing".into(),
+            },
+            file: PathBuf::from("meta.deb822"),
+        });
+        // find_generic_paragraph_index returns None -> no change.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn generic_reorder_paragraphs_moves_into_desired_order() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::ReorderParagraphs {
+            file: PathBuf::from("meta.deb822"),
+            key_field: "Name".into(),
+            order: vec!["gamma".into(), "alpha".into(), "beta".into()],
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        let gamma = after.find("gamma").unwrap();
+        let alpha = after.find("alpha").unwrap();
+        let beta = after.find("beta").unwrap();
+        assert!(gamma < alpha && alpha < beta);
+    }
+
+    #[test]
+    fn generic_reorder_paragraphs_already_in_order_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::ReorderParagraphs {
+            file: PathBuf::from("meta.deb822"),
+            key_field: "Name".into(),
+            order: vec!["alpha".into(), "beta".into(), "gamma".into()],
+        });
+        // Already in this order: every src_idx == dest_idx -> no move.
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn generic_reorder_paragraphs_partial_order_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_generic_deb822(&tmp, GENERIC_DEB822);
+        let action = Action::Deb822(Deb822Action::ReorderParagraphs {
+            file: PathBuf::from("meta.deb822"),
+            key_field: "Name".into(),
+            // Only covers 2 of 3 participants -> desired_keys.len() != participants.len().
+            order: vec!["gamma".into(), "alpha".into()],
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
 }
