@@ -35,7 +35,8 @@ stages:
    `Vcs-Browser`).
 
 7. **Post-processing** — optionally run lintian-brush fixers to clean up policy
-   issues in the generated packaging.
+   issues in the generated packaging, and add missing fields
+    (e.g. `Homepage` from metadata, `Vcs-*` from detected VCS URL).
 
 8. **Build and fix** (if `--iterate-fix`) — build the package in an isolated
    session and use deb-fix-build to iteratively resolve build failures.
