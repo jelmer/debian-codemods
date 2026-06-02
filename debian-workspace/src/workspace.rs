@@ -355,3 +355,256 @@ pub fn compat_level(ws: &dyn Workspace) -> Result<Option<u8>, Error> {
         .version()
         .and_then(|(_op, v)| v.to_string().parse::<u8>().ok()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fs_workspace::FsWorkspace;
+    use std::collections::BTreeMap;
+    use tempfile::TempDir;
+
+    /// A minimal in-memory `Workspace` used to exercise the trait's *default*
+    /// method bodies. `FsWorkspace` overrides `walk_dir`, so it can't drive the
+    /// default walk; this mock deliberately does not.
+    #[derive(Default)]
+    struct MockWorkspace {
+        // Maps a relative path to its raw bytes. Directories are implied by
+        // the path components of the files they contain.
+        files: BTreeMap<PathBuf, Vec<u8>>,
+    }
+
+    impl MockWorkspace {
+        fn with_file(mut self, rel: &str, content: &[u8]) -> Self {
+            self.files.insert(PathBuf::from(rel), content.to_vec());
+            self
+        }
+
+        /// The set of directory paths implied by the stored files.
+        fn dirs(&self) -> std::collections::BTreeSet<PathBuf> {
+            let mut dirs = std::collections::BTreeSet::new();
+            for f in self.files.keys() {
+                let mut cur = f.parent();
+                while let Some(p) = cur {
+                    if p.as_os_str().is_empty() {
+                        break;
+                    }
+                    dirs.insert(p.to_path_buf());
+                    cur = p.parent();
+                }
+            }
+            dirs
+        }
+    }
+
+    impl Workspace for MockWorkspace {
+        fn package(&self) -> Option<&str> {
+            None
+        }
+        fn current_version(&self) -> Option<&Version> {
+            None
+        }
+        fn parsed_control(&self) -> Result<Control, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_changelog(&self) -> Result<ChangeLog, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_copyright(&self) -> Result<Copyright, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_watch(&self) -> Result<ParsedWatchFile, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_rules(&self) -> Result<Makefile, Error> {
+            Err(Error::NotFound)
+        }
+        fn source_format(&self) -> Result<Option<String>, Error> {
+            Ok(None)
+        }
+        fn control(&self) -> Result<Box<dyn Editor<Control> + '_>, Error> {
+            Err(Error::NotFound)
+        }
+        fn changelog(&self) -> Result<Box<dyn Editor<ChangeLog> + '_>, Error> {
+            Err(Error::NotFound)
+        }
+        fn debcargo(&self) -> Result<Option<Box<dyn Editor<DocumentMut> + '_>>, Error> {
+            Ok(None)
+        }
+        fn read_file(&self, rel: &Path) -> Result<Option<std::borrow::Cow<'_, [u8]>>, Error> {
+            Ok(self
+                .files
+                .get(rel)
+                .map(|v| std::borrow::Cow::Borrowed(v.as_slice())))
+        }
+        fn write_file(&self, _rel: &Path, _content: &[u8]) -> Result<(), Error> {
+            unimplemented!("not needed by tests")
+        }
+        fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, Error> {
+            let dirs = self.dirs();
+            // The directory must exist (be implied by some file).
+            if !dirs.contains(rel) {
+                return Ok(None);
+            }
+            let mut names = std::collections::BTreeSet::new();
+            // Direct child files.
+            for f in self.files.keys() {
+                if f.parent() == Some(rel) {
+                    names.insert(f.file_name().unwrap().to_string_lossy().into_owned());
+                }
+            }
+            // Direct child directories.
+            for d in &dirs {
+                if d.parent() == Some(rel) {
+                    names.insert(d.file_name().unwrap().to_string_lossy().into_owned());
+                }
+            }
+            Ok(Some(names.into_iter().collect()))
+        }
+        fn file_mode(&self, _rel: &Path) -> Result<Option<u32>, Error> {
+            Ok(None)
+        }
+    }
+
+    fn make_pkg_with_control(dir: &Path, control: &str) {
+        let debian = dir.join("debian");
+        std::fs::create_dir_all(&debian).unwrap();
+        std::fs::write(debian.join("control"), control).unwrap();
+    }
+
+    fn fs_workspace(dir: &Path) -> FsWorkspace {
+        FsWorkspace::new(dir, None, None)
+    }
+
+    #[test]
+    fn default_walk_dir_recurses_nested_dirs() {
+        let ws = MockWorkspace::default()
+            .with_file("src/top.txt", b"a")
+            .with_file("src/sub/deep.txt", b"b")
+            .with_file("src/sub/other.txt", b"c");
+        let mut files = ws.walk_dir(Path::new("src")).unwrap().unwrap();
+        files.sort();
+        assert_eq!(
+            files,
+            vec![
+                PathBuf::from("src/sub/deep.txt"),
+                PathBuf::from("src/sub/other.txt"),
+                PathBuf::from("src/top.txt"),
+            ]
+        );
+    }
+
+    #[test]
+    fn default_walk_dir_missing_returns_none() {
+        let ws = MockWorkspace::default().with_file("src/top.txt", b"a");
+        assert_eq!(ws.walk_dir(Path::new("nonexistent")).unwrap(), None);
+    }
+
+    #[test]
+    fn default_walk_dir_empty_dir_returns_empty_vec() {
+        // An existing-but-empty directory must yield Some(empty), distinct from
+        // both Ok(None) (missing) and a non-empty result.
+        let ws = EmptyDirWorkspace;
+        assert_eq!(
+            ws.walk_dir(Path::new("empty")).unwrap(),
+            Some(Vec::<PathBuf>::new())
+        );
+    }
+
+    /// Workspace whose `empty` directory exists but has no entries.
+    struct EmptyDirWorkspace;
+    impl Workspace for EmptyDirWorkspace {
+        fn package(&self) -> Option<&str> {
+            None
+        }
+        fn current_version(&self) -> Option<&Version> {
+            None
+        }
+        fn parsed_control(&self) -> Result<Control, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_changelog(&self) -> Result<ChangeLog, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_copyright(&self) -> Result<Copyright, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_upstream_metadata(&self) -> Result<yaml_edit::YamlFile, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_watch(&self) -> Result<ParsedWatchFile, Error> {
+            Err(Error::NotFound)
+        }
+        fn parsed_rules(&self) -> Result<Makefile, Error> {
+            Err(Error::NotFound)
+        }
+        fn source_format(&self) -> Result<Option<String>, Error> {
+            Ok(None)
+        }
+        fn control(&self) -> Result<Box<dyn Editor<Control> + '_>, Error> {
+            Err(Error::NotFound)
+        }
+        fn changelog(&self) -> Result<Box<dyn Editor<ChangeLog> + '_>, Error> {
+            Err(Error::NotFound)
+        }
+        fn debcargo(&self) -> Result<Option<Box<dyn Editor<DocumentMut> + '_>>, Error> {
+            Ok(None)
+        }
+        fn read_file(&self, _rel: &Path) -> Result<Option<std::borrow::Cow<'_, [u8]>>, Error> {
+            Ok(None)
+        }
+        fn write_file(&self, _rel: &Path, _content: &[u8]) -> Result<(), Error> {
+            unimplemented!()
+        }
+        fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, Error> {
+            if rel == Path::new("empty") {
+                Ok(Some(vec![]))
+            } else {
+                Ok(None)
+            }
+        }
+        fn file_mode(&self, _rel: &Path) -> Result<Option<u32>, Error> {
+            Ok(None)
+        }
+    }
+
+    #[test]
+    fn compat_level_from_compat_file() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir_all(tmp.path().join("debian")).unwrap();
+        std::fs::write(tmp.path().join("debian/compat"), "10\n").unwrap();
+        assert_eq!(compat_level(&fs_workspace(tmp.path())).unwrap(), Some(10));
+    }
+
+    #[test]
+    fn compat_level_from_build_depends() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg_with_control(
+            tmp.path(),
+            "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\nArchitecture: any\nDescription: x\n y\n",
+        );
+        assert_eq!(compat_level(&fs_workspace(tmp.path())).unwrap(), Some(13));
+    }
+
+    #[test]
+    fn compat_level_build_depends_without_debhelper_compat() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg_with_control(
+            tmp.path(),
+            "Source: foo\nBuild-Depends: debhelper (>= 12)\n\nPackage: foo\nArchitecture: any\nDescription: x\n y\n",
+        );
+        assert_eq!(compat_level(&fs_workspace(tmp.path())).unwrap(), None);
+    }
+
+    #[test]
+    fn compat_level_none_when_no_sources() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg_with_control(
+            tmp.path(),
+            "Source: foo\n\nPackage: foo\nArchitecture: any\nDescription: x\n y\n",
+        );
+        assert_eq!(compat_level(&fs_workspace(tmp.path())).unwrap(), None);
+    }
+}
