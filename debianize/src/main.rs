@@ -175,6 +175,9 @@ struct Args {
     /// Force specific build system (override detection)
     #[arg(long)]
     buildsystem: Option<String>,
+
+    #[arg(long)]
+    debcargo: bool
 }
 
 fn main() -> Result<(), i32> {
@@ -353,6 +356,7 @@ fn main() -> Result<(), i32> {
         minimum_certainty: debian_analyzer::Certainty::Confident,
         consult_external_directory: args.consult_external_directory,
         verbose: args.verbose,
+        use_deb_cargo: args.debcargo,
         session: match args.session {
             SessionType::Plain => {
                 log::info!("Using plain session (no isolation)");
