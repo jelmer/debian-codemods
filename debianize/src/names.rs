@@ -77,7 +77,7 @@ pub fn upstream_package_to_debian_source_name(family: &str, name: &str) -> Optio
 
 pub fn upstream_package_to_debian_binary_name(family: &str, name: &str) -> String {
     match family {
-        "rust" => format!("rust-{}", name.to_lowercase()),
+        "rust" => format!("librust-{}-dev", name.to_lowercase()),
         "perl" => format!("lib{}-perl", name.to_lowercase().replace("::", "-")),
         "node" => format!("node-{}", name.to_lowercase()),
         _ => name.to_lowercase().replace('_', "-"),

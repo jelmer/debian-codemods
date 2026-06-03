@@ -130,7 +130,7 @@ pub fn default_test_preferences() -> DebianizePreferences {
         compat_level: None,
         check_wnpp: false,
         run_fixers: false,
-        use_debcargo: false
+        use_debcargo: false,
     }
 }
 
