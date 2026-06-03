@@ -747,11 +747,16 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name.replace("_", "-"),
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name from cargo.toml".to_string(),
+            ))
+        }
+    };
     let mut source = control.add_source(&format!("rust-{}", upstream_name));
-    if let Some(ref maintainer) = context.maintainer {
-        source.set_maintainer(maintainer);
-    }
+    
     context.bootstrap_debhelper(
         &mut source,
         DebhelperConfig {
@@ -759,7 +764,10 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
             ..Default::default()
         },
     )?;
-    if let Some(url) = context.metadata.repository() {
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    if let Some(url) = context.metadata.repository_browse() {
         source.set_vcs_browser(Some(url));
     };
     if let Some(url) = context.metadata.repository() {
@@ -769,8 +777,13 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     let (build_deps, _test_deps) = context.get_project_wide_deps();
     import_build_deps(&mut source, &build_deps);
     source.set_standards_version(&latest_standards_version().to_string());
-    let homepage: Result<Url, url::ParseError> = Url::parse(&context.metadata.homepage().unwrap());
-    source.set_homepage(&homepage.unwrap());
+
+    if let Some(homepage_str) = context.metadata.homepage() {
+        match Url::parse(homepage_str) {
+            Ok(url) => source.set_homepage(&url),
+            Err(_) => {} // ignoring the error if homepage url is not found
+        }
+    }
 
     let mut binary = control.add_binary(&format!("librust-{}-dev", upstream_name));
     binary.set_architecture(Some("all"));

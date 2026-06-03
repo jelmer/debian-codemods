@@ -178,7 +178,7 @@ struct Args {
 
     // Flag to generate the debcargo.toml file for rust package
     #[arg(long)]
-    debcargo: bool
+    debcargo: bool,
 }
 
 fn main() -> Result<(), i32> {
