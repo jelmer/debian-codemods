@@ -176,7 +176,7 @@ struct Args {
     #[arg(long)]
     buildsystem: Option<String>,
 
-    // Flag to generate the debcargo.toml file for rust package
+    // Generate the debcargo.toml file for rust package if required
     #[arg(long)]
     debcargo: bool,
 }
