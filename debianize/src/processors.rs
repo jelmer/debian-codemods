@@ -1,3 +1,6 @@
+use crate::names::{
+    upstream_package_to_debian_binary_name, upstream_package_to_debian_source_name,
+};
 use crate::Error;
 use breezyshim::branch::Branch;
 use breezyshim::workingtree::PyWorkingTree;
@@ -755,7 +758,8 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
             ))
         }
     };
-    let mut source = control.add_source(&format!("rust-{}", upstream_name));
+    let mut source = control
+        .add_source(&upstream_package_to_debian_source_name("rust", &upstream_name).unwrap());
 
     context.bootstrap_debhelper(
         &mut source,
@@ -785,8 +789,12 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     }
 
-    let mut binary = control.add_binary(&format!("librust-{}-dev", upstream_name));
+    let mut binary = control.add_binary(&upstream_package_to_debian_binary_name(
+        "rust",
+        &upstream_name,
+    ));
     binary.set_architecture(Some("all"));
+    binary.set_depends(Some(&build_deps));
     control.commit()?;
     Ok(())
 }
