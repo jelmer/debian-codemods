@@ -756,7 +756,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     };
     let mut source = control.add_source(&format!("rust-{}", upstream_name));
-    
+
     context.bootstrap_debhelper(
         &mut source,
         DebhelperConfig {
