@@ -744,7 +744,7 @@ fn process_debcargo(context: &mut ProcessorContext) -> Result<(), Error> {
 }
 
 fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
-    context.kickstart_tree(false)?;
+    context.kickstart_tree(true)?;
 
     let mut control = context.create_control_file()?;
     let upstream_name = match context.metadata.name() {
