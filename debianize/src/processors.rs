@@ -746,8 +746,6 @@ fn process_debcargo(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
-    println!("{:#?}", context.metadata);
-
     let mut control = context.create_control_file()?;
     let upstream_name = context.metadata.name().unwrap();
     let mut source = control.add_source(&format!("rust-{}", upstream_name));
@@ -792,7 +790,7 @@ pub fn process(
     buildsystem_subpath: PathBuf,
     maintainer: Option<String>,
     _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn PyWorkingTree, &Path) -> Result<(), Error>>>,
-    use_deb_cargo: bool,
+    use_debcargo: bool,
 ) -> Result<(), Error> {
     let bs_name = buildsystem.name().to_string();
     let mut context = ProcessorContext {
@@ -814,7 +812,7 @@ pub fn process(
         "gradle" => process_maven(&mut context), // For Java/gradle projects
         "Dist::Zilla" => process_dist_zilla(&mut context),
         "Module::Build::Tiny" => process_perl_build_tiny(&mut context),
-        "cargo" if use_deb_cargo => process_debcargo(&mut context), // if debcargo.toml needs to be generated
+        "cargo" if use_debcargo => process_debcargo(&mut context), // if debcargo.toml needs to be generated
         "cargo" => process_cargo(&mut context),
         "golang" => process_golang(&mut context),
         "R" => process_r(&mut context),
