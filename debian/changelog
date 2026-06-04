@@ -11,6 +11,8 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
     debhelper compat level rewrites debian/rules. Closes: #970174
   * Add fixer for uses-dh-addons (only applied with --opinionated).
     Closes: #953391
+  * deb-scrub-obsolete: Report UDD connection failures as a fatal error
+    rather than panicking. Closes: #1138770
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 04 Jun 2026 13:31:51 +0100
 
