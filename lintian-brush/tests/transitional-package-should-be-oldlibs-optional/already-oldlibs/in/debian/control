@@ -1,0 +1,11 @@
+Source: aide
+Section: admin
+Priority: optional
+
+Package: aide-dynamic
+Architecture: any
+Priority: optional
+Depends: aide, ${misc:Depends}
+Section: oldlibs
+Description: transitional package
+ This is a transitional package.
