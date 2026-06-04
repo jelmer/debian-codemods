@@ -5,6 +5,8 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
     overlap, rather than by directory depth alone. Closes: #1135874
   * Fix copyright-continued-lines-with-space to avoid mixed space+tab
     indentation. Closes: #966631
+  * lintian-brush: Drop lintian overrides made unused when bumping the
+    debhelper compat level rewrites debian/rules. Closes: #970174
   * Add fixer for uses-dh-addons (only applied with --opinionated).
     Closes: #953391
 
