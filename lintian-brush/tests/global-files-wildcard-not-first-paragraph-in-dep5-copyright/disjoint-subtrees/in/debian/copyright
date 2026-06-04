@@ -1,0 +1,20 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: numpy/core/src/common/npy_cpuinfo_parser.h
+License: BSD-3-clause
+Copyright: 2020, Author
+
+Files: numpy/fft/*
+License: BSD-3-clause
+Copyright: 2020, Another
+
+Files: numpy/random/src/distributions/*
+License: BSD-3-clause
+Copyright: 2020, Third
+
+Files: numpy/linalg/lapack_lite/*
+License: BSD-3-clause
+Copyright: 2020, Fourth
+
+License: BSD-3-clause
+ On Debian systems, see /usr/share/common-licenses/BSD.
