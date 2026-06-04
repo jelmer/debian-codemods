@@ -1,4 +1,4 @@
-debian-codemods (0.182) UNRELEASED; urgency=medium
+debian-codemods (0.181.1) unstable; urgency=medium
 
   * Bump rust-sha1 to 0.11.
 
