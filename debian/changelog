@@ -1,6 +1,8 @@
 debian-codemods (0.181) UNRELEASED; urgency=medium
 
   * Add fixer for binary-package-depends-on-toolchain-package.
+  * Only reorder Files paragraphs in debian/copyright when patterns actually
+    overlap, rather than by directory depth alone. Closes: #1135874
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
 
