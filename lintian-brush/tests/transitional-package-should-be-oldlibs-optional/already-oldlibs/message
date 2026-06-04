@@ -1,0 +1,3 @@
+Move transitional package aide-dynamic to oldlibs/optional per policy 4.0.1.
+Fixed-Lintian-Issues:
+ aide-dynamic binary: transitional-package-not-oldlibs-optional oldlibs/optional

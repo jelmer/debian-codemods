@@ -648,6 +648,7 @@ mod tests {
             compat_level: Some(13),
             check_wnpp: true,
             run_fixers: true,
+            use_debcargo: false,
         };
 
         let fixer_prefs: lintian_brush::FixerPreferences = debianize_prefs.into();
@@ -1224,6 +1225,7 @@ pub struct DebianizePreferences {
     pub compat_level: Option<u32>,
     pub check_wnpp: bool,
     pub run_fixers: bool,
+    pub use_debcargo: bool,
 }
 
 impl Default for DebianizePreferences {
@@ -1251,6 +1253,7 @@ impl Default for DebianizePreferences {
             compat_level: None,
             check_wnpp: true,
             run_fixers: true,
+            use_debcargo: false,
         }
     }
 }
@@ -1619,6 +1622,9 @@ pub fn debianize(
         Box<dyn FnOnce(&dyn PyWorkingTree, &Path) -> Result<(), Error>>,
     > = None;
 
+    // Check if debcargo flag is used to generate the debcargo.toml for a rust project
+    let use_debcargo = preferences.use_debcargo;
+
     // Use the session created from preferences
 
     // Run the appropriate processor
@@ -1634,6 +1640,7 @@ pub fn debianize(
         buildsystem_subpath,
         Some(maintainer.clone()),
         kickstart_from_dist,
+        use_debcargo,
     )?;
 
     // TODO: Avoid re-parsing debian/control here; ideally the processor would
