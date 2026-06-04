@@ -5,6 +5,31 @@
 
 pub use lintian_overrides::*;
 
+use crate::FixerError;
+use debian_workspace::Workspace;
+use std::path::{Path, PathBuf};
+
+/// Lintian-overrides files lintian-brush considers, as package-relative paths:
+/// `debian/source/lintian-overrides` followed by every
+/// `debian/*.lintian-overrides`, sorted. Reads through the workspace so it
+/// works for both on-disk and LSP hosts.
+pub fn override_files(ws: &dyn Workspace) -> Result<Vec<PathBuf>, FixerError> {
+    let mut paths = Vec::new();
+    let source_rel = PathBuf::from("debian/source/lintian-overrides");
+    if ws.read_file(&source_rel)?.is_some() {
+        paths.push(source_rel);
+    }
+    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
+        entries.sort();
+        for name in entries {
+            if name.ends_with(".lintian-overrides") {
+                paths.push(PathBuf::from("debian").join(name));
+            }
+        }
+    }
+    Ok(paths)
+}
+
 /// Extension trait for matching override lines against LintianIssue
 pub trait OverrideLineMatch {
     /// Check if this override matches a LintianIssue
