@@ -1,6 +1,9 @@
 use crate::debhelper::detect_debhelper_buildsystem;
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, FilesystemAction, ParagraphSelector};
+use crate::diagnostic::{
+    Action, Deb822Action, Diagnostic, FilesystemAction, LintianOverridesAction,
+    OverrideLineSelector, ParagraphSelector,
+};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_analyzer::debhelper::{
     lowest_non_deprecated_compat_level, maximum_debhelper_compat_version,
@@ -59,12 +62,18 @@ fn get_current_package_version(ws: &dyn Workspace) -> Result<Version, FixerError
 // Transformation tracking
 struct Transformations {
     subitems: HashSet<String>,
+    /// Lintian tags whose overrides become unused once the matching
+    /// construct is rewritten out of debian/rules. Populated alongside the
+    /// transform that removes the construct, so an override is only dropped
+    /// when the change that obsoletes it was actually made. See bug #970174.
+    stale_override_tags: HashSet<String>,
 }
 
 impl Transformations {
     fn new() -> Self {
         Self {
             subitems: HashSet::new(),
+            stale_override_tags: HashSet::new(),
         }
     }
 
@@ -74,6 +83,11 @@ impl Transformations {
 
     fn remove(&mut self, item: &str) {
         self.subitems.remove(item);
+    }
+
+    /// Record that overrides for `tag` are now stale.
+    fn add_stale_tag(&mut self, tag: impl Into<String>) {
+        self.stale_override_tags.insert(tag.into());
     }
 }
 
@@ -200,10 +214,12 @@ fn upgrade_to_installsystemd(
         if targets.contains(&"override_dh_systemd_enable".to_string()) {
             rule.rename_target("override_dh_systemd_enable", "override_dh_installsystemd")
                 .map_err(|e| FixerError::Other(format!("Failed to rename target: {:?}", e)))?;
+            transforms.add_stale_tag("debian-rules-uses-deprecated-systemd-override");
         }
         if targets.contains(&"override_dh_systemd_start".to_string()) {
             rule.rename_target("override_dh_systemd_start", "override_dh_installsystemd")
                 .map_err(|e| FixerError::Other(format!("Failed to rename target: {:?}", e)))?;
+            transforms.add_stale_tag("debian-rules-uses-deprecated-systemd-override");
         }
 
         let recipes: Vec<String> = rule.recipes().collect();
@@ -471,6 +487,7 @@ fn update_rules_for_compat_12(
             if new_recipe.contains("dh_clean -k") {
                 new_recipe = new_recipe.replace("dh_clean -k", "dh_prep");
                 transforms.add("debian/rules: Replace dh_clean -k with dh_prep.".to_string());
+                transforms.add_stale_tag("dh-clean-k-is-deprecated");
             }
 
             // Replace --no-restart-on-upgrade with --no-stop-on-upgrade
@@ -755,6 +772,55 @@ fn remove_nocheck_wrapper(
     Ok(())
 }
 
+/// Drop override lines for tags whose construct the compat bump rewrote out of
+/// debian/rules. Without this, the override is left behind as an unused
+/// override after the change (bug #970174).
+fn drop_stale_overrides(
+    ws: &dyn Workspace,
+    transforms: &mut Transformations,
+    actions: &mut Vec<Action>,
+) -> Result<(), FixerError> {
+    if transforms.stale_override_tags.is_empty() {
+        return Ok(());
+    }
+
+    for file in crate::lintian_overrides::override_files(ws)? {
+        let Some(bytes) = ws.read_file(&file)? else {
+            continue;
+        };
+        let Ok(text) = String::from_utf8(bytes.into_owned()) else {
+            continue;
+        };
+        let Ok(parsed) = crate::lintian_overrides::LintianOverrides::parse(&text).ok() else {
+            continue;
+        };
+        for line in parsed.lines() {
+            let Some(tag) = line.tag() else {
+                continue;
+            };
+            let tag = tag.text().to_string();
+            if !transforms.stale_override_tags.contains(&tag) {
+                continue;
+            }
+            actions.push(Action::LintianOverrides(LintianOverridesAction::DropLine {
+                file: file.clone(),
+                selector: OverrideLineSelector {
+                    tag: tag.clone(),
+                    info: line.info().map(|i| i.trim().to_string()),
+                    package: line.package(),
+                },
+            }));
+            transforms.add(format!(
+                "{}: Drop now-unused override for {}.",
+                file.display(),
+                tag
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 pub fn detect(
     ws: &dyn Workspace,
     preferences: &FixerPreferences,
@@ -898,6 +964,9 @@ pub fn detect(
             _ => {}
         }
     }
+
+    // Drop overrides for tags the rules rewrites just made unused.
+    drop_stale_overrides(ws, &mut transforms, &mut actions)?;
 
     // Emit a single Write for debian/rules if any rules-touching helper
     // opened it AND the resulting content differs from the original.
@@ -1236,5 +1305,75 @@ mod tests {
         // Either rules wasn't opened at all, or its rendering equals
         // the input.
         assert!(rendered.is_empty() || rendered == original);
+    }
+
+    /// A compat bump that rewrites `dh_clean -k` to `dh_prep` also drops
+    /// the now-unused `dh-clean-k-is-deprecated` override (bug #970174).
+    #[test]
+    fn test_drops_stale_override_for_rewritten_construct() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir_all(debian_dir.join("source")).unwrap();
+
+        fs::write(debian_dir.join("compat"), "8\n").unwrap();
+        fs::write(
+            debian_dir.join("control"),
+            "Source: test-package\nBuild-Depends: debhelper (>= 8)\n\nPackage: test-package\nArchitecture: any\n",
+        )
+        .unwrap();
+        fs::write(
+            debian_dir.join("rules"),
+            "%:\n\tdh $@\n\noverride_dh_prep:\n\tdh_clean -k\n",
+        )
+        .unwrap();
+        fs::write(
+            debian_dir.join("source/lintian-overrides"),
+            "test-package source: dh-clean-k-is-deprecated\n",
+        )
+        .unwrap();
+
+        let mut preferences = FixerPreferences::default();
+        preferences.compat_release = Some("buster".to_string());
+
+        let result = run_apply(base_path, &preferences).unwrap();
+        assert!(result.description.contains(
+            "debian/source/lintian-overrides: Drop now-unused override for dh-clean-k-is-deprecated."
+        ));
+
+        let rules = fs::read_to_string(debian_dir.join("rules")).unwrap();
+        assert!(rules.contains("dh_prep"));
+        assert!(!rules.contains("dh_clean -k"));
+
+        // The override file held only the now-unused line, so it is
+        // removed entirely once that line is dropped.
+        assert!(!debian_dir.join("source/lintian-overrides").exists());
+    }
+
+    /// Overrides for tags unrelated to the changes made are left alone.
+    #[test]
+    fn test_keeps_unrelated_override() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+        let debian_dir = base_path.join("debian");
+        fs::create_dir_all(debian_dir.join("source")).unwrap();
+
+        fs::write(debian_dir.join("compat"), "8\n").unwrap();
+        fs::write(
+            debian_dir.join("control"),
+            "Source: test-package\nBuild-Depends: debhelper (>= 8)\n\nPackage: test-package\nArchitecture: any\n",
+        )
+        .unwrap();
+        fs::write(debian_dir.join("rules"), "%:\n\tdh $@\n").unwrap();
+        let override_line = "test-package source: some-other-tag\n";
+        fs::write(debian_dir.join("source/lintian-overrides"), override_line).unwrap();
+
+        let mut preferences = FixerPreferences::default();
+        preferences.compat_release = Some("buster".to_string());
+
+        run_apply(base_path, &preferences).unwrap();
+
+        let overrides = fs::read_to_string(debian_dir.join("source/lintian-overrides")).unwrap();
+        assert_eq!(overrides, override_line);
     }
 }
