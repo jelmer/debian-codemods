@@ -678,8 +678,8 @@ pub async fn detect_scrub_obsolete(
     upgrade_release: &str,
     keep_minimum_depends_versions: bool,
 ) -> Result<DetectedChanges, ScrubObsoleteError> {
-    let source_package_checker = UddPackageChecker::new(compat_release, true).await;
-    let binary_package_checker = UddPackageChecker::new(upgrade_release, false).await;
+    let source_package_checker = UddPackageChecker::new(compat_release, true).await?;
+    let binary_package_checker = UddPackageChecker::new(upgrade_release, false).await?;
 
     let control_file_rel = Path::new("debian/control");
     let (control_actions, control_ws_actions) = if ws.parsed_debcargo()?.is_some() {
