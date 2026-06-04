@@ -1,3 +1,4 @@
+use crate::names::upstream_package_to_debian_source_name;
 use crate::Error;
 use breezyshim::branch::Branch;
 use breezyshim::workingtree::PyWorkingTree;
@@ -15,6 +16,7 @@ use ognibuild::session::Session;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamMetadata;
+use url::Url;
 
 struct ProcessorContext<'a> {
     session: &'a dyn Session,
@@ -662,7 +664,7 @@ fn crate_version_is_newer(available: &semver::Version, desired: &semver::Version
     (available.major, available.minor) > (desired.major, desired.minor)
 }
 
-fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
+fn process_debcargo(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(false)?;
 
     let cratename = match context
@@ -741,6 +743,53 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
+fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
+    context.kickstart_tree(true)?;
+
+    let mut control = context.create_control_file()?;
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name from cargo.toml".to_string(),
+            ))
+        }
+    };
+    let mut source = control
+        .add_source(&upstream_package_to_debian_source_name("rust", &upstream_name).unwrap());
+
+    context.bootstrap_debhelper(
+        &mut source,
+        DebhelperConfig {
+            addons: vec!["rust"],
+            ..Default::default()
+        },
+    )?;
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    if let Some(url) = context.metadata.repository_browse() {
+        source.set_vcs_browser(Some(url));
+    };
+    if let Some(url) = context.metadata.repository() {
+        source.set_vcs_git(url);
+    };
+    source.set_section(Some("rust"));
+    let (build_deps, _test_deps) = context.get_project_wide_deps();
+    import_build_deps(&mut source, &build_deps);
+    source.set_standards_version(&latest_standards_version().to_string());
+
+    if let Some(homepage_str) = context.metadata.homepage() {
+        match Url::parse(homepage_str) {
+            Ok(url) => source.set_homepage(&url),
+            Err(_) => {} // ignoring the error if homepage url is not found
+        }
+    }
+
+    control.commit()?;
+    Ok(())
+}
+
 pub fn process(
     session: &dyn Session,
     wt: &dyn PyWorkingTree,
@@ -753,6 +802,7 @@ pub fn process(
     buildsystem_subpath: PathBuf,
     maintainer: Option<String>,
     _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn PyWorkingTree, &Path) -> Result<(), Error>>>,
+    use_debcargo: bool,
 ) -> Result<(), Error> {
     let bs_name = buildsystem.name().to_string();
     let mut context = ProcessorContext {
@@ -774,6 +824,7 @@ pub fn process(
         "gradle" => process_maven(&mut context), // For Java/gradle projects
         "Dist::Zilla" => process_dist_zilla(&mut context),
         "Module::Build::Tiny" => process_perl_build_tiny(&mut context),
+        "cargo" if use_debcargo => process_debcargo(&mut context), // if debcargo.toml needs to be generated
         "cargo" => process_cargo(&mut context),
         "golang" => process_golang(&mut context),
         "R" => process_r(&mut context),
