@@ -1,6 +1,8 @@
 debian-codemods (0.181) UNRELEASED; urgency=medium
 
   * Add fixer for binary-package-depends-on-toolchain-package.
+  * Bump minimum makefile-lossless to 0.3.38, fixing support for
+    define/enddef. Closes: #1138773
   * deb-scrub-obsolete: Drop redundant alternative dependencies after
     stripping version constraints. Closes: #981529
   * Only reorder Files paragraphs in debian/copyright when patterns actually

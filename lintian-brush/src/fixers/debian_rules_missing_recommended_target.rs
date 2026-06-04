@@ -229,6 +229,36 @@ mod tests {
     }
 
     #[test]
+    fn test_parses_define_endef_block() {
+        // A `define`/`endef` block used to trip up the makefile parser, which
+        // made the fixer skip with a spurious "parse errors" warning.
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let rules = debian.join("rules");
+        fs::write(
+            &rules,
+            "#!/usr/bin/make -f\n\ndefine COMMON_CONFIGURE_ARGS\n\t--prefix=/usr\n\t--disable-static\nendef\n\nbuild: blah\n\t$(MAKE) install\n",
+        )
+        .unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: blah\n\nPackage: blah\nArchitecture: any\nDescription: blah\n blah\n",
+        )
+        .unwrap();
+
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Add missing debian/rules targets build-indep, build-arch."
+        );
+        assert_eq!(
+            fs::read_to_string(&rules).unwrap(),
+            "#!/usr/bin/make -f\n\ndefine COMMON_CONFIGURE_ARGS\n\t--prefix=/usr\n\t--disable-static\nendef\n\nbuild: blah\n\t$(MAKE) install\n\nbuild-indep:\n\nbuild-arch: build\n",
+        );
+    }
+
+    #[test]
     fn test_no_change_when_targets_present() {
         let tmp = TempDir::new().unwrap();
         let debian = tmp.path().join("debian");
