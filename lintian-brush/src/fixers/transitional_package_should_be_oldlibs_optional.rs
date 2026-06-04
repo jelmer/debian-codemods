@@ -226,6 +226,68 @@ mod tests {
     }
 
     #[test]
+    fn test_does_not_oscillate_with_redundant_priority_fixer() {
+        // Regression test for https://bugs.debian.org/1138774.
+        //
+        // The aide-dynamic transitional package already sits in oldlibs with a
+        // redundant Priority: optional. This fixer must drop that field rather
+        // than preserve it, otherwise it fights redundant-priority-optional-field
+        // forever (one adds Priority, the other removes it).
+        let temp_dir = TempDir::new().unwrap();
+        let debian_dir = temp_dir.path().join("debian");
+        fs::create_dir_all(&debian_dir).unwrap();
+
+        let control_path = debian_dir.join("control");
+        fs::write(
+            &control_path,
+            "Source: aide\nSection: admin\nPriority: optional\n\nPackage: aide-dynamic\nPriority: optional\nSection: oldlibs\nDescription: transitional package\n This is a transitional package.\n",
+        )
+        .unwrap();
+
+        let result = run_apply(temp_dir.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Move transitional package aide-dynamic to oldlibs/optional per policy 4.0.1.",
+        );
+        assert_eq!(
+            fs::read_to_string(&control_path).unwrap(),
+            "Source: aide\nSection: admin\nPriority: optional\n\nPackage: aide-dynamic\nSection: oldlibs\nDescription: transitional package\n This is a transitional package.\n",
+        );
+
+        // With the binary Priority gone, redundant-priority-optional-field has
+        // nothing left to do on the binary, so the two fixers reach a fixed
+        // point instead of oscillating.
+        let ws = debian_workspace::fs_workspace::FsWorkspace::new(
+            temp_dir.path(),
+            Some("aide".into()),
+            Some("1.0".parse().unwrap()),
+        );
+        let redundant = crate::fixers::redundant_priority_optional_field::detect(
+            &ws,
+            &FixerPreferences::default(),
+        )
+        .unwrap();
+        let touches_binary = redundant.iter().any(|d| {
+            d.plans.iter().flat_map(|p| &p.actions).any(|a| {
+                matches!(
+                    a,
+                    Action::Deb822(Deb822Action::RemoveField {
+                        paragraph: ParagraphSelector::Binary { .. },
+                        ..
+                    })
+                )
+            })
+        });
+        assert!(!touches_binary);
+
+        // And this fixer makes no further change on its own output.
+        assert!(matches!(
+            run_apply(temp_dir.path()),
+            Err(FixerError::NoChanges)
+        ));
+    }
+
+    #[test]
     fn test_transitional_package_drops_priority_when_source_priority_unset() {
         // The source stanza declares no Priority, so the default is
         // optional. A binary's explicit Priority: optional is therefore

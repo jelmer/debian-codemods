@@ -65,7 +65,7 @@ pub fn upstream_name_to_debian_source_name(mut upstream_name: &str) -> Option<St
 
 pub fn upstream_package_to_debian_source_name(family: &str, name: &str) -> Option<String> {
     match family {
-        "rust" => Some(format!("rust-{}", name.to_lowercase())),
+        "rust" => Some(format!("rust-{}", name.to_lowercase().replace("_", "-"))),
         "perl" => Some(format!(
             "lib{}-perl",
             name.to_lowercase().replace("::", "-")
@@ -77,7 +77,7 @@ pub fn upstream_package_to_debian_source_name(family: &str, name: &str) -> Optio
 
 pub fn upstream_package_to_debian_binary_name(family: &str, name: &str) -> String {
     match family {
-        "rust" => format!("rust-{}", name.to_lowercase()),
+        "rust" => format!("rust-{}", name.to_lowercase()).replace("_", "-"),
         "perl" => format!("lib{}-perl", name.to_lowercase().replace("::", "-")),
         "node" => format!("node-{}", name.to_lowercase()),
         _ => name.to_lowercase().replace('_', "-"),
@@ -151,8 +151,8 @@ mod tests {
     fn test_upstream_package_to_debian_source_name() {
         // Test rust packages
         assert_eq!(
-            Some("rust-foobar"),
-            upstream_package_to_debian_source_name("rust", "FooBar").as_deref()
+            Some("rust-foo-bar"),
+            upstream_package_to_debian_source_name("rust", "foo_bar").as_deref()
         );
 
         // Test perl packages
