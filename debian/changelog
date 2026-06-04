@@ -1,6 +1,8 @@
 debian-codemods (0.181) UNRELEASED; urgency=medium
 
   * Add fixer for binary-package-depends-on-toolchain-package.
+  * Only reorder Files paragraphs in debian/copyright when patterns actually
+    overlap, rather than by directory depth alone. Closes: #1135874
   * Fix copyright-continued-lines-with-space to avoid mixed space+tab
     indentation. Closes: #966631
   * Add fixer for uses-dh-addons (only applied with --opinionated).
