@@ -117,10 +117,14 @@ pub fn detect(
                 make_option(b" \t", 2),
                 make_option(&[b' '; 8], 1),
             ];
+            // Prefer one of the options that lines up with the previous line's
+            // indentation. When none matches, replace the leading tab with a
+            // single space rather than space+tab, so consistently tab-indented
+            // text does not end up with every line starting with " \t" (#966631).
             line = options
                 .into_iter()
                 .find(|opt| value_offset(opt) == prev_value_offset)
-                .unwrap_or_else(|| make_option(b" \t", 1));
+                .unwrap_or_else(|| make_option(b" ", 1));
         }
 
         if line
@@ -268,7 +272,7 @@ mod tests {
         );
         assert_eq!(
             fs::read(&copyright).unwrap(),
-            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n \tThis is a continuation line\n",
+            b"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nLicense: GPL-3+\n This is a continuation line\n",
         );
     }
 

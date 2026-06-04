@@ -3,6 +3,8 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
   * Add fixer for binary-package-depends-on-toolchain-package.
   * Bump minimum makefile-lossless to 0.3.38, fixing support for
     define/enddef. Closes: #1138773
+  * Fix copyright-continued-lines-with-space to avoid mixed space+tab
+    indentation. Closes: #966631
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
 
