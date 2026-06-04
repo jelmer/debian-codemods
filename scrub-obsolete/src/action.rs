@@ -1,4 +1,4 @@
-use debian_control::lossless::relations::Relation;
+use debian_control::lossless::relations::{Entry, Relation};
 
 #[derive(Debug, PartialEq)]
 pub enum Action {
@@ -12,6 +12,10 @@ pub enum Action {
     ReplaceTransition(Relation, Vec<Relation>),
     /// Drop a conflict with a removed package.
     DropObsoleteConflict(Relation),
+    /// Drop an alternative entry that became redundant once version
+    /// constraints were stripped, because one of its alternatives is already
+    /// required unconditionally elsewhere in the field.
+    DropRedundant(Entry),
 }
 
 impl std::fmt::Display for Action {
@@ -34,6 +38,9 @@ impl std::fmt::Display for Action {
             }
             Action::DropObsoleteConflict(r) => {
                 write!(f, "Drop conflict with removed package {}", r)
+            }
+            Action::DropRedundant(r) => {
+                write!(f, "Drop redundant alternative dependency {}", r)
             }
         }
     }
@@ -70,6 +77,10 @@ impl serde::Serialize for Action {
             }
             Action::DropObsoleteConflict(rel) => {
                 let action = serde_json::json!(["drop-obsolete-conflict", rel.to_string()]);
+                action.serialize(serializer)
+            }
+            Action::DropRedundant(entry) => {
+                let action = serde_json::json!(["drop-redundant", entry.to_string()]);
                 action.serialize(serializer)
             }
         }
@@ -143,6 +154,14 @@ impl<'a> serde::Deserialize<'a> for Action {
                         })?)
                         .map_err(serde::de::Error::custom)?;
                         Ok(Action::DropObsoleteConflict(rel))
+                    }
+                    "drop-redundant" => {
+                        let entry =
+                            Entry::from_str(action[1].as_str().ok_or_else(|| {
+                                serde::de::Error::custom("Entry must be a string")
+                            })?)
+                            .map_err(serde::de::Error::custom)?;
+                        Ok(Action::DropRedundant(entry))
                     }
                     _ => Err(serde::de::Error::custom("Unknown action type")),
                 }
