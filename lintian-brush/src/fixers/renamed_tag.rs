@@ -3,26 +3,8 @@ use crate::diagnostic::{Action, Diagnostic, LintianOverridesAction};
 use crate::lintian_overrides::LintianOverrides;
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
-use std::path::{Path, PathBuf};
 
 include!(concat!(env!("OUT_DIR"), "/renamed_tags.rs"));
-
-fn find_override_files(ws: &dyn Workspace) -> Result<Vec<PathBuf>, FixerError> {
-    let mut paths = Vec::new();
-    let source_rel = PathBuf::from("debian/source/lintian-overrides");
-    if ws.read_file(&source_rel)?.is_some() {
-        paths.push(source_rel);
-    }
-    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
-        entries.sort();
-        for name in entries {
-            if name.ends_with(".lintian-overrides") {
-                paths.push(PathBuf::from("debian").join(name));
-            }
-        }
-    }
-    Ok(paths)
-}
 
 pub fn detect(
     ws: &dyn Workspace,
@@ -31,7 +13,7 @@ pub fn detect(
     let renames = get_renamed_tags();
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    for rel in find_override_files(ws)? {
+    for rel in crate::lintian_overrides::override_files(ws)? {
         let Some(bytes) = ws.read_file(&rel)? else {
             continue;
         };
@@ -90,6 +72,7 @@ mod tests {
     use crate::detector::Detector;
     use crate::{FixerPreferences, Version};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn run_apply(base: &Path) -> Result<crate::FixerResult, FixerError> {

@@ -3,10 +3,18 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
   * Add fixer for binary-package-depends-on-toolchain-package.
   * Bump minimum makefile-lossless to 0.3.38, fixing support for
     define/enddef. Closes: #1138773
+  * deb-scrub-obsolete: Drop redundant alternative dependencies after
+    stripping version constraints. Closes: #981529
+  * Only reorder Files paragraphs in debian/copyright when patterns actually
+    overlap, rather than by directory depth alone. Closes: #1135874
   * Fix copyright-continued-lines-with-space to avoid mixed space+tab
     indentation. Closes: #966631
+  * lintian-brush: Drop lintian overrides made unused when bumping the
+    debhelper compat level rewrites debian/rules. Closes: #970174
+  * Add fixer for uses-dh-addons (only applied with --opinionated).
+    Closes: #953391
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 04 Jun 2026 13:31:51 +0100
 
 debian-codemods (0.180) unstable; urgency=medium
 
