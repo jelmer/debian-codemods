@@ -1,0 +1,1 @@
+Use dh-sequence-* build dependencies instead of dh --with: gir.

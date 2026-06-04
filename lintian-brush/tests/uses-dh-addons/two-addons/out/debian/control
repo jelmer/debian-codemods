@@ -1,0 +1,7 @@
+Source: blah
+Build-Depends: debhelper-compat (= 13), dh-sequence-gir, dh-sequence-gnome
+
+Package: blah
+Architecture: any
+Description: blah
+ blah
