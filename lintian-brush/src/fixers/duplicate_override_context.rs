@@ -4,27 +4,7 @@ use crate::lintian_overrides::LintianOverrides;
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-
-/// Return the package-relative paths of all lintian-overrides files in the
-/// workspace, in a stable order: source overrides first, then per-binary
-/// overrides sorted by filename.
-fn find_override_files(ws: &dyn Workspace) -> Result<Vec<PathBuf>, FixerError> {
-    let mut paths = Vec::new();
-    let source_rel = PathBuf::from("debian/source/lintian-overrides");
-    if ws.read_file(&source_rel)?.is_some() {
-        paths.push(source_rel);
-    }
-    if let Some(mut entries) = ws.list_dir(Path::new("debian"))? {
-        entries.sort();
-        for name in entries {
-            if name.ends_with(".lintian-overrides") {
-                paths.push(PathBuf::from("debian").join(name));
-            }
-        }
-    }
-    Ok(paths)
-}
+use std::path::Path;
 
 pub fn detect(
     ws: &dyn Workspace,
@@ -32,7 +12,7 @@ pub fn detect(
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
-    for rel in find_override_files(ws)? {
+    for rel in crate::lintian_overrides::override_files(ws)? {
         let Some(bytes) = ws.read_file(&rel)? else {
             continue;
         };

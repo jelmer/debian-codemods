@@ -3,6 +3,8 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
   * Add fixer for binary-package-depends-on-toolchain-package.
   * Fix copyright-continued-lines-with-space to avoid mixed space+tab
     indentation. Closes: #966631
+  * lintian-brush: Drop lintian overrides made unused when bumping the
+    debhelper compat level rewrites debian/rules. Closes: #970174
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
 
