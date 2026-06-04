@@ -110,13 +110,13 @@ impl UddPackageChecker {
     ///
     /// If `build` is true, the checker will consider build-essential packages
     /// as essential.
-    pub async fn new(release: &str, build: bool) -> Self {
-        Self {
+    pub async fn new(release: &str, build: bool) -> Result<Self, sqlx::Error> {
+        Ok(Self {
             release: release.to_string(),
             build,
             transitions: Arc::new(Mutex::new(None)),
-            conn: debian_analyzer::udd::connect_udd_mirror().await.unwrap(),
-        }
+            conn: debian_analyzer::udd::connect_udd_mirror().await?,
+        })
     }
 }
 
