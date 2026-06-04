@@ -1,6 +1,8 @@
 debian-codemods (0.181) UNRELEASED; urgency=medium
 
   * Add fixer for binary-package-depends-on-toolchain-package.
+  * deb-scrub-obsolete: Drop redundant alternative dependencies after
+    stripping version constraints. Closes: #981529
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 23 May 2026 11:29:40 +0100
 
