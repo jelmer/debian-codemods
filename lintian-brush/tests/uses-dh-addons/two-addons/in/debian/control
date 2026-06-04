@@ -1,0 +1,7 @@
+Source: blah
+Build-Depends: debhelper-compat (= 13), gobject-introspection, gnome-pkg-tools
+
+Package: blah
+Architecture: any
+Description: blah
+ blah
