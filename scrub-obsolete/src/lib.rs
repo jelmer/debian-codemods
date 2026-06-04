@@ -188,7 +188,7 @@ fn update_depends(
     checker: &dyn PackageChecker,
     keep_minimum_versions: bool,
 ) -> Vec<Action> {
-    filter_relations(base, field, |oldrelation: &mut Entry| {
+    let mut actions = filter_relations(base, field, |oldrelation: &mut Entry| {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(drop_obsolete_depends(
                 oldrelation,
@@ -197,7 +197,68 @@ fn update_depends(
             ))
         })
         .unwrap()
-    })
+    });
+    actions.extend(drop_redundant_entries(base, field));
+    actions
+}
+
+/// Drop alternative entries that have become redundant.
+///
+/// After version constraints are stripped, an alternative entry such as
+/// `libfoo-perl | perl` is redundant if one of its alternatives (here `perl`)
+/// is already required unconditionally by another entry in the same field. In
+/// that case the whole alternative entry can be dropped. See Debian bug
+/// #981529.
+fn drop_redundant_entries(base: &mut Paragraph, field: &str) -> Vec<Action> {
+    let Some(old_contents) = base.get(field) else {
+        return vec![];
+    };
+    let mut relations: Relations = old_contents.parse().unwrap();
+
+    // Entries that unconditionally require a single package (no alternatives,
+    // no version constraint). These can subsume an alternative elsewhere.
+    let standalone: Vec<Entry> = relations
+        .entries()
+        .filter(|entry| {
+            let mut rels = entry.relations();
+            match (rels.next(), rels.next()) {
+                (Some(rel), None) => rel.version().is_none(),
+                _ => false,
+            }
+        })
+        .collect();
+
+    let mut to_remove = vec![];
+    let mut actions = vec![];
+    for (i, entry) in relations.entries().enumerate() {
+        // Only alternative groups (more than one option) can be made redundant
+        // this way; a single relation is handled by the obsolete-dependency
+        // logic instead.
+        if entry.relations().count() < 2 {
+            continue;
+        }
+        if standalone
+            .iter()
+            .any(|s| s != &entry && debian_analyzer::relations::is_relation_implied(s, &entry))
+        {
+            actions.push(Action::DropRedundant(entry.to_string().parse().unwrap()));
+            to_remove.push(i);
+        }
+    }
+
+    for i in to_remove.into_iter().rev() {
+        relations.remove_entry(i);
+    }
+
+    if !actions.is_empty() {
+        let new_contents = relations.to_string();
+        if relations.is_empty() {
+            base.remove(field);
+        } else {
+            base.set(field, &new_contents);
+        }
+    }
+    actions
 }
 
 /// Update a relations field.
@@ -380,6 +441,12 @@ fn action_to_ws(
                 },
             ))
         }
+        Action::DropRedundant(entry) => Some(WsAction::Deb822(Deb822Action::DropRelationEntry {
+            file,
+            paragraph: selector,
+            field: field.to_string(),
+            entry: entry.to_string(),
+        })),
         Action::ReplaceTransition(rel, replacements) => {
             let package = rel.try_name()?;
             // scrub-obsolete only emits ReplaceTransition with a single-package
@@ -1185,6 +1252,91 @@ mod tests {
                     .unwrap()
             );
             assert_eq!(entry.to_string(), "replacement | replacement | other");
+        }
+    }
+
+    mod test_drop_redundant_entries {
+        use super::*;
+
+        #[test]
+        fn test_empty() {
+            let mut control = Paragraph::new();
+            assert_eq!(
+                Vec::<Action>::new(),
+                drop_redundant_entries(&mut control, "Depends")
+            );
+        }
+
+        #[test]
+        fn test_no_redundancy() {
+            let mut control = Paragraph::new();
+            control.set("Depends", "perl, libfoo-perl | libbar-perl");
+            assert_eq!(
+                Vec::<Action>::new(),
+                drop_redundant_entries(&mut control, "Depends")
+            );
+            assert_eq!(
+                control.get("Depends").as_deref(),
+                Some("perl, libfoo-perl | libbar-perl")
+            );
+        }
+
+        #[test]
+        fn test_redundant_alternative() {
+            let mut control = Paragraph::new();
+            control.set("Depends", "perl, libfoo-perl | perl");
+            assert_eq!(
+                vec![Action::DropRedundant("libfoo-perl | perl".parse().unwrap())],
+                drop_redundant_entries(&mut control, "Depends")
+            );
+            assert_eq!(control.get("Depends").as_deref(), Some("perl"));
+        }
+
+        #[test]
+        fn test_versioned_standalone_not_subsuming() {
+            // A versioned standalone dependency does not unconditionally cover
+            // the alternative, so the entry is kept.
+            let mut control = Paragraph::new();
+            control.set("Depends", "perl (>= 5.10), libfoo-perl | perl");
+            assert_eq!(
+                Vec::<Action>::new(),
+                drop_redundant_entries(&mut control, "Depends")
+            );
+        }
+
+        #[test]
+        fn test_single_relation_ignored() {
+            // A single relation is left for the obsolete-dependency logic; the
+            // redundancy pass only touches alternative groups.
+            let mut control = Paragraph::new();
+            control.set("Depends", "perl");
+            assert_eq!(
+                Vec::<Action>::new(),
+                drop_redundant_entries(&mut control, "Depends")
+            );
+        }
+
+        #[tokio::test(flavor = "multi_thread")]
+        async fn test_strip_then_drop_redundant() {
+            // The full case from Debian bug #981529: stripping the version
+            // constraint turns "perl (>> 5.6.0)" into "perl", making the whole
+            // alternative entry redundant.
+            let checker = DummyChecker {
+                versions: maplit::hashmap! {"perl" => "5.36".parse().unwrap()},
+                essential: HashSet::new(),
+                transitions: HashMap::new(),
+            };
+            let mut control = Paragraph::new();
+            control.set("Depends", "perl, libfoo-perl | perl (>> 5.6.0)");
+            let actions = update_depends(&mut control, "Depends", &checker, false);
+            assert_eq!(
+                vec![
+                    Action::DropMinimumVersion("perl (>> 5.6.0)".parse().unwrap()),
+                    Action::DropRedundant("libfoo-perl | perl".parse().unwrap()),
+                ],
+                actions
+            );
+            assert_eq!(control.get("Depends").as_deref(), Some("perl"));
         }
     }
 }
