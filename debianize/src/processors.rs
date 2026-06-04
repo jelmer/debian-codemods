@@ -1,6 +1,4 @@
-use crate::names::{
-    upstream_package_to_debian_binary_name, upstream_package_to_debian_source_name,
-};
+use crate::names::upstream_package_to_debian_source_name;
 use crate::Error;
 use breezyshim::branch::Branch;
 use breezyshim::workingtree::PyWorkingTree;
@@ -751,7 +749,7 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
 
     let mut control = context.create_control_file()?;
     let upstream_name = match context.metadata.name() {
-        Some(name) => name.replace("_", "-"),
+        Some(name) => name,
         None => {
             return Err(Error::MissingUpstreamInfo(
                 "unable to determine the name from cargo.toml".to_string(),
@@ -789,12 +787,6 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     }
 
-    let mut binary = control.add_binary(&upstream_package_to_debian_binary_name(
-        "rust",
-        &upstream_name,
-    ));
-    binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&build_deps));
     control.commit()?;
     Ok(())
 }
