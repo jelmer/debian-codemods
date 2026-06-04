@@ -153,6 +153,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::RemoveParagraph { paragraph, .. }
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
+            | Deb822Action::DropRelationEntry { paragraph, .. }
             | Deb822Action::ReplaceRelation { paragraph, .. }
             | Deb822Action::SetRelationVersionConstraint { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
@@ -257,6 +258,16 @@ fn apply_control_deb822_group(
                 ..
             } => {
                 if drop_deb822_relation(&editor, paragraph, field, package)? {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropRelationEntry {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                if drop_deb822_relation_entry(&editor, paragraph, field, entry)? {
                     any_change = true;
                 }
             }
@@ -398,6 +409,7 @@ fn apply_copyright_deb822_group(
             | Deb822Action::RemoveParagraph { paragraph, .. }
             | Deb822Action::NormalizeFieldSpacing { paragraph, .. }
             | Deb822Action::DropRelation { paragraph, .. }
+            | Deb822Action::DropRelationEntry { paragraph, .. }
             | Deb822Action::ReplaceRelation { paragraph, .. }
             | Deb822Action::SetRelationVersionConstraint { paragraph, .. }
             | Deb822Action::EnsureSubstvar { paragraph, .. }
@@ -672,6 +684,19 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if drop_relation_in_paragraph(&mut p, field, package) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropRelationEntry {
+                paragraph,
+                field,
+                entry,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if drop_relation_entry_in_paragraph(&mut p, field, entry) {
                     any_change = true;
                 }
             }
@@ -1161,6 +1186,39 @@ fn drop_relation_in_paragraph(
     true
 }
 
+/// Drop the alternative entry in `field` whose parsed value equals `entry`.
+/// Matching is done on the parsed entry text (so whitespace differences don't
+/// matter). Returns true if an entry was removed; removes the field if it
+/// becomes empty.
+fn drop_relation_entry_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    entry: &str,
+) -> bool {
+    use debian_control::lossless::relations::{Entry, Relations};
+    use std::str::FromStr;
+
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let Ok(target) = Entry::from_str(entry) else {
+        return false;
+    };
+    let target = target.to_string();
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+    let Some(idx) = relations.entries().position(|e| e.to_string() == target) else {
+        return false;
+    };
+    relations.remove_entry(idx);
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
 /// Replace the first relation entry that names `from_package` with the
 /// parsed `to_entry`, preserving its position. If `to_entry` parses as a
 /// relation whose package is already named elsewhere in the field, the
@@ -1344,6 +1402,40 @@ fn drop_deb822_relation(
         }
         other => Err(FixerError::Other(format!(
             "deb822 DropRelation does not support paragraph selector {:?}",
+            other
+        ))),
+    }
+}
+
+fn drop_deb822_relation_entry(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    entry: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(drop_relation_entry_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                entry,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(drop_relation_entry_in_paragraph(p, field, entry));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 DropRelationEntry does not support paragraph selector {:?}",
             other
         ))),
     }
@@ -3525,6 +3617,81 @@ mod tests {
         assert_eq!(
             fs::read_to_string(debian.join("control")).unwrap(),
             "Source: foo\nBuild-Depends: debhelper-compat (= 13)\n\nPackage: foo\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_relation_entry_removes_alternative_group() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: bar\nDepends: perl, libfoo-perl | perl\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelationEntry {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Depends".into(),
+            entry: "libfoo-perl | perl".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: bar\nDepends: perl\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_relation_entry_idempotent_when_absent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let initial = "Source: foo\n\nPackage: bar\nDepends: perl, libfoo-perl\n";
+        fs::write(debian.join("control"), initial).unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelationEntry {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Depends".into(),
+            entry: "libfoo-perl | perl".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(!changed);
+        assert_eq!(fs::read_to_string(debian.join("control")).unwrap(), initial);
+    }
+
+    #[test]
+    fn deb822_drop_relation_entry_removes_field_when_empty() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: bar\nDepends: libfoo-perl | perl\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelationEntry {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Depends".into(),
+            entry: "libfoo-perl | perl".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: bar\n",
         );
     }
 

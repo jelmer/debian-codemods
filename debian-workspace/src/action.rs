@@ -109,6 +109,7 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | Deb822Action::AppendParagraph { file, .. }
             | Deb822Action::NormalizeFieldSpacing { file, .. }
             | Deb822Action::DropRelation { file, .. }
+            | Deb822Action::DropRelationEntry { file, .. }
             | Deb822Action::ReplaceRelation { file, .. }
             | Deb822Action::SetRelationVersionConstraint { file, .. }
             | Deb822Action::EnsureSubstvar { file, .. }
@@ -306,6 +307,22 @@ pub enum Deb822Action {
         field: String,
         /// Package name to drop.
         package: String,
+    },
+    /// Drop the alternative entry in a relations field whose parsed value
+    /// equals `entry` (e.g. `libfoo-perl | perl`). Unlike
+    /// [`DropRelation`](Self::DropRelation), which only removes entries that
+    /// name a single package, this targets a whole alternative group by its
+    /// text. If the field becomes empty it is removed entirely. A no-op if no
+    /// entry matches.
+    DropRelationEntry {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Depends`).
+        field: String,
+        /// Entry text to drop (e.g. `libfoo-perl | perl`).
+        entry: String,
     },
     /// Replace the first relation that names `from_package` with the
     /// `to_entry` text, keeping the entry's position in the field. A
