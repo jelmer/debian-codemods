@@ -697,7 +697,7 @@ mod tests {
     fn test_session_preferences_create_session() {
         // Test Plain session creation
         let plain_pref = SessionPreferences::Plain;
-        let session = plain_pref.create_session().unwrap();
+        let session = plain_pref.create_session(true).unwrap();
         // Test that we can get the pwd (current working directory)
         let _pwd = session.pwd();
 
@@ -713,7 +713,7 @@ mod tests {
         {
             // Test that Schroot returns an error without valid chroot
             let schroot_pref = SessionPreferences::Schroot("test-chroot".to_string());
-            let result = schroot_pref.create_session();
+            let result = schroot_pref.create_session(true);
             assert!(result.is_err());
         }
 
@@ -723,7 +723,7 @@ mod tests {
         std::fs::write(&tarball_path, b"dummy tarball content").unwrap();
 
         let unshare_pref = SessionPreferences::Unshare(tarball_path.clone());
-        let result = unshare_pref.create_session();
+        let result = unshare_pref.create_session(true);
         assert!(result.is_err());
     }
 
@@ -1115,10 +1115,19 @@ impl SessionPreferences {
 
     /// Acquire a session based on preferences. This is a convenience method for tests.
     pub fn acquire(&self) -> Result<Box<dyn ognibuild::session::Session>, Error> {
-        self.create_session()
+        self.create_session(true)
     }
 
-    pub fn create_session(&self) -> Result<Box<dyn ognibuild::session::Session>, Error> {
+    /// Create a session based on preferences.
+    ///
+    /// `allow_network` controls whether the session may reach the network. For
+    /// unshare sessions this shares the host network namespace when true and
+    /// isolates it (no network) when false. It does not affect the later
+    /// package build, which is run separately and always without network.
+    pub fn create_session(
+        &self,
+        allow_network: bool,
+    ) -> Result<Box<dyn ognibuild::session::Session>, Error> {
         match self {
             SessionPreferences::Plain => {
                 Ok(Box::new(ognibuild::session::plain::PlainSession::new()))
@@ -1143,36 +1152,33 @@ impl SessionPreferences {
             SessionPreferences::Unshare(path) => {
                 #[cfg(target_os = "linux")]
                 {
-                    if path.as_os_str().is_empty() {
+                    let mut session = if path.as_os_str().is_empty() {
                         // Use ognibuild's cached Debian session API
                         // This will use ~/.cache/ognibuild/images/debian-sid-{arch}.tar.gz
                         log::info!("Creating unshare session from cached Debian sid image");
                         ognibuild::session::unshare::create_debian_session_for_testing(
                             "sid",
-                            false // Whether to allow network access
-                                  // TODO: Make this configurable
+                            allow_network,
                         )
-                        .map(Box::new)
-                        .map(|b| b as Box<dyn ognibuild::session::Session>)
                         .map_err(|e| {
                             Error::Other(format!(
                                 "Failed to create unshare session from cached image: {}. \
                                  Ensure the image is cached at ~/.cache/ognibuild/images/debian-sid-*.tar.gz",
                                 e
                             ))
-                        })
+                        })?
                     } else {
                         // Use specific tarball path
-                        ognibuild::session::unshare::UnshareSession::from_tarball(path)
-                            .map(Box::new)
-                            .map(|b| b as Box<dyn ognibuild::session::Session>)
-                            .map_err(|e| {
-                                Error::Other(format!("Failed to create unshare session: {}", e))
-                            })
-                    }
+                        ognibuild::session::unshare::UnshareSession::from_tarball(path).map_err(
+                            |e| Error::Other(format!("Failed to create unshare session: {}", e)),
+                        )?
+                    };
+                    session.set_isolate_network(!allow_network);
+                    Ok(Box::new(session) as Box<dyn ognibuild::session::Session>)
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
+                    let _ = allow_network;
                     Err(Error::Other(
                         "Unshare is only available on Linux".to_string(),
                     ))
@@ -1534,8 +1540,10 @@ pub fn debianize(
 
     log::info!("Using upstream version: {}", upstream_version.version);
 
-    // Create session for build operations
-    let session = preferences.session.create_session()?;
+    // Create session for debianize operations. Network access here is for
+    // creating the package (resolving dependencies, fetching introspection
+    // tooling); the later package build runs separately and without network.
+    let session = preferences.session.create_session(preferences.net_access)?;
 
     // Import upstream version
     // For now, create a basic implementation that imports content from the upstream branch
