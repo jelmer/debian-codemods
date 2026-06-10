@@ -92,12 +92,11 @@ impl Diagnostic {
         }
     }
 
-    /// Build a diagnostic that has no associated lintian issue.
+    /// Build a diagnostic with no associated lintian issue.
     ///
     /// Used by fixers that aren't tied to a lintian tag (their `tags: []`
     /// declaration). The driver still applies the actions but skips
     /// override / tag bookkeeping.
-    /// Build a diagnostic with no associated lintian issue.
     ///
     /// `description` describes *what's wrong*; `label` is the imperative
     /// description of *what the plan would do*. See [`with_actions`] for
@@ -118,6 +117,20 @@ impl Diagnostic {
                 certainty: None,
                 actions,
             }],
+        }
+    }
+
+    /// Build a diagnostic with no associated lintian issue and
+    /// caller-provided plans. The untagged counterpart to [`with_plans`],
+    /// for fixers that aren't tied to a lintian tag but need to set
+    /// per-plan attributes such as certainty.
+    pub fn untagged_with_plans(description: impl Into<String>, plans: Vec<ActionPlan>) -> Self {
+        Self {
+            issue: None,
+            message: description.into(),
+            certainty: None,
+            patch_name: None,
+            plans,
         }
     }
 
