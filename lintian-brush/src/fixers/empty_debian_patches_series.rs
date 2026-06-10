@@ -28,6 +28,7 @@ pub fn detect(
         plans: vec![ActionPlan {
             label: "Remove empty debian/patches/series.".to_string(),
             opinionated: true,
+            certainty: None,
             actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
         }],
     }])

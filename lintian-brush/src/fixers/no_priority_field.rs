@@ -48,6 +48,7 @@ pub fn detect(
                 let plans = vec![ActionPlan {
                     label: "Remove redundant Priority: optional from source stanza.".to_string(),
                     opinionated: false,
+                    certainty: None,
                     actions: vec![Action::Deb822(Deb822Action::RemoveField {
                         file: control_rel.clone(),
                         paragraph: ParagraphSelector::Source,
@@ -139,6 +140,7 @@ pub fn detect(
                     label: "Set priority in source stanza, since it is the same for all packages."
                         .to_string(),
                     opinionated: false,
+                    certainty: None,
                     actions,
                 }];
 
@@ -166,6 +168,7 @@ pub fn detect(
             let plans = vec![ActionPlan {
                 label: "Set priority to 'optional' for this binary package.".to_string(),
                 opinionated: false,
+                certainty: None,
                 actions: vec![Action::Deb822(Deb822Action::SetField {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Binary {

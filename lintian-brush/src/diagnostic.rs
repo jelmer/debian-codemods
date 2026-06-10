@@ -69,6 +69,7 @@ impl Diagnostic {
             vec![ActionPlan {
                 label: label.into(),
                 opinionated: false,
+                certainty: None,
                 actions,
             }],
         )
@@ -114,6 +115,7 @@ impl Diagnostic {
             plans: vec![ActionPlan {
                 label: label.into(),
                 opinionated: false,
+                certainty: None,
                 actions,
             }],
         }
@@ -152,6 +154,7 @@ pub fn override_action_plan(issue: &LintianIssue) -> Option<ActionPlan> {
     Some(ActionPlan {
         label: format!("Add lintian override for {}", tag),
         opinionated: false,
+        certainty: None,
         actions: vec![Action::LintianOverrides(LintianOverridesAction::AddLine {
             file,
             package: issue.package.clone(),
