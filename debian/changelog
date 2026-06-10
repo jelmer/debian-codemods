@@ -15,6 +15,7 @@ debian-codemods (0.181) UNRELEASED; urgency=medium
     Closes: #953391
   * deb-scrub-obsolete: Report UDD connection failures as a fatal error
     rather than panicking. Closes: #1138770
+  * Add detector for debian-news-entry-uses-asterisk.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 04 Jun 2026 13:31:51 +0100
 
