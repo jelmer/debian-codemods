@@ -96,6 +96,20 @@ pub trait Workspace {
     /// on what that means.
     fn parsed_changelog(&self) -> Result<ChangeLog, Error>;
 
+    /// Read `debian/NEWS` and return a parsed value.
+    ///
+    /// `debian/NEWS` shares the `debian/changelog` syntax, so it is parsed
+    /// with the same relaxed parser. Returns `Err(Error::NotFound)` if the
+    /// file is missing (a package shipping no NEWS entries).
+    fn parsed_news(&self) -> Result<ChangeLog, Error> {
+        let rel = Path::new("debian/NEWS");
+        match self.read_file(rel)? {
+            None => Err(Error::NotFound),
+            Some(bytes) => ChangeLog::read_relaxed(&bytes[..])
+                .map_err(|e| Error::Parse(format!("Failed to parse {}: {}", rel.display(), e))),
+        }
+    }
+
     /// Read `debian/copyright` and return a parsed value.
     ///
     /// Returns `Err(Error::NotFound)` if the file is missing, and

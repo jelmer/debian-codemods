@@ -1,0 +1,13 @@
+test-package (2.0-1) unstable; urgency=low
+
+  The configuration file format has changed again, and old files are no
+  longer read.
+
+ -- Joe Example <joe@example.com>  Tue, 02 Jan 2024 00:00:00 +0000
+
+test-package (1.0-1) unstable; urgency=low
+
+  * The configuration file format has changed; see /usr/share/doc for
+    details.
+
+ -- Joe Example <joe@example.com>  Mon, 01 Jan 2024 00:00:00 +0000

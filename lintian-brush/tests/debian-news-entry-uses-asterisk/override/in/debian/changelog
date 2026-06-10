@@ -1,0 +1,5 @@
+test-package (1.0-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Joe Example <joe@example.com>  Mon, 01 Jan 2024 00:00:00 +0000
