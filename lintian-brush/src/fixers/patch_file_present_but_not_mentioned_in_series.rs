@@ -72,6 +72,7 @@ pub fn detect(
             vec![ActionPlan {
                 label: format!("Remove unreferenced patch {}.", name),
                 opinionated: true,
+                certainty: None,
                 actions: vec![Action::Filesystem(FilesystemAction::Delete { file: rel })],
             }],
         ));
