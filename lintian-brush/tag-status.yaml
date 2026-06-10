@@ -886,11 +886,13 @@
     Fix version in debian/NEWS that doesn't match any changelog entry.
     Requires human judgement.
 - tag: debian-news-entry-uses-asterisk
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Replace asterisk bullet points in debian/NEWS with the standard
-    format. Simple text replacement.
+    Detector reports the issue only. Turning a bulleted list into the
+    prose paragraphs the Developer's Reference recommends needs human
+    judgement, so no automatic fix is proposed.
 - tag: debian-news-file-not-compressed
   detector: false
   status: build-stage
