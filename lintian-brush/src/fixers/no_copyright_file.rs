@@ -42,9 +42,11 @@ mod decopy {
 
     /// Scan the source tree using decopy and return file groups with their metadata
     pub fn scan_tree(base_path: &Path) -> Result<(Vec<FileGroup>, Vec<String>), Error> {
+        tracing::debug!("Scanning tree with decopy at {}", base_path.display());
         Python::attach(|py| {
             // Try to import decopy
             if py.import("decopy").is_err() {
+                tracing::debug!("decopy module not available");
                 return Err(Error::NotAvailable);
             }
 
@@ -63,6 +65,7 @@ mod decopy {
                 // Process options
                 let root_arg = format!("--root={}", abs_path_str);
                 let output_arg = format!("--output={}/debian/copyright", abs_path_str);
+                tracing::debug!("Running decopy with root {}", abs_path_str);
                 let args = PyList::new(
                     py,
                     [
@@ -146,11 +149,14 @@ mod decopy {
                         .unwrap_or_default()
                 });
 
+                tracing::debug!("decopy returned {} candidate groups", sorted_items.len());
+
                 for (_key, group) in sorted_items {
                     let group = group.bind(py);
 
                     // Check if copyright block is valid
                     if !group.call_method0("copyright_block_valid")?.is_truthy()? {
+                        tracing::debug!("Skipping group with invalid copyright block");
                         continue;
                     }
 
@@ -218,6 +224,12 @@ mod decopy {
                     license_names.push(license_name);
                 }
 
+                tracing::debug!(
+                    "decopy produced {} file groups and {} licenses",
+                    file_groups.len(),
+                    license_names.len()
+                );
+
                 Ok((file_groups, license_names))
             })();
 
@@ -232,6 +244,7 @@ pub fn detect(
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
     if ws.read_file(&copyright_rel)?.is_some() {
+        tracing::debug!("debian/copyright already exists; nothing to do");
         return Ok(Vec::new());
     }
 
@@ -245,6 +258,7 @@ pub fn detect(
     // decopy walks the source tree directly; fall back to the
     // filesystem escape hatch.
     let Some(base_path) = ws.base_path() else {
+        tracing::debug!("Workspace has no base path; cannot run decopy");
         return Ok(Vec::new());
     };
 
@@ -261,6 +275,10 @@ pub fn detect(
         }
     };
 
+    tracing::debug!(
+        "Building debian/copyright from {} file groups",
+        file_groups.len()
+    );
     let mut copyright = Copyright::new();
     for group in file_groups {
         let files_refs: Vec<&str> = group.files.iter().map(|s| s.as_str()).collect();
