@@ -1,7 +1,7 @@
 [package]
 name = "lintian-brush"
 version = { workspace = true }
-authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+authors = ["Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
 description = "Automatic lintian issue fixer"
@@ -9,7 +9,17 @@ repository = "https://salsa.debian.org/jelmer/lintian-brush.git"
 homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 documentation = "https://docs.rs/lintian-brush"
 default-run = "lintian-brush"
-include = ["spdx.json", "/src", "/tests", "build.rs", "README.md", "examples/*.rs", "spdx.json", "renamed-tags.json", "!*~"]
+include = [
+	"spdx.json",
+	"/src",
+	"/tests",
+	"build.rs",
+	"README.md",
+	"examples/*.rs",
+	"spdx.json",
+	"renamed-tags.json",
+	"!*~",
+]
 
 [dependencies]
 pyo3 = { workspace = true, features = ["serde", "chrono"] }
@@ -18,7 +28,13 @@ serde_yaml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
 configparser.workspace = true
-clap = { workspace = true, features = ["derive", "env", "suggestions", "cargo", "string"], optional = true }
+clap = { workspace = true, features = [
+	"derive",
+	"env",
+	"suggestions",
+	"cargo",
+	"string",
+], optional = true }
 lazy-regex = { workspace = true }
 debversion = { workspace = true }
 debian-copyright = { workspace = true }
@@ -26,7 +42,11 @@ debian-workspace = { workspace = true }
 breezyshim = { workspace = true }
 indicatif = ">=0.17,<0.19"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "ansi"] }
+tracing-subscriber = { version = "0.3", features = [
+	"fmt",
+	"env-filter",
+	"ansi",
+] }
 tracing-log = "0.2"
 nu-ansi-term = "0.50"
 tempfile = { workspace = true }
@@ -46,7 +66,7 @@ regex = { workspace = true }
 indexmap = { workspace = true }
 sequoia-openpgp = "2"
 makefile-lossless = { workspace = true }
-sha1 = "0.10"
+sha1 = "0.11"
 shell-words = "1"
 debian-watch = { workspace = true, features = ["discover", "blocking", "pgp"] }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
