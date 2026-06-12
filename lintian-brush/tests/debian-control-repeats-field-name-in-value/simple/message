@@ -1,0 +1,5 @@
+Drop repeated field name from Section value.
+Drop repeated field name from Description value.
+Fixed-Lintian-Issues:
+ source: debian-control-repeats-field-name-in-value (in section for source) Section [debian/control:2]
+ source: debian-control-repeats-field-name-in-value (in section for blah) Description [debian/control:8]
