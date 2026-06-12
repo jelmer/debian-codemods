@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+build:
+	DEB_BUILD_OPTIONS=nocheck $(MAKE)
+
+%:
+	dh $@

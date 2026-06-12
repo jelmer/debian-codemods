@@ -957,11 +957,9 @@
     Remove --version-info flag from dh_shlibdeps call in debian/rules.
     Simple text removal.
 - tag: debian-rules-sets-DEB_BUILD_OPTIONS
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove DEB_BUILD_OPTIONS assignment from debian/rules since it
-    should be set by the build environment, not the package.
+  status: implemented
 - tag: debian-rules-sets-DH_COMPAT
   detector: false
   difficulty: easy
