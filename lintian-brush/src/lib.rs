@@ -15,8 +15,7 @@ use breezyshim::workspace::{check_clean_tree, reset_tree_with_dirty_tracker};
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{
-    add_changelog_entry, apply_or_revert, certainty_sufficient, get_committer, min_certainty,
-    ApplyError, ChangelogError,
+    add_changelog_entry, apply_or_revert, get_committer, min_certainty, ApplyError, ChangelogError,
 };
 use debian_changelog::ChangeLog;
 use debian_workspace::Workspace;

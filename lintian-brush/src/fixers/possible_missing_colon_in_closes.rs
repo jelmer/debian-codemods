@@ -91,57 +91,32 @@ pub fn detect(
                 .map(|n| n + 1)
                 .unwrap_or(1);
 
-            // First find any matches to decide if we'd fix this bullet.
-            let mut new_text = combined.clone();
-            let mut to_emit: Vec<(char, String, Certainty)> = Vec::new();
+            // Each match becomes its own diagnostic carrying a ReplaceBullet
+            // action that rewrites only that match. Applying one rewrite
+            // changes the bullet text, so the remaining matches are picked up
+            // on the next detector run rather than composed here.
+            let mut to_emit: Vec<(char, String, String, Certainty)> = Vec::new();
 
             for caps in close_colon_re.captures_iter(&combined) {
                 let bugno: u32 = caps["bug"].parse().unwrap_or(0);
                 let matched_text = caps[0].to_string();
                 let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
-                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                    && valid
-                {
-                    to_emit.push((TAG_COLON, matched_text, bug_certainty));
+                if valid {
+                    let fixed = format!("{}: #{}", &caps["closes"], bugno);
+                    to_emit.push((TAG_COLON, matched_text, fixed, bug_certainty));
                 }
             }
             for caps in close_typo_re.captures_iter(&combined) {
                 let bugno: u32 = caps["bug"].parse().unwrap_or(0);
                 let matched_text = caps[0].to_string();
                 let (valid, bug_certainty) = check_bug(&package, bugno, net_access);
-                if crate::certainty_sufficient(bug_certainty, preferences.minimum_certainty)
-                    && valid
-                {
-                    to_emit.push((TAG_TYPO, matched_text, bug_certainty));
+                if valid {
+                    let fixed = format!("{}s: #{}", &caps["close"], bugno);
+                    to_emit.push((TAG_TYPO, matched_text, fixed, bug_certainty));
                 }
             }
 
             if to_emit.is_empty() {
-                continue;
-            }
-
-            // Apply the substitutions to compute the new bullet text.
-            let any_colon = to_emit.iter().any(|(t, _, _)| *t == TAG_COLON);
-            let any_typo = to_emit.iter().any(|(t, _, _)| *t == TAG_TYPO);
-            if any_colon {
-                new_text = close_colon_re
-                    .replace_all(&new_text, |caps: &regex::Captures| {
-                        let closes = &caps["closes"];
-                        let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                        format!("{}: #{}", closes, bugno)
-                    })
-                    .to_string();
-            }
-            if any_typo {
-                new_text = close_typo_re
-                    .replace_all(&new_text, |caps: &regex::Captures| {
-                        let close = &caps["close"];
-                        let bugno: u32 = caps["bug"].parse().unwrap_or(0);
-                        format!("{}s: #{}", close, bugno)
-                    })
-                    .to_string();
-            }
-            if new_text == combined {
                 continue;
             }
 
@@ -150,20 +125,18 @@ pub fn detect(
             let occurrence = *occurrence_counts.entry(key.clone()).or_insert(0);
             occurrence_counts.insert(key, occurrence + 1);
 
-            let new_lines: Vec<String> = new_text.split('\n').map(|s| s.to_string()).collect();
+            for (kind, matched_text, fixed_text, bug_certainty) in to_emit {
+                let new_text = combined.replacen(&matched_text, &fixed_text, 1);
+                let new_lines: Vec<String> = new_text.split('\n').map(|s| s.to_string()).collect();
+                let action = Action::Changelog(ChangelogAction::ReplaceBullet {
+                    file: changelog_rel.clone(),
+                    version: version_str.clone(),
+                    author: author.clone(),
+                    text: combined.clone(),
+                    occurrence,
+                    new_lines,
+                });
 
-            // The single ReplaceBullet action is shared by all
-            // diagnostics generated from this bullet.
-            let action = Action::Changelog(ChangelogAction::ReplaceBullet {
-                file: changelog_rel.clone(),
-                version: version_str.clone(),
-                author: author.clone(),
-                text: combined.clone(),
-                occurrence,
-                new_lines,
-            });
-
-            for (idx, (kind, matched_text, bug_certainty)) in to_emit.into_iter().enumerate() {
                 let (tag_name, tag_visibility, description, label) = if kind == TAG_COLON {
                     (
                         "possible-missing-colon-in-closes",
@@ -184,17 +157,8 @@ pub fn detect(
                     matched_text, package, line_num
                 );
                 let issue = LintianIssue::source_with_info(tag_name, tag_visibility, vec![info]);
-                let diag = Diagnostic::with_actions(
-                    issue,
-                    description,
-                    label,
-                    if idx == 0 {
-                        vec![action.clone()]
-                    } else {
-                        Vec::new()
-                    },
-                )
-                .with_certainty(bug_certainty);
+                let diag = Diagnostic::with_actions(issue, description, label, vec![action])
+                    .with_certainty(bug_certainty);
                 diagnostics.push(diag);
             }
         }
@@ -310,6 +274,34 @@ mod tests {
         assert_eq!(
             fs::read_to_string(&changelog).unwrap(),
             "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. closes: #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        );
+    }
+
+    #[test]
+    fn test_mixed_certainty_matches_filtered_independently() {
+        // A bullet with one Possible match (closes #99, <5 digits) and one
+        // Likely match (closes #123456, >=5 digits). Under a Likely bar the
+        // Possible match's diagnostic is dropped while the Likely one is
+        // fixed: the two matches carry their own actions and certainties.
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let changelog = debian.join("changelog");
+        fs::write(
+            &changelog,
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. closes #99 closes #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
+        )
+        .unwrap();
+        let preferences = FixerPreferences {
+            net_access: Some(false),
+            minimum_certainty: Some(Certainty::Likely),
+            ..Default::default()
+        };
+
+        run_apply(tmp.path(), &preferences).unwrap();
+        assert_eq!(
+            fs::read_to_string(&changelog).unwrap(),
+            "test-package (1.0-1) unstable; urgency=medium\n\n  * Initial release. closes #99 closes: #123456\n\n -- Test User <test@example.com>  Mon, 01 Jan 2024 12:00:00 +0000\n",
         );
     }
 

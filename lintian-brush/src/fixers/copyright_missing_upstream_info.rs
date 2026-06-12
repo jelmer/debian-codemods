@@ -1,6 +1,6 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
-use crate::{certainty_sufficient, min_certainty, FixerError, FixerPreferences};
+use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::{min_certainty, FixerError, FixerPreferences};
 use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 use upstream_ontologist::UpstreamDatum;
@@ -117,9 +117,6 @@ pub fn detect(
         let cert = datum
             .certainty
             .unwrap_or(upstream_ontologist::Certainty::Possible);
-        if !certainty_sufficient(convert_certainty(cert), preferences.minimum_certainty) {
-            return None;
-        }
         let value = extract(&datum.datum)?;
         if value.is_empty() {
             return None;
@@ -154,7 +151,10 @@ pub fn detect(
 
     let converted: Vec<crate::Certainty> =
         certainties.iter().map(|c| convert_certainty(*c)).collect();
-    let certainty = min_certainty(&converted).unwrap_or(crate::Certainty::Possible);
+    // The fields are demonstrably missing, so the diagnostic is Certain.
+    // The values are guessed, so the plan is only as certain as its
+    // least certain field.
+    let plan_certainty = min_certainty(&converted).unwrap_or(crate::Certainty::Possible);
 
     let label = if fields.len() == 1 {
         format!("Set field {} in debian/copyright.", fields[0])
@@ -167,9 +167,16 @@ pub fn detect(
         format!("debian/copyright is missing fields {}.", fields.join(", "))
     };
 
-    Ok(vec![
-        Diagnostic::untagged(description, label, actions).with_certainty(certainty)
-    ])
+    Ok(vec![Diagnostic::untagged_with_plans(
+        description,
+        vec![ActionPlan {
+            label,
+            opinionated: false,
+            certainty: Some(plan_certainty),
+            actions,
+        }],
+    )
+    .with_certainty(crate::Certainty::Certain)])
 }
 
 declare_detector! {

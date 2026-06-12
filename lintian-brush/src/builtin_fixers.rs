@@ -61,17 +61,19 @@ pub struct DiagnosticPlan {
     pub overridden_issues: Vec<LintianIssue>,
     /// The flat list of actions from every chosen plan, in order.
     pub all_actions: Vec<crate::diagnostic::Action>,
-    /// The lowest certainty across the fired diagnostics, if any carried
-    /// a certainty.
+    /// The lowest certainty across the fired diagnostics, where each
+    /// diagnostic's certainty is its own confidence capped by the chosen
+    /// plan's. `None` if neither side of any fired diagnostic declared one.
     pub min_actual_certainty: Option<Certainty>,
 }
 
 /// Filter a detector's diagnostics into a [`DiagnosticPlan`].
 ///
-/// Drops diagnostics suppressed by lintian overrides or below
-/// `preferences.minimum_certainty`, and picks the first
+/// Drops diagnostics suppressed by lintian overrides, picks the first
 /// [`ActionPlan`](crate::diagnostic::ActionPlan) whose `opinionated` flag
-/// is satisfied by `preferences.opinionated`.
+/// is satisfied by `preferences.opinionated`, then drops the diagnostic
+/// if the diagnostic's certainty capped by that plan's falls below
+/// `preferences.minimum_certainty`.
 ///
 /// This phase performs no tree mutation. It returns
 /// [`FixerError::NoChanges`] / [`FixerError::NoChangesAfterOverrides`] /
@@ -103,13 +105,6 @@ pub fn plan_diagnostics(
                 continue;
             }
         }
-        let actual_certainty = diag.certainty.unwrap_or(Certainty::Certain);
-        if !certainty_sufficient(actual_certainty, min_certainty) {
-            if let Some(issue) = &diag.issue {
-                not_certain_enough.push(issue.clone());
-            }
-            continue;
-        }
         let allow_opinionated = preferences.opinionated.unwrap_or(false);
         let Some(plan) = diag
             .plans
@@ -118,9 +113,28 @@ pub fn plan_diagnostics(
         else {
             continue;
         };
+        // The change is only as certain as its weakest link: the
+        // diagnostic's confidence that the issue is real, capped by the
+        // chosen plan's confidence that it fixes the issue correctly.
+        // `declared` stays None when neither side made a claim, so the
+        // result reports no certainty rather than a synthetic `certain`.
+        let declared = match (diag.certainty, plan.certainty) {
+            (None, None) => None,
+            (a, b) => Some(
+                a.unwrap_or(Certainty::Certain)
+                    .min(b.unwrap_or(Certainty::Certain)),
+            ),
+        };
+        let actual_certainty = declared.unwrap_or(Certainty::Certain);
+        if !certainty_sufficient(actual_certainty, min_certainty) {
+            if let Some(issue) = &diag.issue {
+                not_certain_enough.push(issue.clone());
+            }
+            continue;
+        }
         all_actions.extend(plan.actions.iter().cloned());
         fixed.push((diag.clone(), plan.clone()));
-        min_actual_certainty = match (min_actual_certainty, diag.certainty) {
+        min_actual_certainty = match (min_actual_certainty, declared) {
             (None, c) => c,
             (Some(prev), None) => Some(prev),
             (Some(prev), Some(c)) => Some(prev.min(c)),

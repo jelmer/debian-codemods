@@ -1,5 +1,5 @@
 use crate::declare_detector;
-use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
+use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::path::PathBuf;
@@ -240,18 +240,11 @@ mod decopy {
 
 pub fn detect(
     ws: &dyn Workspace,
-    preferences: &FixerPreferences,
+    _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
     let copyright_rel = PathBuf::from("debian/copyright");
     if ws.read_file(&copyright_rel)?.is_some() {
         tracing::debug!("debian/copyright already exists; nothing to do");
-        return Ok(Vec::new());
-    }
-
-    // Result is Possible — only emit when the caller's certainty bar
-    // accepts that.
-    let certainty = Certainty::Possible;
-    if !crate::certainty_sufficient(certainty, preferences.minimum_certainty) {
         return Ok(Vec::new());
     }
 
@@ -295,17 +288,23 @@ pub fn detect(
         license_para.set_comment("Add the corresponding license text here");
     }
 
+    // The issue is certain: a missing debian/copyright is unambiguous.
+    // The generated file is only a guess, so the plan is Possible.
     let issue = LintianIssue::source_with_info("no-copyright-file", Visibility::Error, vec![]);
-    Ok(vec![Diagnostic::with_actions(
+    Ok(vec![Diagnostic::with_plans(
         issue,
         "debian/copyright file is missing.",
-        "Create a debian/copyright file.",
-        vec![Action::Filesystem(FilesystemAction::Write {
-            file: copyright_rel,
-            content: copyright.to_string().into_bytes(),
-        })],
+        vec![ActionPlan {
+            label: "Create a debian/copyright file.".to_string(),
+            opinionated: false,
+            certainty: Some(Certainty::Possible),
+            actions: vec![Action::Filesystem(FilesystemAction::Write {
+                file: copyright_rel,
+                content: copyright.to_string().into_bytes(),
+            })],
+        }],
     )
-    .with_certainty(certainty)])
+    .with_certainty(Certainty::Certain)])
 }
 
 declare_detector! {
