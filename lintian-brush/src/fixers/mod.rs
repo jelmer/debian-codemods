@@ -5,6 +5,7 @@ mod autotools_pkg_config_macro_not_cross_compilation_safe;
 mod binary_control_field_duplicates_source;
 mod binary_package_depends_on_toolchain_package;
 mod boilerplate_copyright_format_uri;
+#[cfg(feature = "bts")]
 mod bugs_field_does_not_refer_to_debian_infrastructure;
 mod build_depends_on_1_revision;
 mod build_depends_on_build_essential;
@@ -21,6 +22,7 @@ mod control_file_contains_dh_make_vcs_comment;
 mod copyright_continued_lines_with_space;
 mod copyright_format_uri;
 mod copyright_has_crs;
+#[cfg(feature = "upstream")]
 mod copyright_missing_upstream_info;
 mod copyright_refers_to_old_directory;
 mod copyright_refers_to_symlink_license;
@@ -117,6 +119,7 @@ mod needlessly_depends_on_awk;
 mod new_package_uses_date_based_version_number;
 mod newer_debconf_templates;
 mod no_copyright_file;
+#[cfg(feature = "upstream")]
 mod no_homepage_field;
 mod no_maintainer_field;
 mod no_priority_field;
@@ -131,6 +134,7 @@ mod orphaned_package_should_not_have_uploaders;
 mod out_of_date_copyright_format_uri;
 mod out_of_date_standards_version;
 mod package_contains_linda_override;
+#[cfg(feature = "upstream")]
 mod package_has_no_description;
 mod package_needs_versioned_debhelper_build_depends;
 mod package_relation_with_perl_modules;
@@ -141,12 +145,17 @@ mod patch_file_present_but_not_mentioned_in_series;
 mod pkg_js_tools_test_is_missing;
 mod pkg_perl_testsuite;
 mod pkg_perl_vcs;
+#[cfg(feature = "bts")]
 mod possible_missing_colon_in_closes;
 mod priority_extra_is_replaced_by_priority_optional;
+#[cfg(feature = "pgp")]
 mod pubkey;
+#[cfg(feature = "pgp")]
 mod public_upstream_key_binary;
 mod public_upstream_key_in_native_package;
+#[cfg(feature = "pgp")]
 mod public_upstream_key_not_minimal;
+#[cfg(feature = "pgp")]
 mod public_upstream_keys_in_multiple_locations;
 mod python_teams_merged;
 mod quilt_series_but_no_build_dep;
@@ -177,6 +186,7 @@ mod unused_entry_in_debian_source_include_binaries;
 mod unused_license_paragraph_in_dep5_copyright;
 mod unused_override;
 mod unversioned_copyright_format_uri;
+#[cfg(feature = "upstream")]
 mod upstream_metadata_file;
 mod upstream_metadata_has_obsolete_field;
 mod upstream_metadata_in_native_source;
@@ -185,12 +195,15 @@ mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
 mod uses_dh_addons;
+#[cfg(feature = "upstream")]
 mod vcs_broken_uri;
 mod vcs_field_bitrotted;
 mod vcs_field_for_maintainer;
 mod vcs_field_invalid_branch;
 mod vcs_field_mismatch;
+#[cfg(feature = "upstream")]
 mod vcs_field_not_canonical;
+#[cfg(feature = "upstream")]
 mod vcs_field_uses_insecure_uri;
 mod vcs_field_uses_not_recommended_uri_format;
 mod vcs_git_uses_invalid_user_uri;

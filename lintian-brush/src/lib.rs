@@ -40,6 +40,8 @@ pub mod lintian_overrides;
 pub mod rules;
 /// Upstream metadata handling
 pub mod upstream_metadata;
+/// VCS URL manipulation utilities (requires the `upstream` feature).
+#[cfg(feature = "upstream")]
 pub mod vcs;
 /// Debian watch file handling
 pub mod watch;
