@@ -168,6 +168,7 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | MakefileAction::SetVariable { file, .. }
             | MakefileAction::SetVariableOperator { file, .. }
             | MakefileAction::RemoveVariable { file, .. }
+            | MakefileAction::RenameVariable { file, .. }
             | MakefileAction::RemoveRule { file, .. }
             | MakefileAction::RemovePhonyTarget { file, .. }
             | MakefileAction::RenameRuleTarget { file, .. }
@@ -950,6 +951,17 @@ pub enum MakefileAction {
         file: PathBuf,
         /// Variable name (matched exactly).
         name: String,
+    },
+    /// Rename the first variable definition for `from_name` to `to_name`,
+    /// leaving its operator, value and `export`/`override` prefix intact.
+    /// A no-op if no such variable exists.
+    RenameVariable {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Current variable name (matched exactly).
+        from_name: String,
+        /// New variable name.
+        to_name: String,
     },
     /// Remove the first rule whose primary target is `target`. A no-op if
     /// no such rule exists.
