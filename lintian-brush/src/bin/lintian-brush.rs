@@ -745,6 +745,15 @@ fn main() -> Result<(), i32> {
             }
             tracing::info!("Run with --verbose for details.");
         }
+        if !overall_result.uncertain_fixers.is_empty() {
+            tracing::info!(
+                "Some fixers produced changes below the requested certainty and were skipped:"
+            );
+            for (name, certainty) in overall_result.uncertain_fixers.iter() {
+                tracing::info!("  {}: {}", name, certainty);
+            }
+            tracing::info!("Run with --uncertain to apply them.");
+        }
         if !overall_result.formatting_unpreservable.is_empty() && !args.output.verbose {
             tracing::info!(
                 "Some fixer scripts were unable to preserve formatting: {:?}. Run with --allow-reformatting to reformat {:?}.",
