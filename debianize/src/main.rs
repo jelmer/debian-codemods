@@ -72,9 +72,10 @@ struct Args {
     #[arg(long)]
     verbose: bool,
 
-    /// Do not probe external services
+    /// Work offline: do not access the network when creating the package
+    /// (the package build is always run without network)
     #[arg(long)]
-    disable_net_access: bool,
+    offline: bool,
 
     #[arg(long, hide = true, default_value_t = 0)]
     diligence: u8,
@@ -350,7 +351,7 @@ fn main() -> Result<(), i32> {
         diligence: args.diligence,
         trust: args.trust,
         check: args.check,
-        net_access: !args.disable_net_access,
+        net_access: !args.offline,
         force_subprocess: args.force_subprocess,
         force_new_directory: args.force_new_directory,
         compat_release: Some(compat_release),
