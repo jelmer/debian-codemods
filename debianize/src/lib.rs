@@ -770,59 +770,6 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_browser_url() {
-        // Test GitHub HTTPS URL
-        let github_https = url::Url::parse("https://github.com/user/repo.git").unwrap();
-        let browser_url = determine_browser_url("git", &github_https);
-        assert_eq!(
-            browser_url,
-            Some("https://github.com/user/repo".to_string())
-        );
-
-        // Test GitHub git protocol URL
-        let github_git = url::Url::parse("git://github.com/user/repo.git").unwrap();
-        let browser_url = determine_browser_url("git", &github_git);
-        assert_eq!(
-            browser_url,
-            Some("https://github.com/user/repo".to_string())
-        );
-
-        // Test URL without .git extension
-        let github_no_git = url::Url::parse("https://github.com/user/repo").unwrap();
-        let browser_url = determine_browser_url("git", &github_no_git);
-        assert_eq!(
-            browser_url,
-            Some("https://github.com/user/repo".to_string())
-        );
-
-        // Test GitLab URL conversion
-        let gitlab_url = url::Url::parse("https://gitlab.com/user/repo.git").unwrap();
-        let browser_url = determine_browser_url("git", &gitlab_url);
-        assert_eq!(
-            browser_url,
-            Some("https://gitlab.com/user/repo".to_string())
-        );
-
-        // Test Salsa URL conversion
-        let salsa_url = url::Url::parse("https://salsa.debian.org/user/repo.git").unwrap();
-        let browser_url = determine_browser_url("git", &salsa_url);
-        assert_eq!(
-            browser_url,
-            Some("https://salsa.debian.org/user/repo".to_string())
-        );
-
-        // Test unknown URL
-        let unknown_url = url::Url::parse("https://example.com/user/repo.git").unwrap();
-        let browser_url = determine_browser_url("git", &unknown_url);
-        assert_eq!(browser_url, None);
-
-        // Test non-git VCS
-        let svn_url = url::Url::parse("svn://example.com/repo").unwrap();
-        let browser_url = determine_browser_url("svn", &svn_url);
-        assert_eq!(browser_url, None);
-    }
-
-    #[test]
     fn test_unsplit_vcs_url() {
         // Test basic URL
         let url = url::Url::parse("https://github.com/user/repo").unwrap();
@@ -833,6 +780,49 @@ mod tests {
         let url = url::Url::parse("https://github.com/user/repo/tree/main").unwrap();
         let result = unsplit_vcs_url("git", &url);
         assert_eq!(result, "https://github.com/user/repo/tree/main");
+    }
+
+    #[test]
+    fn test_breezy_url_to_vcs_field_plain() {
+        breezyshim::init();
+        let url = url::Url::parse("https://github.com/jelmer/dulwich").unwrap();
+        let parsed = breezy_url_to_vcs_field(&url);
+        assert_eq!(parsed.repo_url, "https://github.com/jelmer/dulwich");
+        assert_eq!(parsed.branch, None);
+        assert_eq!(parsed.subpath, None);
+        assert_eq!(parsed.to_string(), "https://github.com/jelmer/dulwich");
+    }
+
+    #[test]
+    fn test_breezy_url_to_vcs_field_with_branch() {
+        breezyshim::init();
+        let url =
+            url::Url::parse("https://github.com/jelmer/dulwich,branch=debian%2Fmain").unwrap();
+        let parsed = breezy_url_to_vcs_field(&url);
+        assert_eq!(parsed.repo_url, "https://github.com/jelmer/dulwich");
+        assert_eq!(parsed.branch, Some("debian/main".to_string()));
+        assert_eq!(parsed.subpath, None);
+        assert_eq!(
+            parsed.to_string(),
+            "https://github.com/jelmer/dulwich -b debian/main"
+        );
+    }
+
+    #[test]
+    fn test_breezy_url_to_vcs_field_with_branch_and_subpath() {
+        breezyshim::init();
+        let url = url::Url::parse(
+            "https://github.com/jelmer/dulwich,branch=debian%2Fmain,subpath=packaging",
+        )
+        .unwrap();
+        let parsed = breezy_url_to_vcs_field(&url);
+        assert_eq!(parsed.repo_url, "https://github.com/jelmer/dulwich");
+        assert_eq!(parsed.branch, Some("debian/main".to_string()));
+        assert_eq!(parsed.subpath, Some("packaging".to_string()));
+        assert_eq!(
+            parsed.to_string(),
+            "https://github.com/jelmer/dulwich -b debian/main [packaging]"
+        );
     }
 
     #[test]
@@ -2076,6 +2066,25 @@ fn determine_vcs_url(branch: &dyn Branch, subpath: &Path) -> Result<url::Url, Er
     Ok(url)
 }
 
+/// Convert a Breezy location URL into a Debian Vcs-* field value.
+///
+/// Breezy location URLs carry the branch (and possibly a subpath) as comma
+/// separated segment parameters, e.g. ".../dulwich,branch=debian%2Fmain".
+/// Debian Vcs-* fields use a separate ` -b <branch> [<subpath>]` syntax, so
+/// split those out and re-render them in the form Debian expects.
+fn breezy_url_to_vcs_field(vcs_url: &url::Url) -> debian_control::vcs::ParsedVcs {
+    let (repo_url, parameters) = breezyshim::urlutils::split_segment_parameters(vcs_url);
+    debian_control::vcs::ParsedVcs {
+        repo_url: repo_url.to_string(),
+        branch: parameters
+            .get("branch")
+            .map(|b| breezyshim::urlutils::unescape_utf8(b)),
+        subpath: parameters
+            .get("subpath")
+            .map(|s| breezyshim::urlutils::unescape_utf8(s)),
+    }
+}
+
 /// Update VCS fields in debian/control
 fn update_vcs_fields(
     wt: &dyn PyWorkingTree,
@@ -2086,6 +2095,8 @@ fn update_vcs_fields(
     use debian_analyzer::editor::{Editor, TreeEditor};
     use debian_control::lossless::Control;
     use std::ops::Deref;
+
+    let field_value = breezy_url_to_vcs_field(vcs_url).to_string();
 
     // Open the control file for editing
     let editor = TreeEditor::<Control>::new(wt, &debian_path.join("control"), false, false)?;
@@ -2098,75 +2109,28 @@ fn update_vcs_fields(
 
     // Set the appropriate VCS field based on type
     match vcs_type {
-        "git" => source.set_vcs_git(vcs_url.as_str()),
-        "bzr" => source.set_vcs_bzr(vcs_url.as_str()),
-        "svn" => source.set_vcs_svn(vcs_url.as_str()),
-        "hg" => source.set_vcs_hg(vcs_url.as_str()),
-        "cvs" => source.set_vcs_cvs(vcs_url.as_str()),
-        "darcs" => source.set_vcs_darcs(vcs_url.as_str()),
+        "git" => source.set_vcs_git(&field_value),
+        "bzr" => source.set_vcs_bzr(&field_value),
+        "svn" => source.set_vcs_svn(&field_value),
+        "hg" => source.set_vcs_hg(&field_value),
+        "cvs" => source.set_vcs_cvs(&field_value),
+        "darcs" => source.set_vcs_darcs(&field_value),
         _ => {
             log::warn!("Unknown VCS type: {}, defaulting to Git", vcs_type);
-            source.set_vcs_git(vcs_url.as_str())
+            source.set_vcs_git(&field_value)
         }
     }
 
     // Set browser URL if we can determine it
-    if let Some(browser_url) = determine_browser_url(vcs_type, vcs_url) {
-        source.set_vcs_browser(Some(&browser_url));
+    if let Some(browser_url) =
+        debian_analyzer::vcs::determine_browser_url(vcs_type, &field_value, None)
+    {
+        source.set_vcs_browser(Some(browser_url.as_str()));
     }
 
     // Commit the changes
     editor.commit()?;
     Ok(())
-}
-
-/// Determine browser URL from VCS URL
-fn determine_browser_url(vcs_type: &str, vcs_url: &url::Url) -> Option<String> {
-    match vcs_type {
-        "git" => {
-            let url_str = vcs_url.as_str();
-            // Handle common git hosting services
-            if url_str.contains("github.com") {
-                // Convert git URL to https browser URL
-                Some(
-                    url_str
-                        .replace("git@github.com:", "https://github.com/")
-                        .replace("git://github.com/", "https://github.com/")
-                        .replace("git+ssh://git@github.com/", "https://github.com/")
-                        .replace(".git", ""),
-                )
-            } else if url_str.contains("gitlab") {
-                if url_str.starts_with("https://") {
-                    // Already an HTTPS URL, just remove .git
-                    Some(url_str.replace(".git", ""))
-                } else {
-                    // SSH URL, convert to HTTPS
-                    Some(
-                        url_str
-                            .replace("git@", "https://")
-                            .replace(":", "/")
-                            .replace(".git", ""),
-                    )
-                }
-            } else if url_str.contains("salsa.debian.org") {
-                if url_str.starts_with("https://") {
-                    // Already an HTTPS URL, just remove .git
-                    Some(url_str.replace(".git", ""))
-                } else {
-                    // SSH or git protocol URL, convert to HTTPS
-                    Some(
-                        url_str
-                            .replace("git@salsa.debian.org:", "https://salsa.debian.org/")
-                            .replace("git://salsa.debian.org/", "https://salsa.debian.org/")
-                            .replace(".git", ""),
-                    )
-                }
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
 }
 
 /// Find WNPP bugs for a package using the debian_analyzer functionality

@@ -51,3 +51,6 @@ it as `FixerError::Panic`.
 Each fixer should have some unit tests for its logic. In addition, it
 should have some integration tests in the
 `lintian-brush/tests/<fixer_name>` directory.
+
+Ideally a fixer comes with some ActionPlans that resolve it,
+but it's also fine if it just reports the issue without a fix.
