@@ -232,10 +232,14 @@ pub fn apply_diagnostics_with(
 /// Resolves both kinds of constraint into a single dependency graph and
 /// performs Kahn's-algorithm sort with deterministic tie-breaking.
 ///
+/// Ordering constraints (`after` / `before`) that reference a detector which
+/// is not in `registrations` are ignored. This happens when a fixer is
+/// excluded from the build by a feature flag: a constraint relative to a
+/// fixer that never runs is vacuously satisfied.
+///
 /// # Panics
 ///
-/// Panics if a circular dependency is detected, or if a registration
-/// references a non-existent detector.
+/// Panics if a circular dependency is detected.
 fn topologically_sort_detectors<'a>(
     registrations: Vec<&'a crate::detector::DetectorRegistration>,
 ) -> Vec<&'a crate::detector::DetectorRegistration> {
@@ -243,25 +247,6 @@ fn topologically_sort_detectors<'a>(
 
     let name_to_reg: HashMap<&str, &'a crate::detector::DetectorRegistration> =
         registrations.iter().map(|reg| (reg.name, *reg)).collect();
-
-    for reg in &registrations {
-        for dep in reg.after {
-            if !name_to_reg.contains_key(dep) {
-                panic!(
-                    "Fixer '{}' declares dependency on non-existent fixer '{}' in 'after' list",
-                    reg.name, dep
-                );
-            }
-        }
-        for dep in reg.before {
-            if !name_to_reg.contains_key(dep) {
-                panic!(
-                    "Fixer '{}' declares dependency on non-existent fixer '{}' in 'before' list",
-                    reg.name, dep
-                );
-            }
-        }
-    }
 
     // edge A -> B means "A must run before B".
     let mut adj_list: HashMap<&str, Vec<&str>> = HashMap::new();
@@ -274,6 +259,9 @@ fn topologically_sort_detectors<'a>(
 
     for reg in &registrations {
         for dep in reg.after {
+            if !name_to_reg.contains_key(dep) {
+                continue;
+            }
             adj_list.entry(*dep).or_default().push(reg.name);
             *in_degree.entry(reg.name).or_insert(0) += 1;
         }
@@ -281,6 +269,9 @@ fn topologically_sort_detectors<'a>(
 
     for reg in &registrations {
         for dep in reg.before {
+            if !name_to_reg.contains_key(dep) {
+                continue;
+            }
             adj_list.entry(reg.name).or_default().push(*dep);
             *in_degree.entry(*dep).or_insert(0) += 1;
         }
@@ -379,10 +370,11 @@ mod tests {
         // This test verifies that every registered detector has
         // consistent `after` / `before` declarations:
         // 1. No circular dependencies.
-        // 2. All referenced fixers exist.
-        // 3. All registered fixers are kept in the sorted output.
+        // 2. All registered fixers are kept in the sorted output.
+        // 3. Ordering constraints between two present fixers are respected.
         //
-        // The topological sort panics on (1) or (2); we assert (3).
+        // References to fixers that are absent from the current build (e.g.
+        // excluded by a feature flag) are ignored, mirroring the sort itself.
         let registrations: Vec<&'static crate::detector::DetectorRegistration> =
             inventory::iter::<crate::detector::DetectorRegistration>
                 .into_iter()
@@ -415,12 +407,9 @@ mod tests {
 
         for (idx, reg) in sorted.iter().enumerate() {
             for dep in reg.after {
-                let dep_idx = name_to_index.get(dep).unwrap_or_else(|| {
-                    panic!(
-                        "Fixer '{}' declares after: ['{}'], but '{}' not found",
-                        reg.name, dep, dep
-                    )
-                });
+                let Some(dep_idx) = name_to_index.get(dep) else {
+                    continue;
+                };
                 assert!(
                     dep_idx < &idx,
                     "Dependency ordering violated: '{}' (index {}) should run after '{}' (index {})",
@@ -428,12 +417,9 @@ mod tests {
                 );
             }
             for dep in reg.before {
-                let dep_idx = name_to_index.get(dep).unwrap_or_else(|| {
-                    panic!(
-                        "Fixer '{}' declares before: ['{}'], but '{}' not found",
-                        reg.name, dep, dep
-                    )
-                });
+                let Some(dep_idx) = name_to_index.get(dep) else {
+                    continue;
+                };
                 assert!(
                     dep_idx > &idx,
                     "Dependency ordering violated: '{}' (index {}) should run before '{}' (index {})",
@@ -622,17 +608,21 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "non-existent fixer 'fixer-nonexistent'")]
-    fn test_topological_sort_missing_dependency_after() {
+    fn test_topological_sort_ignores_missing_after_dependency() {
+        // A reference to a fixer absent from the build (e.g. feature-gated)
+        // is ignored rather than fatal.
         let a = detector_reg("fixer-a", &["fixer-nonexistent"], &[]);
-        topologically_sort_detectors(vec![&a]);
+        let sorted = topologically_sort_detectors(vec![&a]);
+        assert_eq!(sorted.len(), 1);
+        assert_eq!(sorted[0].name, "fixer-a");
     }
 
     #[test]
-    #[should_panic(expected = "non-existent fixer 'fixer-missing'")]
-    fn test_topological_sort_missing_dependency_before() {
+    fn test_topological_sort_ignores_missing_before_dependency() {
         let a = detector_reg("fixer-a", &[], &["fixer-missing"]);
-        topologically_sort_detectors(vec![&a]);
+        let sorted = topologically_sort_detectors(vec![&a]);
+        assert_eq!(sorted.len(), 1);
+        assert_eq!(sorted[0].name, "fixer-a");
     }
 
     /// A detector that yields a fixed list of diagnostics. Used by the

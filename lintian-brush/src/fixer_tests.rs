@@ -32,6 +32,9 @@ fn issues_match_with_wildcards(expected: &[LintianIssue], actual: &[LintianIssue
     true
 }
 
+// Verifying that every test directory maps to a fixer is only meaningful when
+// all feature-gated fixers are built; a lean build legitimately omits some.
+#[cfg(all(feature = "pgp", feature = "bts", feature = "upstream"))]
 #[test]
 fn test_all_test_dirs_have_matching_fixers() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -395,10 +398,15 @@ fn run_fixer_testcase(fixer_name: &str, test_name: &str, path: &Path) {
     // Use the regular fixer infrastructure to find and run the fixer
     // Force subprocess mode for all fixers to avoid Python GIL race conditions in parallel tests
     let fixers = all_lintian_fixers();
-    let fixer = fixers
-        .into_iter()
-        .find(|f| f.name() == fixer_name)
-        .unwrap_or_else(|| panic!("Fixer '{}' not found", fixer_name));
+    let Some(fixer) = fixers.into_iter().find(|f| f.name() == fixer_name) else {
+        // The fixer is excluded from this build by a feature flag; its
+        // test directory still exists but there is nothing to exercise.
+        eprintln!(
+            "Skipping test {}: fixer '{}' is not built",
+            test_name, fixer_name
+        );
+        return;
+    };
 
     let ws = debian_workspace::fs_workspace::FsWorkspace::new(
         &testdir,
