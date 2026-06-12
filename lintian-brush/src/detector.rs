@@ -472,20 +472,20 @@ mod tests {
 
         // Detectors without an explicit `triggers:` clause expose the
         // empty list (the trait default).
-        let untriggered = inventory::iter::<DetectorRegistration>
-            .into_iter()
-            .find(|reg| reg.triggers.is_empty())
-            .expect("at least one detector still has no trigger annotation");
-        assert!(untriggered.triggers.is_empty());
+        let untriggered = DummyDetector {
+            name: "untriggered",
+            tags: &[],
+        };
+        assert!(untriggered.triggers().is_empty());
     }
 
     #[test]
     fn cost_reaches_registered_detector() {
-        // `upstream-metadata-file` opts in to the Network cost class.
+        // `debian-watch-file-is-missing` opts in to the Network cost class.
         let net = inventory::iter::<DetectorRegistration>
             .into_iter()
-            .find(|reg| reg.name == "upstream-metadata-file")
-            .expect("upstream-metadata-file registered");
+            .find(|reg| reg.name == "debian-watch-file-is-missing")
+            .expect("debian-watch-file-is-missing registered");
         assert_eq!(net.cost, DetectorCost::Network);
         assert_eq!((net.create)().cost(), DetectorCost::Network);
 

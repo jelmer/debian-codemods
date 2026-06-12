@@ -64,21 +64,21 @@ svp-client = { workspace = true }
 inventory = "0.3"
 regex = { workspace = true }
 indexmap = { workspace = true }
-sequoia-openpgp = "2"
+sequoia-openpgp = { version = "2", optional = true }
 makefile-lossless = { workspace = true }
 sha1 = "0.11"
 shell-words = "1"
-debian-watch = { workspace = true, features = ["discover", "blocking", "pgp"] }
-tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+debian-watch = { workspace = true, features = ["discover", "blocking"] }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
-upstream-ontologist = { workspace = true }
+upstream-ontologist = { workspace = true, optional = true }
 dep3 = "0.2.0"
 patchkit = "0.2.2"
 rowan = "0.16"
 lintian-overrides = { workspace = true }
 strsim = "0.11"
 futures = "0.3"
-debbugs = { version = "0.1.8", features = ["blocking"] }
+debbugs = { version = "0.1.8", features = ["blocking"], optional = true }
 textwrap = "0.16"
 toml_edit = { workspace = true }
 systemd-unit-edit = { workspace = true }
@@ -89,10 +89,16 @@ fs_extra = "1.3.0"
 maplit = { workspace = true }
 
 [features]
-default = ["svp", "cli"]
+default = ["svp", "cli", "pgp", "bts", "upstream"]
 svp = []
 cli = ["dep:clap"]
 udd = ["debian-analyzer/udd"]
+# Fixers that read or write OpenPGP upstream signing keys.
+pgp = ["dep:sequoia-openpgp", "debian-watch/pgp"]
+# Fixers that query the Debian bug tracking system.
+bts = ["dep:debbugs"]
+# Fixers that use upstream-ontologist to guess upstream metadata and VCS URLs.
+upstream = ["dep:upstream-ontologist"]
 
 [[bin]]
 name = "lintian-brush"
