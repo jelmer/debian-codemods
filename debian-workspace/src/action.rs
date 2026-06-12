@@ -1,3 +1,4 @@
+use debian_analyzer::Certainty;
 use debian_control::relations::VersionConstraint;
 use debversion::Version;
 use std::path::{Path, PathBuf};
@@ -15,6 +16,12 @@ pub struct ActionPlan {
     /// The driver skips opinionated plans otherwise.
     #[serde(default, skip_serializing_if = "core::ops::Not::not")]
     pub opinionated: bool,
+    /// Confidence that this plan correctly addresses the diagnostic, as
+    /// distinct from the diagnostic's own certainty that the issue exists.
+    /// `None` means the plan makes no claim of its own; the driver treats
+    /// it as [`Certainty::Certain`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub certainty: Option<Certainty>,
     /// Actions applied as a unit.
     pub actions: Vec<Action>,
 }

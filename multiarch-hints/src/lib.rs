@@ -926,6 +926,7 @@ pub fn detect_multiarch_hints(
                     ActionPlan {
                         label: description,
                         opinionated: false,
+                        certainty: None,
                         actions,
                     },
                 ));

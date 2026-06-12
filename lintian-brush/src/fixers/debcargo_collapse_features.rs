@@ -31,6 +31,7 @@ pub fn detect(
         plans: vec![ActionPlan {
             label: "Set collapse_features = true in debian/debcargo.toml.".to_string(),
             opinionated: false,
+            certainty: None,
             actions: vec![Action::Debcargo(DebcargoAction::SetTopLevelBool {
                 file: debcargo_rel,
                 field: "collapse_features".to_string(),

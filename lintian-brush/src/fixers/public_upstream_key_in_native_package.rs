@@ -33,6 +33,7 @@ pub fn detect(
         plans: vec![ActionPlan {
             label: "Remove upstream signing key in native source package.".to_string(),
             opinionated: true,
+            certainty: None,
             actions: vec![
                 Action::Filesystem(FilesystemAction::Delete { file: key_rel }),
                 Action::Filesystem(FilesystemAction::RemoveDirIfEmpty {
