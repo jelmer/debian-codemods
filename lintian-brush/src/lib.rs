@@ -1445,6 +1445,8 @@ pub fn run_lintian_fixers(
                 FixerError::NotCertainEnough(actual_certainty, minimum_certainty, _overrides) => {
                     let duration = std::time::SystemTime::now().duration_since(start).unwrap();
                     ret.fixer_durations.insert(fixer_name.to_string(), duration);
+                    ret.uncertain_fixers
+                        .insert(fixer_name.to_string(), actual_certainty);
                     if verbose {
                         tracing::info!(
                     "Fixer {} made changes but not high enough certainty (was {}, needed {}). (took: {:2}s)",
@@ -1572,6 +1574,11 @@ pub struct ManyResult {
     /// Failed fixers
     #[serde(rename = "failed")]
     pub failed_fixers: std::collections::HashMap<String, String>,
+    /// Fixers that produced a change which was below the requested
+    /// minimum certainty and therefore not applied. Maps fixer name to
+    /// the certainty its change would have had.
+    #[serde(skip)]
+    pub uncertain_fixers: std::collections::HashMap<String, Certainty>,
     /// Changelog behaviour
     pub changelog_behaviour: Option<ChangelogBehaviour>,
     /// Overridden Lintian issues
@@ -1625,6 +1632,7 @@ impl ManyResult {
         Self {
             success: Vec::new(),
             failed_fixers: std::collections::HashMap::new(),
+            uncertain_fixers: std::collections::HashMap::new(),
             changelog_behaviour: None,
             overridden_lintian_issues: Vec::new(),
             formatting_unpreservable: std::collections::HashMap::new(),
@@ -2171,6 +2179,74 @@ Arch: all
                 .get_file_lines(std::path::Path::new("debian/control"))
                 .unwrap();
             assert_eq!(lines.last().unwrap(), &b"a new line\n".to_vec());
+            std::mem::drop(td);
+        }
+
+        #[test]
+        fn test_below_certainty_recorded_as_uncertain() {
+            struct UncertainFixer {
+                name: &'static str,
+                lintian_tags: &'static [&'static str],
+            }
+
+            impl Detector for UncertainFixer {
+                fn name(&self) -> &'static str {
+                    self.name
+                }
+
+                fn lintian_tags(&self) -> &'static [&'static str] {
+                    self.lintian_tags
+                }
+
+                fn detect(
+                    &self,
+                    _ws: &dyn debian_workspace::Workspace,
+                    _preferences: &FixerPreferences,
+                ) -> Result<Vec<Diagnostic>, FixerError> {
+                    Ok(vec![Diagnostic::with_actions(
+                        LintianIssue::source("some-tag", Visibility::Warning),
+                        "Renamed a file.",
+                        "Renamed a file.",
+                        vec![Action::Filesystem(FilesystemAction::Write {
+                            file: std::path::PathBuf::from("debian/somefile"),
+                            content: b"test".to_vec(),
+                        })],
+                    )
+                    .with_certainty(Certainty::Possible)])
+                }
+            }
+
+            let (td, tree) = setup(None);
+            let lock = tree.lock_write().unwrap();
+            let result = run_lintian_fixers(
+                &tree,
+                &[Box::new(UncertainFixer {
+                    name: "dummy",
+                    lintian_tags: &["some-tag"],
+                })],
+                Some(|| false),
+                false,
+                Some(COMMITTER),
+                &FixerPreferences {
+                    minimum_certainty: Some(Certainty::Certain),
+                    ..Default::default()
+                },
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            std::mem::drop(lock);
+
+            assert_eq!(0, result.success.len());
+            assert_eq!(maplit::hashmap! {}, result.failed_fixers);
+            assert_eq!(
+                maplit::hashmap! { "dummy".to_string() => Certainty::Possible },
+                result.uncertain_fixers
+            );
+            // No commit was made.
+            assert_eq!(1, tree.branch().revno());
             std::mem::drop(td);
         }
 
