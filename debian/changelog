@@ -1,4 +1,10 @@
-debian-codemods (0.181) UNRELEASED; urgency=medium
+debian-codemods (0.181.1) unstable; urgency=medium
+
+  * Bump rust-sha1 to 0.11.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 04 Jun 2026 18:20:10 +0100
+
+debian-codemods (0.181) unstable; urgency=medium
 
   * Add fixer for binary-package-depends-on-toolchain-package.
   * Bump minimum makefile-lossless to 0.3.38, fixing support for
