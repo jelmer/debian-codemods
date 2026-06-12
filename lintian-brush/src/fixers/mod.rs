@@ -34,6 +34,7 @@ mod debian_changelog_line_too_long;
 mod debian_control_has_empty_field;
 mod debian_control_has_obsolete_dbg_package;
 mod debian_control_has_unusual_field_spacing;
+mod debian_news_entry_uses_asterisk;
 mod debian_pycompat_is_obsolete;
 mod debian_pyversions_is_obsolete;
 mod debian_rules_contains_unnecessary_get_orig_source_target;
