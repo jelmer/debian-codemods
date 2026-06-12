@@ -1,0 +1,6 @@
+test-package (1.0-1) unstable; urgency=low
+
+  The configuration file format has changed. Existing configuration files
+  will be migrated automatically on upgrade.
+
+ -- Joe Example <joe@example.com>  Mon, 01 Jan 2024 00:00:00 +0000
