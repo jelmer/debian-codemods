@@ -309,7 +309,8 @@
     Would need to generate or provide a manpage. Could use help2man
     but that requires building the package.
 - tag: boilerplate-copyright-format-uri
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace boilerplate Format URI in debian/copyright with the correct

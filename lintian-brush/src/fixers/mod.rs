@@ -4,6 +4,7 @@ mod apache2_module_does_not_depend_on_apache2_api;
 mod autotools_pkg_config_macro_not_cross_compilation_safe;
 mod binary_control_field_duplicates_source;
 mod binary_package_depends_on_toolchain_package;
+mod boilerplate_copyright_format_uri;
 mod bugs_field_does_not_refer_to_debian_infrastructure;
 mod build_depends_on_1_revision;
 mod build_depends_on_build_essential;
