@@ -867,7 +867,8 @@
   detector: false
   status: build-stage
 - tag: debian-files-list-in-source
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Delete the debian/files file from the source tree. It should
