@@ -622,19 +622,18 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
 /// because the upstream Cargo.toml left it as some other value), it is left
 /// untouched rather than panicking.
 fn populate_cargo_features(
-    cargo: &mut debian_analyzer::debcargo::toml_edit::DocumentMut,
+    cargo: &mut toml_edit::DocumentMut,
     features: &HashMap<String, Vec<String>>,
 ) {
     if let Some(features_section) = cargo["features"].as_table_mut() {
         for (feature, reqs) in features.iter() {
-            features_section[feature] = debian_analyzer::debcargo::toml_edit::value(
-                debian_analyzer::debcargo::toml_edit::Array::new(),
-            );
+            features_section[feature] = toml_edit::value(toml_edit::Array::new());
 
             for req in reqs.iter() {
-                features_section[feature].as_array_mut().unwrap().push(
-                    debian_analyzer::debcargo::toml_edit::Value::from(req.to_string()),
-                );
+                features_section[feature]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(toml_edit::Value::from(req.to_string()));
             }
         }
     }
@@ -727,18 +726,17 @@ fn process_debcargo(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     }
     let mut control = debian_analyzer::debcargo::DebcargoEditor::new();
-    control.cargo = Some(debian_analyzer::debcargo::toml_edit::DocumentMut::new());
-    control.cargo.as_mut().unwrap()["package"]["name"] =
-        debian_analyzer::debcargo::toml_edit::value(cratename);
+    control.cargo = Some(toml_edit::DocumentMut::new());
+    control.cargo.as_mut().unwrap()["package"]["name"] = toml_edit::value(cratename);
     if let Some(crate_version) = crate_version {
         control.cargo.as_mut().unwrap()["package"]["version"] =
-            debian_analyzer::debcargo::toml_edit::value(crate_version.to_string());
+            toml_edit::value(crate_version.to_string());
     }
     if let Some(features) = features {
         populate_cargo_features(control.cargo.as_mut().unwrap(), &features);
     }
-    control.debcargo["semver_suffix"] = debian_analyzer::debcargo::toml_edit::value(semver_suffix);
-    control.debcargo["overlay"] = debian_analyzer::debcargo::toml_edit::value(".");
+    control.debcargo["semver_suffix"] = toml_edit::value(semver_suffix);
+    control.debcargo["overlay"] = toml_edit::value(".");
     control.commit()?;
     Ok(())
 }
@@ -1014,10 +1012,8 @@ mod tests {
 
     #[test]
     fn test_populate_cargo_features() {
-        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
-        cargo["features"] = debian_analyzer::debcargo::toml_edit::Item::Table(
-            debian_analyzer::debcargo::toml_edit::Table::new(),
-        );
+        let mut cargo = toml_edit::DocumentMut::new();
+        cargo["features"] = toml_edit::Item::Table(toml_edit::Table::new());
 
         let mut features = HashMap::new();
         features.insert(
@@ -1041,7 +1037,7 @@ mod tests {
     fn test_populate_cargo_features_missing_section_is_noop() {
         // `as_table_mut` on an absent key returns None without inserting, so a
         // document without a `features` section is left without one.
-        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
+        let mut cargo = toml_edit::DocumentMut::new();
 
         let mut features = HashMap::new();
         features.insert("foo".to_string(), vec!["bar".to_string()]);
@@ -1055,8 +1051,8 @@ mod tests {
     fn test_populate_cargo_features_non_table_left_untouched() {
         // If the `features` entry is not a table, it must be left untouched
         // rather than panicking.
-        let mut cargo = debian_analyzer::debcargo::toml_edit::DocumentMut::new();
-        cargo["features"] = debian_analyzer::debcargo::toml_edit::value("not-a-table");
+        let mut cargo = toml_edit::DocumentMut::new();
+        cargo["features"] = toml_edit::value("not-a-table");
 
         let mut features = HashMap::new();
         features.insert("foo".to_string(), vec!["bar".to_string()]);
