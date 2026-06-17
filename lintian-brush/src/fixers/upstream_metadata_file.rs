@@ -258,7 +258,7 @@ pub fn detect(
     // Downgrade minimum certainty for initial operations, since check_upstream_metadata can
     // upgrade it to "certain" later (matches Python logic)
     let initial_minimum_certainty =
-        if net_access && minimum_certainty == Some(upstream_ontologist::Certainty::Certain) {
+        if net_access && minimum_certainty == Some(upstream_ontologist::Certainty::Possible) {
             Some(upstream_ontologist::Certainty::Likely)
         } else {
             minimum_certainty

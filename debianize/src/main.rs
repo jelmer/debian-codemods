@@ -355,7 +355,7 @@ fn main() -> Result<(), i32> {
         force_subprocess: args.force_subprocess,
         force_new_directory: args.force_new_directory,
         compat_release: Some(compat_release),
-        minimum_certainty: debian_analyzer::Certainty::Confident,
+        minimum_certainty: debian_analyzer::Certainty::Possible,
         consult_external_directory: args.consult_external_directory,
         verbose: args.verbose,
         use_debcargo: args.debcargo,
