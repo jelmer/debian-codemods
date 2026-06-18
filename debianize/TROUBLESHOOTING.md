@@ -64,6 +64,17 @@ the detected error, missing dependencies, and other actionable information.
 This is the same analysis that `--iterate-fix` uses internally, so running it
 manually can help you understand why automatic fixing did or did not work.
 
+## 5. Run `deb-fix-build`
+
+The `-x` flag for debianize runs `deb-fix-build` under the hood; this tool basically runs
+sbuild repeatedly with the correct configuration, scans the output with
+`analyze-sbuild-log`, and attempts to fix the detected issues. You can run it
+manually to see what it does:
+
+```sh
+deb-fix-build
+```
+
 ## 5. Common issues
 
 ### Wrong build system detected
