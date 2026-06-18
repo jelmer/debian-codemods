@@ -1,0 +1,4 @@
+Inline the BSD license text instead of referring to the deprecated common-licenses file.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: copyright-refers-to-deprecated-bsd-license-file
