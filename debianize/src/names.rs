@@ -97,7 +97,7 @@ pub fn go_base_name(package: &str) -> String {
     }
     let path = path.trim_end_matches('/').replace(['/', '_'], "-");
     let path = path.strip_suffix(".git").unwrap_or(&path);
-    format!("{}-{}", hostname, path)
+    format!("{}-{}", hostname, path).to_lowercase()
 }
 
 #[cfg(test)]
@@ -294,5 +294,6 @@ mod tests {
         assert_eq!(go_base_name("github.com/foo/bar"), "github-foo-bar");
         assert_eq!(go_base_name("gopkg.in/yaml.v2"), "gopkg-yaml.v2");
         assert_eq!(go_base_name("github.com/foo/bar.git"), "github-foo-bar");
+        assert_eq!(go_base_name("github.com/FiloSottile/torchwood.git"), "github-filosottile-torchwood");
     }
 }
