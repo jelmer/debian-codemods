@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: foo
+
+Files: *
+Copyright: 2024 Example
+License: BSD
+
+License: BSD
+ On Debian systems, the complete text of the BSD license can be found in
+ /usr/share/common-licenses/BSD.
