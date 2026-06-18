@@ -130,9 +130,6 @@ pub fn detect(
     let trust_package = preferences.trust_package.unwrap_or(true);
     let net_access = preferences.net_access.unwrap_or(false);
 
-    // Initialize tracing for debugging
-    let _ = tracing_subscriber::fmt::try_init();
-
     debug!(
         "Upstream metadata fixer starting with trust_package={}, net_access={}",
         trust_package, net_access
