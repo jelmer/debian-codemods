@@ -1,0 +1,6 @@
+Source: foo
+Origin: Ubuntu
+
+Package: foo
+Description: Foo package
+ A simple foo package.
