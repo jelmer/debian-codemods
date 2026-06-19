@@ -72,8 +72,8 @@ debian-watch = { workspace = true, features = ["discover", "blocking"] }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
 upstream-ontologist = { workspace = true, optional = true }
-dep3 = "0.2.0"
-patchkit = "0.2.2"
+dep3 = { workspace = true }
+patchkit = { workspace = true }
 rowan = "0.16"
 lintian-overrides = { workspace = true }
 strsim = "0.11"
