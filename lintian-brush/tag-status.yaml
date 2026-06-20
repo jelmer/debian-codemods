@@ -154,7 +154,8 @@
     Replace architecture wildcard (e.g. linux-any) in a binary stanza
     with "any" using TemplatedControlEditor.
 - tag: aspell-package-not-arch-all
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Set Architecture field to "all" in the binary stanza of debian/control

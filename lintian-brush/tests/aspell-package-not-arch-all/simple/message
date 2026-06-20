@@ -1,0 +1,3 @@
+Set Architecture: all on package aspell-en.
+Fixed-Lintian-Issues:
+ aspell-en binary: aspell-package-not-arch-all

@@ -1,6 +1,7 @@
 mod ancient_maintscript_entry;
 mod ancient_python_version_field;
 mod apache2_module_does_not_depend_on_apache2_api;
+mod aspell_package_not_arch_all;
 mod autotools_pkg_config_macro_not_cross_compilation_safe;
 mod binary_control_field_duplicates_source;
 mod binary_package_depends_on_toolchain_package;
