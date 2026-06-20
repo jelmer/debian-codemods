@@ -1,0 +1,8 @@
+Source: blah
+Build-Depends: debhelper-compat (= 13), default-mta | mail-transport-agent
+Maintainer: Jane Developer <jane@example.com>
+
+Package: blah
+Architecture: any
+Description: a useful tool
+ Some long description.
