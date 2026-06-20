@@ -1,0 +1,1 @@
+default-mta-dependency-does-not-specify-mail-transport-agent Build-Depends: debhelper-compat (= 13), default-mta
