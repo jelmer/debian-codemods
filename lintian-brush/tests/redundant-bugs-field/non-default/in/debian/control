@@ -1,0 +1,6 @@
+Source: foo
+Bugs: https://github.com/example/foo/issues
+
+Package: foo
+Description: Foo package
+ A simple foo package.
