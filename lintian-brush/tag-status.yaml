@@ -678,11 +678,13 @@
     Fix license file references in debian/copyright to point to
     uncompressed versions (e.g. GPL.gz -> GPL).
 - tag: copyright-refers-to-deprecated-bsd-license-file
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
-    Update reference from deprecated BSD license file path to the
-    current one in /usr/share/common-licenses/.
+    Inline the full BSD license text in place of a reference to the
+    deprecated /usr/share/common-licenses/BSD file, for machine-readable
+    copyright files.
 - tag: copyright-refers-to-incorrect-directory
   detector: false
   difficulty: easy

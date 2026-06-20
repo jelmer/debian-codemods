@@ -2,6 +2,7 @@ debian-codemods (0.181.2) UNRELEASED; urgency=medium
 
   * Add detector for boilerplate-copyright-format-uri.
   * Add fixer for debian-control-repeats-field-name-in-value.
+  * Add fixer for copyright-refers-to-deprecated-bsd-license-file.
   * Add fixer for redundant-origin-field.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 12 Jun 2026 17:04:09 +0100
