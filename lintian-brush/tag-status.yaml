@@ -4712,11 +4712,9 @@
     Remove the redundant Bugs field from debian/control when it matches
     the default BTS. Uses TemplatedControlEditor.
 - tag: redundant-origin-field
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Remove the redundant Origin field from debian/control when it is
-    "debian". Uses TemplatedControlEditor.
 - tag: redundant-priority-optional-field
   detector: true
   status: implemented
