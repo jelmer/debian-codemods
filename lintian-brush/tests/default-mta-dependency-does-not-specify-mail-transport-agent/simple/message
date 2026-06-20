@@ -1,0 +1,3 @@
+Specify mail-transport-agent alternative for default-mta in Depends.
+Fixed-Lintian-Issues:
+ blah binary: default-mta-dependency-does-not-specify-mail-transport-agent Depends: default-mta
