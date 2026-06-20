@@ -672,7 +672,8 @@
     Replace dh_make boilerplate URL in debian/copyright with the
     actual upstream URL. Could use upstream-ontologist to find it.
 - tag: copyright-refers-to-compressed-license
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Fix license file references in debian/copyright to point to
