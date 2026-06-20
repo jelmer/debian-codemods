@@ -1,0 +1,13 @@
+Source: aspell-en
+Section: text
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: aspell-en
+Architecture: any
+Depends: aspell, dictionaries-common, ${misc:Depends}
+Description: English dictionary for GNU Aspell
+ This package contains the dictionary needed by GNU Aspell to check
+ spelling of English text.
