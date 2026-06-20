@@ -1,0 +1,6 @@
+Source: foo
+Origin: Debian
+
+Package: foo
+Description: Foo package
+ A simple foo package.

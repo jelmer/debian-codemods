@@ -163,6 +163,7 @@ mod quilt_series_but_no_build_dep;
 mod quilt_series_without_trailing_newline;
 mod redundant_control_relation;
 mod redundant_installation_prerequisite;
+mod redundant_origin_field;
 mod redundant_priority_optional_field;
 mod renamed_tag;
 #[doc = "Get the mapping of old lintian tag names to their current names."]

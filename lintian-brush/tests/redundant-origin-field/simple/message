@@ -1,0 +1,3 @@
+Remove redundant Origin field from source stanza.
+Fixed-Lintian-Issues:
+ source: redundant-origin-field
