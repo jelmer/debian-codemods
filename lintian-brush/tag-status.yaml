@@ -3632,7 +3632,8 @@
   detector: false
   status: build-stage
 - tag: no-newline-at-end
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: Add missing newline at end of file.
 - tag: no-nmu-in-changelog
