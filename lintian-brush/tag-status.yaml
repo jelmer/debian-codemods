@@ -1306,11 +1306,13 @@
   comment: |
     Strip leading spaces from the Description field in debian/control.
 - tag: description-starts-with-package-name
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Remove the package name prefix from the start of the Description
-    synopsis in debian/control.
+    Detector reports the issue only. Rewriting the synopsis to read well
+    once the leading package name is removed needs human judgement, so no
+    automatic fix is proposed.
 - tag: description-synopsis-is-duplicated
   detector: false
   difficulty: hard
