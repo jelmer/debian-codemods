@@ -24,6 +24,7 @@ mod copyright_format_uri;
 mod copyright_has_crs;
 #[cfg(feature = "upstream")]
 mod copyright_missing_upstream_info;
+mod copyright_refers_to_compressed_license;
 mod copyright_refers_to_deprecated_bsd_license_file;
 mod copyright_refers_to_old_directory;
 mod copyright_refers_to_symlink_license;

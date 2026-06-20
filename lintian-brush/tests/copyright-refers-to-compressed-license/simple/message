@@ -1,0 +1,4 @@
+Refer to uncompressed license file in /usr/share/common-licenses.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: copyright-refers-to-compressed-license usr/share/common-licenses/GPL-2.gz
