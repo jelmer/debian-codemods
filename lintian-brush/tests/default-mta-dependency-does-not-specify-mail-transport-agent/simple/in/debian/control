@@ -1,0 +1,8 @@
+Source: blah
+Maintainer: Jane Developer <jane@example.com>
+
+Package: blah
+Architecture: any
+Depends: default-mta
+Description: a useful tool
+ Some long description.

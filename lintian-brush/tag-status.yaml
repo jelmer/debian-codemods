@@ -1150,11 +1150,9 @@
   detector: false
   status: build-stage
 - tag: default-mta-dependency-does-not-specify-mail-transport-agent
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Add "| mail-transport-agent" alternative to the default-mta
-    dependency in debian/control.
+  status: implemented
 - tag: default-mta-dependency-not-listed-first
   detector: true
   difficulty: easy
