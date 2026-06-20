@@ -4710,11 +4710,12 @@
     Remove the debian/README.source file if it only contains the dh_make
     template text.
 - tag: redundant-bugs-field
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove the redundant Bugs field from debian/control when it matches
-    the default BTS. Uses TemplatedControlEditor.
+    the default BTS.
 - tag: redundant-origin-field
   detector: true
   status: implemented

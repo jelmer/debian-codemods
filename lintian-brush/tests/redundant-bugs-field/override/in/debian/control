@@ -1,0 +1,6 @@
+Source: foo
+Bugs: debbugs://bugs.debian.org/
+
+Package: foo
+Description: Foo package
+ A simple foo package.
