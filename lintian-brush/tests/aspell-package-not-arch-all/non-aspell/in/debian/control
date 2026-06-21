@@ -1,0 +1,13 @@
+Source: myspell-en
+Section: text
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: myspell-en
+Architecture: any
+Depends: ${misc:Depends}
+Description: English dictionary for myspell
+ This package contains an English dictionary that genuinely depends on
+ the architecture and should not be forced to Architecture: all.
