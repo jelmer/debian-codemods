@@ -1,0 +1,3 @@
+Remove redundant Bugs field from source stanza.
+Fixed-Lintian-Issues:
+ source: redundant-bugs-field
