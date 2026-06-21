@@ -5282,10 +5282,10 @@
     Parse and edit debian/*.symbols.
 - tag: symbols-file-missing-build-depends-package-field
   detector: false
-  difficulty: easy
+  status: build-stage
   comment: |
-    Add Build-Depends-Package field to debian/*.symbols file pointing
-    to the -dev package.
+    Emitted by the debian/shlibs check against the generated DEBIAN/symbols
+    inside a built binary package, so it is only observable after a build.
 - tag: symbols-for-undeclared-shared-library
   detector: false
   status: build-stage
