@@ -5,7 +5,7 @@ use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use tracing::debug;
+use tracing::{debug, warn};
 use upstream_ontologist::vcs::convert_cvs_list_to_str;
 use upstream_ontologist::{
     check_upstream_metadata, extend_upstream_metadata, guess_upstream_metadata_items,
@@ -320,7 +320,7 @@ pub fn detect(
     update_from_guesses(upstream_metadata.mut_items(), filtered_items.into_iter());
 
     // Step 2: Then extend that by contacting e.g. SourceForge (like Python version)
-    let _ = runtime.block_on(async {
+    if let Err(e) = runtime.block_on(async {
         extend_upstream_metadata(
             &mut upstream_metadata,
             base_path,
@@ -329,7 +329,9 @@ pub fn detect(
             Some(consult_external_directory),
         )
         .await
-    });
+    }) {
+        warn!("Failed to extend upstream metadata: {e}");
+    }
 
     // Step 3: If net access, verify that online resources actually exist (like Python version)
     if net_access {
