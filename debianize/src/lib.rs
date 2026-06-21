@@ -1152,7 +1152,7 @@ impl SessionPreferences {
             SessionPreferences::Unshare(path) => {
                 #[cfg(target_os = "linux")]
                 {
-                    let mut session = if path.as_os_str().is_empty() {
+                    let session = if path.as_os_str().is_empty() {
                         // Use ognibuild's cached Debian session API
                         // This will use ~/.cache/ognibuild/images/debian-sid-{arch}.tar.gz
                         log::info!("Creating unshare session from cached Debian sid image");
