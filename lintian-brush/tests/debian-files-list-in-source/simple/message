@@ -1,3 +1,0 @@
-Remove debian/files from the source tree.
-Fixed-Lintian-Issues:
- source: debian-files-list-in-source debian/files
