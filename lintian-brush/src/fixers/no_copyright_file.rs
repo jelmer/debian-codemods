@@ -54,7 +54,12 @@ mod decopy {
             let cmdoptions = py.import("decopy.cmdoptions")?;
             let dep5 = py.import("decopy.dep5")?;
             let tree = py.import("decopy.tree")?;
-            let datatypes = py.import("decopy.datatypes")?;
+            // The `License` type moved from `decopy.datatypes` (decopy 0.2.x)
+            // to `decopy.core_types` (decopy 0.3.x). Try the new location
+            // first so a chroot with only the new layout still works.
+            let datatypes = py
+                .import("decopy.core_types")
+                .or_else(|_| py.import("decopy.datatypes"))?;
 
             // Convert to absolute path
             let abs_path = std::fs::canonicalize(base_path)
