@@ -1344,10 +1344,9 @@
   comment: |
     Remove deprecated keys from .desktop files using desktop-edit crate.
 - tag: desktop-entry-contains-deprecated-key
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove deprecated keys from .desktop files using desktop-edit crate.
+  status: implemented
 - tag: desktop-entry-contains-unknown-key
   detector: false
   difficulty: medium
