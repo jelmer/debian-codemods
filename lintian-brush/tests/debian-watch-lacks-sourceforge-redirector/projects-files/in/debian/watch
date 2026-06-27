@@ -1,0 +1,2 @@
+version=4
+http://sourceforge.net/projects/example/files/example/ example-(.+)\.tar\.gz

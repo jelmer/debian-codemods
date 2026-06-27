@@ -65,6 +65,7 @@ mod debian_watch_file_old_format;
 mod debian_watch_file_uses_deprecated_githubredir;
 mod debian_watch_file_uses_github_releases;
 mod debian_watch_file_uses_old_github_pattern;
+mod debian_watch_lacks_sourceforge_redirector;
 mod debian_watch_not_mangling_version;
 mod debian_watch_use_templates;
 mod debian_watch_uses_insecure_uri;
