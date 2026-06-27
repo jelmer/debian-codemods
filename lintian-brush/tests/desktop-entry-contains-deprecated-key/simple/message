@@ -1,0 +1,3 @@
+Remove deprecated key SwallowExec from desktop file debian/foo.desktop.
+Fixed-Lintian-Issues:
+ source: desktop-entry-contains-deprecated-key SwallowExec [debian/foo.desktop:3]
