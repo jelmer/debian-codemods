@@ -13,7 +13,7 @@ update-readme:
 
 update-renamed-tags:
 	python3 renamed-tags.py
-	brz diff renamed-tags.json || brz commit -m "Update renamed tags" renamed-tags.json
+	brz diff renamed-tags.json known-tags.json || brz commit -m "Update renamed and known tags" renamed-tags.json known-tags.json
 
 next:
 	cargo run --features udd --bin tag-status -- --next

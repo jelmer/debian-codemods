@@ -1,0 +1,4 @@
+# The maintainer has explicitly overridden alien-tag itself, so the
+# fixer must not touch the unknown-tag override below.
+alien-tag
+this-tag-does-not-exist-anywhere some info

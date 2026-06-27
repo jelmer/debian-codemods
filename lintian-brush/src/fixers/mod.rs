@@ -1,3 +1,4 @@
+mod alien_tag;
 mod ancient_maintscript_entry;
 mod ancient_python_version_field;
 mod apache2_module_does_not_depend_on_apache2_api;
