@@ -128,6 +128,18 @@ mod decopy {
 
                 tracing::debug!("decopy returned {} candidate groups", sorted_items.len());
 
+                // decopy 0.3 moved per-node wildcard bookkeeping onto a
+                // `TallyTracker` instance that is shared across all groups
+                // in a single output run, and `FileGroup.get_patterns` now
+                // requires it as an argument. decopy 0.2 has no such class
+                // and `get_patterns` takes no arguments.
+                let tracker = py
+                    .import("decopy.group")
+                    .ok()
+                    .and_then(|m| m.getattr("TallyTracker").ok())
+                    .and_then(|cls| cls.call0().ok())
+                    .map(|t| t.unbind());
+
                 for (_key, group) in sorted_items {
                     let group = group.bind(py);
 
@@ -148,7 +160,12 @@ mod decopy {
 
                     // Get files
                     let files = if options.getattr("glob")?.is_truthy()? {
-                        group.getattr("files")?.call_method0("get_patterns")?
+                        let files_obj = group.getattr("files")?;
+                        if let Some(tracker) = tracker.as_ref() {
+                            files_obj.call_method1("get_patterns", (tracker,))?
+                        } else {
+                            files_obj.call_method0("get_patterns")?
+                        }
                     } else {
                         group.getattr("files")?.call_method0("sorted_members")?
                     };
