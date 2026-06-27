@@ -1100,11 +1100,12 @@
     Update SourceForge URL pattern in debian/watch to use the modern
     redirector format.
 - tag: debian-watch-lacks-sourceforge-redirector
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Add SourceForge redirector to debian/watch URL for proper
-    SourceForge file matching.
+    Rewrite direct SourceForge download URLs in debian/watch to use the
+    qa.debian.org sf.net redirector.
 - tag: debian-watch-line-invalid
   detector: false
   difficulty: hard
@@ -5184,11 +5185,9 @@
   comment: |
     Fix spelling errors in debian/README.Debian using lintian's spelling data.
 - tag: spelling-error-in-rules-requires-root
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the misspelled Rules-Requires-Root value in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: sphinxdoc-but-no-sphinxdoc-depends
   detector: false
   difficulty: easy
