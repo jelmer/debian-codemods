@@ -1,8 +1,10 @@
 debian-codemods (0.183) UNRELEASED; urgency=medium
 
   * Add fixer for desktop-entry-contains-deprecated-key
+  * Add fixer for debian-watch-lacks-sourceforge-redirector
+  * Add fixer for spelling-error-in-rules-requires-root.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Jun 2026 12:32:15 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Jun 2026 12:21:52 +0100
 
 debian-codemods (0.182) unstable; urgency=medium
 
@@ -21,6 +23,7 @@ debian-codemods (0.182) unstable; urgency=medium
   * Add detector for debian-news-entry-uses-asterisk.
   * Make breezyshim an optional dependency in multi-arch,
     deb-transition-apply and deb-scrub-obsolete.
+  * Add fixer for spelling-error-in-rules-requires-root.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Jun 2026 02:48:54 +0100
 

@@ -1,0 +1,2 @@
+version=3
+http://sourceforge.net/project/showfiles.php?group_id=12345 example-(.+)\.tar\.gz
