@@ -1,0 +1,4 @@
+# Keep this valid override:
+foo source: no-section-field
+
+# This refers to a tag that no longer exists and should be removed:

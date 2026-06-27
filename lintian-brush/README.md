@@ -24,6 +24,7 @@ The current set of lintian tags for which a fixer is available that can fix a
 subset of the issues:
 
 * adopted-extended-field
+* alien-tag
 * ancient-python-version-field
 * ancient-standards-version
 * apache2-module-does-not-depend-on-apache2-api

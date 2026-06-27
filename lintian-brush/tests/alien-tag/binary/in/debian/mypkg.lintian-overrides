@@ -1,0 +1,2 @@
+mypkg binary: no-manual-page usr/bin/foo
+mypkg binary: this-tag-was-never-real usr/bin/foo
