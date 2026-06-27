@@ -54,7 +54,13 @@ mod decopy {
             let cmdoptions = py.import("decopy.cmdoptions")?;
             let dep5 = py.import("decopy.dep5")?;
             let tree = py.import("decopy.tree")?;
-            let datatypes = py.import("decopy.datatypes")?;
+            let decopy_mod = py.import("decopy.decopy")?;
+            // The `License` type moved from `decopy.datatypes` (decopy 0.2.x)
+            // to `decopy.core_types` (decopy 0.3.x). Try the new location
+            // first so a chroot with only the new layout still works.
+            let datatypes = py
+                .import("decopy.core_types")
+                .or_else(|_| py.import("decopy.datatypes"))?;
 
             // Convert to absolute path
             let abs_path = std::fs::canonicalize(base_path)
@@ -89,43 +95,14 @@ mod decopy {
                 copyright_.call_method1("process", (&filetree,))?;
                 filetree.call_method1("process", (&options,))?;
 
-                // Get groups dictionary
-                let groups = copyright_.call_method1("get_group_dict", (&options,))?;
-
-                // Get DirInfo and Group classes
-                let dir_info = tree.getattr("DirInfo")?;
-                let group_class = dep5.getattr("Group")?;
-
-                // Process ungrouped files (matching Python logic)
+                // Delegate the assemble-groups-and-place-ungrouped-files step
+                // to decopy's own helper. The FileInfo group bookkeeping moved
+                // from `.group` to `.existing_group` in decopy 0.3, and
+                // tree iteration changed shape; reusing the helper keeps us
+                // compatible with both 0.2 and 0.3.
                 let builtins = py.import("builtins")?;
-                let fileinfos: Vec<Py<PyAny>> =
-                    builtins.call_method1("list", (filetree,))?.extract()?;
-                for fileinfo_py in fileinfos {
-                    let fileinfo = fileinfo_py.bind(py);
-
-                    // Check if already has group
-                    let has_group = fileinfo.getattr("group")?;
-                    if !has_group.is_none() {
-                        continue;
-                    }
-
-                    // Skip directories
-                    if fileinfo.is_instance(&dir_info)? {
-                        continue;
-                    }
-
-                    // Get or create group
-                    let file_key = fileinfo.call_method1("get_group_key", (&options,))?;
-
-                    // Use setdefault to get or create group
-                    let group = groups.call_method1(
-                        "setdefault",
-                        (&file_key, group_class.call1((&file_key,))?),
-                    )?;
-
-                    group.call_method1("add_file", (fileinfo,))?;
-                    fileinfo.setattr("group", &group)?;
-                }
+                let groups = decopy_mod
+                    .call_method1("prepare_output_groups", (&filetree, &copyright_, &options))?;
 
                 // Collect file groups
                 let mut file_groups = Vec::new();
@@ -151,6 +128,18 @@ mod decopy {
 
                 tracing::debug!("decopy returned {} candidate groups", sorted_items.len());
 
+                // decopy 0.3 moved per-node wildcard bookkeeping onto a
+                // `TallyTracker` instance that is shared across all groups
+                // in a single output run, and `FileGroup.get_patterns` now
+                // requires it as an argument. decopy 0.2 has no such class
+                // and `get_patterns` takes no arguments.
+                let tracker = py
+                    .import("decopy.group")
+                    .ok()
+                    .and_then(|m| m.getattr("TallyTracker").ok())
+                    .and_then(|cls| cls.call0().ok())
+                    .map(|t| t.unbind());
+
                 for (_key, group) in sorted_items {
                     let group = group.bind(py);
 
@@ -171,7 +160,12 @@ mod decopy {
 
                     // Get files
                     let files = if options.getattr("glob")?.is_truthy()? {
-                        group.getattr("files")?.call_method0("get_patterns")?
+                        let files_obj = group.getattr("files")?;
+                        if let Some(tracker) = tracker.as_ref() {
+                            files_obj.call_method1("get_patterns", (tracker,))?
+                        } else {
+                            files_obj.call_method0("get_patterns")?
+                        }
                     } else {
                         group.getattr("files")?.call_method0("sorted_members")?
                     };
