@@ -1,0 +1,4 @@
+Remove lintian overrides for unknown tags.
+Certainty: likely
+Fixed-Lintian-Issues:
+ source: alien-tag this-tag-was-never-real

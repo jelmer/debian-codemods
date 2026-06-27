@@ -1,5 +1,6 @@
 debian-codemods (0.183) UNRELEASED; urgency=medium
 
+  * Add fixer for alien-tag
   * Add fixer for desktop-entry-contains-deprecated-key
   * Add fixer for debian-watch-lacks-sourceforge-redirector
   * Add fixer for spelling-error-in-rules-requires-root.
