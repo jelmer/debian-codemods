@@ -77,6 +77,9 @@ fn main() {
     // Generate renamed tags map
     generate_renamed_tags_map(&out_dir);
 
+    // Generate the set of known lintian tag names
+    generate_known_tags_set(&out_dir);
+
     // Generate SPDX license data
     generate_spdx_data(&out_dir);
 
@@ -84,6 +87,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=tests");
     println!("cargo:rerun-if-changed=renamed-tags.json");
+    println!("cargo:rerun-if-changed=known-tags.json");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/obsolete-sites/obsolete-sites");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/spelling/corrections-case");
     println!("cargo:rerun-if-changed=spdx.json");
@@ -158,6 +162,35 @@ fn generate_renamed_tags_map(out_dir: &std::ffi::OsStr) {
     }
 
     code.push_str("    map\n");
+    code.push_str("}\n");
+
+    fs::write(&dest_path, code).unwrap();
+}
+
+fn generate_known_tags_set(out_dir: &std::ffi::OsStr) {
+    let dest_path = Path::new(out_dir).join("known_tags.rs");
+
+    let json_content =
+        fs::read_to_string("known-tags.json").expect("Failed to read known-tags.json");
+
+    let mut tags: Vec<String> =
+        serde_json::from_str(&json_content).expect("Failed to parse known-tags.json");
+    tags.sort();
+    tags.dedup();
+
+    let mut code = String::new();
+    code.push_str(
+        "/// Known lintian tag names: every current tag plus every name a tag\n\
+         /// was renamed from. Sorted so a lookup can binary-search.\n",
+    );
+    code.push_str("static KNOWN_TAGS: &[&str] = &[\n");
+    for tag in &tags {
+        code.push_str(&format!("    {tag:?},\n"));
+    }
+    code.push_str("];\n\n");
+    code.push_str("/// Whether `tag` is a tag name lintian recognises.\n");
+    code.push_str("pub fn is_known_tag(tag: &str) -> bool {\n");
+    code.push_str("    KNOWN_TAGS.binary_search(&tag).is_ok()\n");
     code.push_str("}\n");
 
     fs::write(&dest_path, code).unwrap();
