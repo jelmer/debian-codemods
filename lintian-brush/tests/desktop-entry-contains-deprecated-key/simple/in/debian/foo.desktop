@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Foo
+SwallowExec=foo
+Exec=/usr/bin/foo
