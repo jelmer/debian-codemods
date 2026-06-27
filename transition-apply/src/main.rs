@@ -1,5 +1,5 @@
 use breezyshim::error::Error as BrzError;
-use breezyshim::workingtree::{self, WorkingTree};
+use breezyshim::workingtree::WorkingTree;
 use clap::Parser;
 use deb_transition_apply::{detect_transition, TransitionResult};
 use debian_analyzer::config::Config;
@@ -148,7 +148,7 @@ fn main() -> Result<(), i32> {
         }
     };
 
-    let mut svp = Reporter::new(versions_dict());
+    let svp = Reporter::new(versions_dict());
 
     let mut update_changelog = if args.update_changelog {
         Some(true)

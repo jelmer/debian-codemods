@@ -3,15 +3,20 @@ use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::repository::Repository;
 use breezyshim::tree::MutableTree;
+use breezyshim::workingtree::GenericWorkingTree;
 use breezyshim::workspace::check_clean_tree;
 use breezyshim::{Branch, WorkingTree};
 use clap::Parser;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
-use debian_analyzer::{control_file_present, get_committer, is_debcargo_package, Certainty};
+use debian_analyzer::{
+    add_changelog_entry, apply_or_revert, control_file_present, get_committer, is_debcargo_package,
+    ApplyError, Certainty, ChangelogError,
+};
 use debian_changelog::get_maintainer;
+use debian_workspace::appliers::apply_actions;
 use multiarch_hints::{
-    apply_multiarch_hints, cache_download_multiarch_hints, multiarch_hints_by_binary,
-    parse_multiarch_hints, OverallError,
+    cache_download_multiarch_hints, detect_multiarch_hints, multiarch_hints_by_binary,
+    parse_multiarch_hints, ApplyMultiarchHintsConfig, Change, Hint, OverallResult,
 };
 use std::collections::HashMap;
 use std::io::Write as _;
@@ -310,7 +315,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
-    let config = multiarch_hints::ApplyMultiarchHintsConfig {
+    let config = ApplyMultiarchHintsConfig {
         minimum_certainty,
         committer: None,
         update_changelog,
@@ -436,4 +441,176 @@ fn versions_dict() -> HashMap<String, String> {
         env!("CARGO_PKG_VERSION").to_string(),
     );
     ret
+}
+
+#[derive(Debug)]
+enum OverallError {
+    BrzError(Error),
+    NotDebianPackage(std::path::PathBuf),
+    Other(String),
+    NoWhoami,
+    NoChanges,
+    GeneratedFile(std::path::PathBuf),
+    FormattingUnpreservable(std::path::PathBuf),
+}
+
+impl From<debian_analyzer::editor::EditorError> for OverallError {
+    fn from(e: debian_analyzer::editor::EditorError) -> Self {
+        match e {
+            debian_analyzer::editor::EditorError::GeneratedFile(p, _) => {
+                OverallError::GeneratedFile(p)
+            }
+            debian_analyzer::editor::EditorError::FormattingUnpreservable(p, _) => {
+                OverallError::FormattingUnpreservable(p)
+            }
+            debian_analyzer::editor::EditorError::BrzError(e) => OverallError::BrzError(e),
+            debian_analyzer::editor::EditorError::IoError(e) => OverallError::Other(e.to_string()),
+            debian_analyzer::editor::EditorError::TemplateError(p, _e) => {
+                OverallError::GeneratedFile(p)
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for OverallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OverallError::NotDebianPackage(p) => {
+                write!(f, "{} is not a Debian package.", p.display())
+            }
+            OverallError::GeneratedFile(p) => {
+                write!(f, "Generated file: {}", p.display())
+            }
+            OverallError::FormattingUnpreservable(p) => {
+                write!(f, "Formatting unpreservable: {}", p.display())
+            }
+            OverallError::BrzError(e) => write!(f, "{}", e),
+            OverallError::NoWhoami => write!(f, "No committer configured."),
+            OverallError::NoChanges => write!(f, "No changes to apply."),
+            OverallError::Other(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for OverallError {}
+
+impl From<Error> for OverallError {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::PointlessCommit => OverallError::NoChanges,
+            Error::NoWhoami => OverallError::NoWhoami,
+            Error::Other(e) => OverallError::Other(e.to_string()),
+            e => OverallError::BrzError(e),
+        }
+    }
+}
+
+impl From<ChangelogError> for OverallError {
+    fn from(e: ChangelogError) -> Self {
+        match e {
+            ChangelogError::NotDebianPackage(p) => OverallError::NotDebianPackage(p),
+            ChangelogError::Python(e) => OverallError::Other(e.to_string()),
+        }
+    }
+}
+
+fn changes_by_description(changes: &[Change]) -> HashMap<String, Vec<String>> {
+    let mut by_description: HashMap<String, Vec<String>> = HashMap::new();
+    for change in changes {
+        by_description
+            .entry(change.description.clone())
+            .or_default()
+            .push(change.binary.clone());
+    }
+    by_description
+}
+
+#[allow(clippy::result_large_err)]
+fn apply_multiarch_hints(
+    local_tree: &GenericWorkingTree,
+    subpath: &std::path::Path,
+    hints: &HashMap<&str, Vec<&Hint>>,
+    dirty_tracker: Option<&mut DirtyTreeTracker>,
+    config: &ApplyMultiarchHintsConfig,
+) -> Result<OverallResult, OverallError> {
+    let minimum_certainty = config.minimum_certainty.unwrap_or(Certainty::Certain);
+    let basis_tree = local_tree.basis_tree().map_err(OverallError::BrzError)?;
+    let (changes, _tree_changes, mut specific_files) = match apply_or_revert(
+        local_tree,
+        subpath,
+        &basis_tree,
+        dirty_tracker,
+        |path| -> Result<Vec<Change>, OverallError> {
+            let ws = debian_workspace::fs_workspace::FsWorkspace::new(path, None, None);
+            let detected = detect_multiarch_hints(&ws, hints, minimum_certainty)
+                .map_err(|e| OverallError::Other(e.to_string()))?;
+
+            if detected.is_empty() {
+                return Ok(Vec::new());
+            }
+
+            let all_actions: Vec<_> = detected
+                .iter()
+                .flat_map(|(_, plan)| plan.actions.iter().cloned())
+                .collect();
+            apply_actions(path, &all_actions).map_err(|e| OverallError::Other(e.to_string()))?;
+
+            Ok(detected.into_iter().map(|(change, _)| change).collect())
+        },
+    ) {
+        Ok(r) => r,
+        Err(ApplyError::NoChanges(_)) => return Err(OverallError::NoChanges),
+        Err(ApplyError::BrzError(e)) => return Err(OverallError::BrzError(e)),
+        Err(ApplyError::CallbackError(_)) => panic!("Unexpected callback error"),
+    };
+
+    let by_description = changes_by_description(changes.as_slice());
+    let mut overall_description = vec!["Apply multi-arch hints.\n".to_string()];
+    for (description, mut binaries) in by_description {
+        binaries.sort();
+        overall_description.push(format!(" + {}: {}\n", binaries.join(", "), description));
+    }
+
+    let changelog_path = subpath.join("debian/changelog");
+
+    if config.update_changelog {
+        add_changelog_entry(
+            local_tree,
+            changelog_path.as_path(),
+            overall_description
+                .iter()
+                .map(|x| x.as_str())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+        if let Some(specific_files) = specific_files.as_mut() {
+            specific_files.push(changelog_path);
+        }
+    }
+
+    overall_description.push("\n".to_string());
+    overall_description.push("Changes-By: apply-multiarch-hints\n".to_string());
+
+    let committer = config
+        .committer
+        .clone()
+        .unwrap_or_else(|| get_committer(local_tree));
+
+    let specific_files_ref = specific_files
+        .as_ref()
+        .map(|x| x.iter().map(|x| x.as_path()).collect::<Vec<_>>());
+
+    let mut builder = local_tree
+        .build_commit()
+        .message(overall_description.concat().as_str())
+        .allow_pointless(false)
+        .committer(&committer);
+
+    if let Some(specific_files) = specific_files_ref.as_deref() {
+        builder = builder.specific_files(specific_files);
+    }
+
+    builder.commit()?;
+
+    Ok(OverallResult { changes })
 }

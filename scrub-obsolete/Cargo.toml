@@ -5,7 +5,7 @@ version.workspace = true
 license = "GPL-3.0+"
 
 [dependencies]
-breezyshim = { workspace = true, features = ["debian"] }
+breezyshim = { workspace = true, features = ["debian"], optional = true }
 deb822-lossless = { workspace = true }
 debian-analyzer = { workspace = true, features = ["udd", "svp"] }
 debian-control = { workspace = true }
@@ -28,7 +28,12 @@ svp-client = { workspace = true }
 
 [features]
 default = ["cli"]
-cli = ["dep:clap"]
+cli = ["dep:clap", "dep:breezyshim"]
+
+[[bin]]
+name = "deb-scrub-obsolete"
+path = "src/bin/deb-scrub-obsolete.rs"
+required-features = ["cli"]
 
 [[bin]]
 name = "find-dummy-transitional"
