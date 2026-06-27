@@ -1,0 +1,3 @@
+Rename misspelled Rules-Require-Root field to Rules-Requires-Root.
+Fixed-Lintian-Issues:
+ source: spelling-error-in-rules-requires-root Rules-Require-Root [debian/control:2]
