@@ -5185,11 +5185,9 @@
   comment: |
     Fix spelling errors in debian/README.Debian using lintian's spelling data.
 - tag: spelling-error-in-rules-requires-root
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the misspelled Rules-Requires-Root value in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: sphinxdoc-but-no-sphinxdoc-depends
   detector: false
   difficulty: easy
