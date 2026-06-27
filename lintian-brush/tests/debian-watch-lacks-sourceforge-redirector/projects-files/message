@@ -1,0 +1,4 @@
+Use the qa.debian.org redirector in debian/watch.
+Fixed-Lintian-Issues:
+ source: debian-watch-lacks-sourceforge-redirector http://sourceforge.net/projects/example/files/example/ example-(.+)\.tar\.gz [debian/watch:2]
+Certainty: certain
