@@ -175,7 +175,9 @@ fn bootstrap_debhelper(
     );
     source.set_build_depends(&build_depends);
     for addon in config.addons.iter() {
-        enable_dh_addon(source, addon);
+        if !build_depends.has_relation("meson"){
+            enable_dh_addon(source, addon);
+        }
     }
 
     let mut f = Vec::new();
