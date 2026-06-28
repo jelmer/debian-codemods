@@ -362,7 +362,10 @@ fn process_meson(context: &mut ProcessorContext) -> Result<(), Error>{
             ))
         }
     };
-    let mut source = control.add_source(upstream_name);
+    let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
+        .unwrap_or_else(|| upstream_name.to_string());
+
+    let mut source = control.add_source(&source_name);
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
