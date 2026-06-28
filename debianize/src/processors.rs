@@ -175,6 +175,8 @@ fn bootstrap_debhelper(
     );
     source.set_build_depends(&build_depends);
     for addon in config.addons.iter() {
+
+        // skipping dh_sequence_meson package
         if !build_depends.has_relation("meson"){
             enable_dh_addon(source, addon);
         }
