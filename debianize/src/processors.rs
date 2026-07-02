@@ -175,11 +175,7 @@ fn bootstrap_debhelper(
     );
     source.set_build_depends(&build_depends);
     for addon in config.addons.iter() {
-
-        // skipping dh_sequence_meson package
-        if !build_depends.has_relation("meson"){
-            enable_dh_addon(source, addon);
-        }
+        enable_dh_addon(source, addon);
     }
 
     let mut f = Vec::new();
@@ -351,7 +347,7 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
-fn process_meson(context: &mut ProcessorContext) -> Result<(), Error>{
+fn process_meson(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
     let upstream_name = match context.metadata.name() {
@@ -377,7 +373,6 @@ fn process_meson(context: &mut ProcessorContext) -> Result<(), Error>{
     context.bootstrap_debhelper(
         &mut source,
         DebhelperConfig {
-            addons: vec!["meson"],
             buildsystem: Some("meson"),
             build_directory: Some("build"),
             ..Default::default()
