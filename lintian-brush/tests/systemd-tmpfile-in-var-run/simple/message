@@ -1,0 +1,3 @@
+Replace /var/run with /run in systemd tmpfiles.d configuration.
+Fixed-Lintian-Issues:
+ source: systemd-tmpfile-in-var-run [usr/lib/tmpfiles.d/foo.conf]
