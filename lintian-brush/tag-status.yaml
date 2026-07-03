@@ -7008,9 +7008,11 @@
 - tag: dh-install-instead-of-dh-installmodules
   detector: false
   difficulty: easy
+  status: implemented
   comment: |
-    Use dh_installmodules instead of dh_install for kernel module files
-    in debian/rules.
+    Rename modprobe.d files installed via dh_install in debian/install to
+    the debian/package.modprobe naming convention so dh_installmodules
+    installs them.
 - tag: directory-in-modprobe.d
   detector: false
   status: build-stage

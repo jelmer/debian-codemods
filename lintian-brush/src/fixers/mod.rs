@@ -85,6 +85,7 @@ mod desktop_entry_contains_deprecated_key;
 mod desktop_entry_contains_encoding_key;
 mod desktop_entry_file_has_crs;
 mod dh_clean_k_is_deprecated;
+mod dh_install_instead_of_dh_installmodules;
 mod dh_installmanpages_is_obsolete;
 mod dh_quilt_addon_but_quilt_source_format;
 mod dm_upload_allowed;

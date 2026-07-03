@@ -1,0 +1,12 @@
+Source: foo
+Section: kernel
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 14)
+Standards-Version: 4.6.2
+
+Package: foo-modules
+Architecture: all
+Depends: ${misc:Depends}
+Description: example modprobe package
+ A package that ships a modprobe.d configuration file.
