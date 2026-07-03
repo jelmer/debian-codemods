@@ -215,6 +215,7 @@ subset of the issues:
 * systemd-service-file-refers-to-obsolete-target
 * systemd-service-file-refers-to-var-run
 * systemd-service-file-shutdown-problems
+* systemd-tmpfile-in-var-run
 * tab-in-license-text
 * team/pkg-perl/testsuite/no-testsuite-header
 * team/pkg-perl/vcs/no-git
