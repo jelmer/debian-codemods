@@ -1,0 +1,2 @@
+version=4
+https://example.com/foo/ foo-(.*)\.tar\.gz
