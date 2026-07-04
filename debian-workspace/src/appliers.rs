@@ -2826,6 +2826,17 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                     any_change = true;
                 }
             }
+            MakefileAction::RenameVariable {
+                from_name, to_name, ..
+            } => {
+                if let Some(mut var) = makefile
+                    .variable_definitions()
+                    .find(|v| v.name().as_deref() == Some(from_name.as_str()))
+                {
+                    var.set_name(to_name);
+                    any_change = true;
+                }
+            }
             MakefileAction::RemoveRule { target, .. } => {
                 let idx = makefile
                     .rules()
@@ -5153,6 +5164,32 @@ mod tests {
         let action = Action::Makefile(MakefileAction::RemoveVariable {
             file: PathBuf::from("debian/rules"),
             name: "MISSING".into(),
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn makefile_rename_variable_present() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_rules(&tmp, "export FOO := nocheck\nBAR = keep\n");
+        let action = Action::Makefile(MakefileAction::RenameVariable {
+            file: PathBuf::from("debian/rules"),
+            from_name: "FOO".into(),
+            to_name: "RENAMED".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        let after = fs::read_to_string(&path).unwrap();
+        assert_eq!(after, "export RENAMED := nocheck\nBAR = keep\n");
+    }
+
+    #[test]
+    fn makefile_rename_variable_missing_name_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        write_rules(&tmp, "FOO = old\n");
+        let action = Action::Makefile(MakefileAction::RenameVariable {
+            file: PathBuf::from("debian/rules"),
+            from_name: "MISSING".into(),
+            to_name: "RENAMED".into(),
         });
         assert!(!apply_action(tmp.path(), &action).unwrap());
     }
