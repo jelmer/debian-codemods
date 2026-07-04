@@ -1,0 +1,6 @@
+Source: blah
+
+Package: blah-dbgsym
+Auto-Built-Package: debug-symbols
+Description: debug symbols for linux
+ This package contains debug symbols.
