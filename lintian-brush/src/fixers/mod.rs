@@ -121,6 +121,7 @@ mod maintainer_script_empty;
 mod maintainer_script_without_set_e;
 mod malformed_override;
 mod missing_build_dependency_for_dh_command;
+mod missing_debian_watch_file_standard;
 mod missing_prerequisite_for_pyproject_backend;
 mod missing_static_built_using_for_golang;
 mod missing_vcs_browser_field;
