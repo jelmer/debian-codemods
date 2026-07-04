@@ -1,0 +1,4 @@
+Install modprobe.d file via dh_installmodules instead of dh_install.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: dh-install-instead-of-dh-installmodules [debian/install:1]
