@@ -6601,7 +6601,7 @@
   detector: false
   status: build-stage
 - tag: systemd-tmpfile-in-var-run
-  detector: false
+  detector: true
   difficulty: easy
   comment: |
     Change /var/run to /run in systemd tmpfiles.d configuration.
