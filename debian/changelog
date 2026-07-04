@@ -7,8 +7,9 @@ debian-codemods (0.183) UNRELEASED; urgency=medium
   * Add fixer for systemd-tmpfile-in-var-run
   * Add fixer for unnecessary-source-date-epoch-assignment
   * Add fixer for capitalization-error-in-description-synopsis
+  * Add fixer for missing-debian-watch-file-standard
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Jun 2026 12:21:52 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Jul 2026 11:42:06 +0100
 
 debian-codemods (0.182) unstable; urgency=medium
 
