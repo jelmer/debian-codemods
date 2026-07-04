@@ -1,0 +1,9 @@
+Tests: alpha
+Restrictions: skip-not-installable
+Depends: @
+
+Tests: beta
+Depends: @
+
+Test-Command: ./run.sh
+Restrictions: needs-root, skip-not-installable, allow-stderr

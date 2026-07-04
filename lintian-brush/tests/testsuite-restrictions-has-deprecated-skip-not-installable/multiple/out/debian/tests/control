@@ -1,0 +1,8 @@
+Tests: alpha
+Depends: @
+
+Tests: beta
+Depends: @
+
+Test-Command: ./run.sh
+Restrictions: needs-root, allow-stderr

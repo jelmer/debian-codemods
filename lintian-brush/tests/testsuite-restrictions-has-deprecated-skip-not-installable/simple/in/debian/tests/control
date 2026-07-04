@@ -1,0 +1,3 @@
+Tests: smoke
+Depends: @, @builddeps@
+Restrictions: skip-not-installable

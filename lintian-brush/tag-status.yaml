@@ -5407,6 +5407,10 @@
   comment: |
     Fix unparsable elements in test dependency declarations in
     debian/tests/control.
+- tag: testsuite-restrictions-has-deprecated-skip-not-installable
+  detector: true
+  difficulty: easy
+  status: implemented
 - tag: third-party-package-in-python-dir
   detector: false
   status: build-stage
