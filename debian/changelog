@@ -6,6 +6,8 @@ debian-codemods (0.183) UNRELEASED; urgency=medium
   * Add fixer for spelling-error-in-rules-requires-root.
   * Add fixer for systemd-tmpfile-in-var-run
   * Add fixer for unnecessary-source-date-epoch-assignment
+  * Add fixer for testsuite-restrictions-has-deprecated-skip-not-
+    installable
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Jun 2026 12:21:52 +0100
 

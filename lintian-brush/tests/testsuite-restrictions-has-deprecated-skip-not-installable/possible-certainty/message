@@ -1,0 +1,4 @@
+Drop deprecated skip-not-installable restriction.
+Certainty: possible
+Fixed-Lintian-Issues:
+ source: testsuite-restrictions-has-deprecated-skip-not-installable [debian/tests/control]
