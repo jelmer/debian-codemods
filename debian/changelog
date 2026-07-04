@@ -6,6 +6,7 @@ debian-codemods (0.183) UNRELEASED; urgency=medium
   * Add fixer for spelling-error-in-rules-requires-root.
   * Add fixer for systemd-tmpfile-in-var-run
   * Add fixer for unnecessary-source-date-epoch-assignment
+  * Add fixer for capitalization-error-in-description-synopsis
   * Add fixer for dh-install-instead-of-dh-installmodules
   * Add fixer for missing-debian-watch-file-standard
 

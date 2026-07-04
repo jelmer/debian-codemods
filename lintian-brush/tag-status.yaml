@@ -459,8 +459,9 @@
   difficulty: easy
   status: implemented
 - tag: capitalization-error-in-description-synopsis
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Same as capitalization-error-in-description but for the synopsis line.
 - tag: changed-by-address-is-on-localhost
