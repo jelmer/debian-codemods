@@ -459,8 +459,9 @@
   difficulty: easy
   status: implemented
 - tag: capitalization-error-in-description-synopsis
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Same as capitalization-error-in-description but for the synopsis line.
 - tag: changed-by-address-is-on-localhost
@@ -6501,7 +6502,8 @@
   detector: false
   status: build-stage
 - tag: missing-debian-watch-file-standard
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Add version= line to debian/watch specifying the watch file standard.
@@ -7012,9 +7014,11 @@
 - tag: dh-install-instead-of-dh-installmodules
   detector: false
   difficulty: easy
+  status: implemented
   comment: |
-    Use dh_installmodules instead of dh_install for kernel module files
-    in debian/rules.
+    Rename modprobe.d files installed via dh_install in debian/install to
+    the debian/package.modprobe naming convention so dh_installmodules
+    installs them.
 - tag: directory-in-modprobe.d
   detector: false
   status: build-stage

@@ -113,6 +113,7 @@ subset of the issues:
 * desktop-entry-contains-encoding-key
 * desktop-entry-file-has-crs
 * dh-clean-k-is-deprecated
+* dh-install-instead-of-dh-installmodules
 * dh-quilt-addon-but-quilt-source-format
 * dh_installmanpages-is-obsolete
 * dm-upload-allowed-is-obsolete

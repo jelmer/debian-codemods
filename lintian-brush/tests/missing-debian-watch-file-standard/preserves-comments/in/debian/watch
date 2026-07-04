@@ -1,0 +1,2 @@
+# watch file for foo
+opts=pgpmode=none https://example.com/ foo-(.*)\.tar\.gz
