@@ -347,6 +347,44 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
+fn process_meson(context: &mut ProcessorContext) -> Result<(), Error> {
+    context.kickstart_tree(true)?;
+    let mut control = context.create_control_file()?;
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name in meson.build".to_string(),
+            ))
+        }
+    };
+    let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
+        .unwrap_or_else(|| upstream_name.to_string());
+
+    let mut source = control.add_source(&source_name);
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    source.set_rules_requires_root(false);
+    source.set_standards_version(&latest_standards_version().to_string());
+    source.set_build_depends(&"meson".parse().unwrap());
+    let (build_deps, _test_deps) = context.get_project_wide_deps();
+    import_build_deps(&mut source, &build_deps);
+    context.bootstrap_debhelper(
+        &mut source,
+        DebhelperConfig {
+            buildsystem: Some("meson"),
+            build_directory: Some("build"),
+            ..Default::default()
+        },
+    )?;
+    let binary_name = source.name().unwrap();
+    let mut binary = control.add_binary(&binary_name);
+    binary.set_architecture(Some("all"));
+    control.commit()?;
+    Ok(())
+}
+
 fn process_perl_build_tiny(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
@@ -821,6 +859,7 @@ pub fn process(
         "node" => process_npm(&mut context),
         "gradle" => process_maven(&mut context), // For Java/gradle projects
         "Dist::Zilla" => process_dist_zilla(&mut context),
+        "meson" => process_meson(&mut context),
         "Module::Build::Tiny" => process_perl_build_tiny(&mut context),
         "cargo" if use_debcargo => process_debcargo(&mut context), // if debcargo.toml needs to be generated
         "cargo" => process_cargo(&mut context),
