@@ -1,0 +1,5 @@
+Source: blah
+
+Package: blah
+Description: Linux and GNOME integration helper
+ This package does something useful.
