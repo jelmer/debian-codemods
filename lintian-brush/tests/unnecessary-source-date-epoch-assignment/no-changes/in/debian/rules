@@ -1,0 +1,6 @@
+#!/usr/bin/make -f
+
+export SOURCE_DATE_EPOCH = 1600000000
+
+%:
+	dh $@
