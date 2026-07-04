@@ -6498,7 +6498,8 @@
   detector: false
   status: build-stage
 - tag: missing-debian-watch-file-standard
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Add version= line to debian/watch specifying the watch file standard.

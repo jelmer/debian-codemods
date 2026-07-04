@@ -159,7 +159,8 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | WatchAction::RemoveEntryOption { file, .. }
             | WatchAction::SetEntryOption { file, .. }
             | WatchAction::SetEntryUrl { file, .. }
-            | WatchAction::ConvertEntryToTemplate { file, .. } => file,
+            | WatchAction::ConvertEntryToTemplate { file, .. }
+            | WatchAction::SetVersion { file, .. } => file,
         },
         Action::Makefile(a) => match a {
             MakefileAction::ReplaceRecipe { file, .. }
@@ -875,6 +876,15 @@ pub enum WatchAction {
         file: PathBuf,
         /// Current URL of the target entry.
         url: String,
+    },
+    /// Set the watch-file standard version (the `version=N` line). Only
+    /// line-based files (v1-4) are supported; a no-op if the file already
+    /// declares `version`.
+    SetVersion {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Standard version to declare.
+        version: u32,
     },
 }
 
