@@ -1,0 +1,4 @@
+Set watch file standard version to 4.
+Fixed-Lintian-Issues:
+ source: missing-debian-watch-file-standard
+Certainty: confident
