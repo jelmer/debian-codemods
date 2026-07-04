@@ -1,0 +1,1 @@
+systemd-tmpfile-in-var-run [usr/lib/tmpfiles.d/foo.conf]
