@@ -1,12 +1,13 @@
-//! Fixer for `capitalization-error-in-description`.
+//! Fixer for `capitalization-error-in-description` and
+//! `capitalization-error-in-description-synopsis`.
 //!
 //! lintian's `fields/description` check runs `check_spelling_picky` over
-//! the *extended* part of a binary package's `Description` and emits this
-//! tag for every word matching an entry in
-//! `data/spelling/corrections-case` (e.g. `linux` ⇒ `Linux`). This fixer
-//! mirrors that logic and rewrites the offending words. The synopsis is
-//! covered by the separate `capitalization-error-in-description-synopsis`
-//! tag and is left untouched here.
+//! both the synopsis (first line) and the extended part of a binary
+//! package's `Description`, emitting the `-synopsis` tag for the former
+//! and the plain tag for the latter, for every word matching an entry in
+//! `data/spelling/corrections-case` (e.g. `linux` -> `Linux`). This fixer
+//! mirrors that logic and rewrites the offending words. Auto-generated
+//! packages are exempt from the synopsis check, as in lintian.
 
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
@@ -161,23 +162,39 @@ pub fn detect(
     let mut diagnostics = Vec::new();
 
     for binary in control.binaries() {
+        // lintian exempts auto-generated packages (e.g. dbgsym) from the
+        // picky synopsis check, as they reuse the source name.
+        let auto_generated = binary.get("Auto-Built-Package").is_some();
         let Some(description) = binary.description() else {
             continue;
         };
-        // This tag covers only the extended description; the synopsis
-        // (first line) has its own tag.
-        let Some((synopsis, extended)) = description.split_once('\n') else {
-            continue;
+        // The synopsis (first line) and the extended part have separate
+        // tags; when there is no newline the whole value is the synopsis.
+        let (synopsis, extended) = match description.split_once('\n') {
+            Some((s, e)) => (s, Some(e)),
+            None => (description.as_str(), None),
         };
-        let corrections = find_corrections(extended, &map);
-        if corrections.is_empty() {
+        let syn_corrections = if auto_generated {
+            Vec::new()
+        } else {
+            find_corrections(synopsis, &map)
+        };
+        let ext_corrections = extended.map_or_else(Vec::new, |e| find_corrections(e, &map));
+        if syn_corrections.is_empty() && ext_corrections.is_empty() {
             continue;
         }
         let Some(package) = binary.name() else {
             continue;
         };
 
-        let new_description = format!("{synopsis}\n{}", apply_corrections(extended, &corrections));
+        let new_synopsis = apply_corrections(synopsis, &syn_corrections);
+        let new_description = match extended {
+            Some(extended) => format!(
+                "{new_synopsis}\n{}",
+                apply_corrections(extended, &ext_corrections)
+            ),
+            None => new_synopsis,
+        };
         let set_field = Action::Deb822(Deb822Action::SetField {
             file: control_rel.clone(),
             paragraph: ParagraphSelector::Binary {
@@ -192,29 +209,38 @@ pub fn detect(
         // re-applying an identical SetField is a no-op, so the resulting
         // FixerResult records every fixed tag while the tree is rewritten
         // exactly once.
-        let mut seen = HashSet::new();
-        for correction in &corrections {
-            if !seen.insert(correction.word.as_str()) {
-                continue;
+        let sources = [
+            (
+                "capitalization-error-in-description-synopsis",
+                &syn_corrections,
+            ),
+            ("capitalization-error-in-description", &ext_corrections),
+        ];
+        for (tag, corrections) in sources {
+            let mut seen = HashSet::new();
+            for correction in corrections {
+                if !seen.insert(correction.word.as_str()) {
+                    continue;
+                }
+                let issue = LintianIssue::binary_with_info(
+                    &package,
+                    tag,
+                    Visibility::Info,
+                    vec![correction.word.clone(), correction.correction.clone()],
+                );
+                diagnostics.push(
+                    Diagnostic::with_actions(
+                        issue,
+                        format!(
+                            "Description contains a capitalization error: {} should be {}.",
+                            correction.word, correction.correction
+                        ),
+                        LABEL,
+                        vec![set_field.clone()],
+                    )
+                    .with_certainty(Certainty::Possible),
+                );
             }
-            let issue = LintianIssue::binary_with_info(
-                &package,
-                "capitalization-error-in-description",
-                Visibility::Info,
-                vec![correction.word.clone(), correction.correction.clone()],
-            );
-            diagnostics.push(
-                Diagnostic::with_actions(
-                    issue,
-                    format!(
-                        "Description contains a capitalization error: {} should be {}.",
-                        correction.word, correction.correction
-                    ),
-                    LABEL,
-                    vec![set_field.clone()],
-                )
-                .with_certainty(Certainty::Possible),
-            );
         }
     }
 
@@ -223,7 +249,10 @@ pub fn detect(
 
 declare_detector! {
     name: "capitalization-error-in-description",
-    tags: ["capitalization-error-in-description"],
+    tags: [
+        "capitalization-error-in-description",
+        "capitalization-error-in-description-synopsis",
+    ],
     triggers: [
         debian_workspace::Trigger::Deb822Field {
             file: "debian/control",
@@ -392,20 +421,36 @@ mod tests {
     }
 
     #[test]
-    fn test_synopsis_not_touched() {
-        // The synopsis has its own tag; a misspelling there is left alone.
+    fn test_fix_synopsis() {
         let tmp = TempDir::new().unwrap();
         let debian = tmp.path().join("debian");
         fs::create_dir(&debian).unwrap();
-        let original =
-            "Source: test\n\nPackage: test\nDescription: tool for linux\n A clean extended line.\n";
+        let control = debian.join("control");
+        fs::write(
+            &control,
+            "Source: test\n\nPackage: test\nDescription: tool for linux\n A clean extended line.\n",
+        )
+        .unwrap();
+
+        let result = run_apply(tmp.path()).unwrap();
+        let tags = result.fixed_lintian_tags();
+        assert_eq!(tags, vec!["capitalization-error-in-description-synopsis"]);
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: test\n\nPackage: test\nDescription: tool for Linux\n A clean extended line.\n",
+        );
+    }
+
+    #[test]
+    fn test_auto_generated_synopsis_skipped() {
+        // Auto-generated packages are exempt from the synopsis check.
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let original = "Source: test\n\nPackage: test\nAuto-Built-Package: debug-symbols\nDescription: tool for linux\n A clean extended line.\n";
         fs::write(debian.join("control"), original).unwrap();
 
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
-        assert_eq!(
-            fs::read_to_string(debian.join("control")).unwrap(),
-            original
-        );
     }
 
     #[test]

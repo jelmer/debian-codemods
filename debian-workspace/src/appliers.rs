@@ -2613,7 +2613,7 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
         )));
     }
     let content = std::fs::read_to_string(&abs)?;
-    let watch_file = debian_watch::parse::parse(&content)
+    let mut watch_file = debian_watch::parse::parse(&content)
         .map_err(|e| FixerError::Other(format!("Failed to parse {}: {}", rel.display(), e)))?;
 
     let mut any_change = false;
@@ -2707,6 +2707,17 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                         }
                     }
                     break;
+                }
+            }
+            WatchAction::SetVersion { version, .. } => {
+                // Only line-based files carry a `version=N` line; a deb822
+                // file always declares its version, so this action never
+                // targets one.
+                if let debian_watch::parse::ParsedWatchFile::LineBased(wf) = &mut watch_file
+                    && wf.version_node().is_none()
+                {
+                    wf.set_version(*version);
+                    any_change = true;
                 }
             }
         }
@@ -5501,6 +5512,40 @@ mod tests {
         });
         assert!(apply_action(tmp.path(), &action).unwrap());
         assert!(!fs::read_to_string(&path).unwrap().contains("pgpmode"));
+    }
+
+    #[test]
+    fn watch_set_version_prepends_line() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        fs::write(&path, "https://example.com/foo foo-(.*)\\.tar\\.gz\n").unwrap();
+        let action = Action::Watch(WatchAction::SetVersion {
+            file: PathBuf::from("debian/watch"),
+            version: 4,
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "version=4\nhttps://example.com/foo foo-(.*)\\.tar\\.gz\n",
+        );
+    }
+
+    #[test]
+    fn watch_set_version_idempotent_when_already_versioned() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("watch");
+        let content = "version=4\nhttps://example.com/foo foo-(.*)\\.tar\\.gz\n";
+        fs::write(&path, content).unwrap();
+        let action = Action::Watch(WatchAction::SetVersion {
+            file: PathBuf::from("debian/watch"),
+            version: 4,
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
     }
 
     #[test]
