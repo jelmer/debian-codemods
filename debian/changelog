@@ -11,6 +11,7 @@ debian-codemods (0.183) UNRELEASED; urgency=medium
   * Add fixer for capitalization-error-in-description-synopsis
   * Add fixer for dh-install-instead-of-dh-installmodules
   * Add fixer for missing-debian-watch-file-standard
+  * Rebuild against libpython3.14. Closes: #1140904
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 04 Jul 2026 11:42:06 +0100
 
