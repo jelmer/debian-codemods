@@ -1,0 +1,3 @@
+Set DEB_BUILD_MAINT_OPTIONS rather than DEB_BUILD_OPTIONS in debian/rules.
+Fixed-Lintian-Issues:
+ source: debian-rules-sets-DEB_BUILD_OPTIONS [debian/rules:3]
