@@ -5638,7 +5638,7 @@
   comment: |
     Fix or remove unknown trigger types in debian/triggers.
 - tag: unnecessary-source-date-epoch-assignment
-  detector: false
+  detector: true
   difficulty: easy
   comment: |
     Remove unnecessary SOURCE_DATE_EPOCH assignment from debian/rules.

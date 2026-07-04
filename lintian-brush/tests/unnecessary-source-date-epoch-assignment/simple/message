@@ -1,0 +1,3 @@
+Drop unnecessary SOURCE_DATE_EPOCH assignment; dpkg sets it automatically.
+Fixed-Lintian-Issues:
+ source: unnecessary-source-date-epoch-assignment [debian/rules:3]
