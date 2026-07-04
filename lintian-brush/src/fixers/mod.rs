@@ -193,6 +193,7 @@ mod systemd_tmpfile_in_var_run;
 mod trailing_comma_in_maintainer_field;
 mod transitional_package_should_be_oldlibs_optional;
 mod typo_in_debhelper_override_target;
+mod unnecessary_source_date_epoch_assignment;
 mod unnecessary_team_upload;
 mod unnecessary_testsuite_autopkgtest_field;
 mod unused_build_dependency_on_cdbs;
