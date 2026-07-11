@@ -480,11 +480,16 @@ fn process_r(context: &mut ProcessorContext) -> Result<(), Error> {
         _ => "other",
     };
 
-    let mut source = control.add_source(&format!(
-        "r-{}-{}",
-        archive,
-        context.metadata.name().unwrap().to_lowercase()
-    ));
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name.to_lowercase(),
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name from DESCRIPTION for the R project".to_string(),
+            ))
+        }
+    };
+
+    let mut source = control.add_source(&format!("r-{}-{}", archive, upstream_name));
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
@@ -502,11 +507,7 @@ fn process_r(context: &mut ProcessorContext) -> Result<(), Error> {
         },
     )?;
     // For now, just assume a single binary package that is architecture-dependent.
-    let mut binary = control.add_binary(&format!(
-        "r-{}-{}",
-        archive,
-        context.metadata.name().unwrap().to_lowercase()
-    ));
+    let mut binary = control.add_binary(&format!("r-{}-{}", archive, upstream_name));
     binary.set_architecture(Some("any"));
     binary.as_mut_deb822().insert(
         "Depends",
@@ -523,10 +524,15 @@ fn process_r(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_octave(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let mut source = control.add_source(&format!(
-        "octave-{}",
-        context.metadata.name().unwrap().to_lowercase()
-    ));
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name.to_lowercase(),
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name from DESCRIPTION for the octave project".to_string(),
+            ))
+        }
+    };
+    let mut source = control.add_source(&format!("octave-{}", upstream_name));
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
@@ -544,10 +550,7 @@ fn process_octave(context: &mut ProcessorContext) -> Result<(), Error> {
         },
     )?;
     // For now, just assume a single binary package that is architecture-independent.
-    let mut binary = control.add_binary(&format!(
-        "octave-{}",
-        context.metadata.name().unwrap().to_lowercase()
-    ));
+    let mut binary = control.add_binary(&format!("octave-{}", upstream_name));
     binary.set_architecture(Some("all"));
     binary
         .as_mut_deb822()
@@ -560,7 +563,14 @@ fn process_octave(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_default(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap();
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the upstream name".to_string(),
+            ))
+        }
+    };
     let source_name =
         crate::names::upstream_name_to_debian_source_name(upstream_name).ok_or_else(|| {
             Error::MissingUpstreamInfo(format!(
