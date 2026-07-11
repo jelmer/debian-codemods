@@ -167,7 +167,7 @@ pub fn write_changelog_template(
     source_name: &str,
     version: &Version,
     author: Option<(String, String)>,
-    wnpp_bugs: Vec<(BugId, BugKind)>,
+    wnpp_bugs: &[(BugId, BugKind)],
 ) -> Result<(), std::io::Error> {
     let author = author.unwrap_or_else(|| debian_changelog::get_maintainer().unwrap());
     let closes = if !wnpp_bugs.is_empty() {
@@ -537,7 +537,7 @@ mod tests {
         let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
         let wnpp_bugs = vec![(123456, BugKind::ITP)];
 
-        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+        write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
         assert!(content.contains("test-package (1.0-1) UNRELEASED"));
@@ -559,7 +559,7 @@ mod tests {
         let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
         let wnpp_bugs = vec![];
 
-        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+        write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
         assert!(content.contains("test-package (1.0-1) UNRELEASED"));
@@ -1701,11 +1701,16 @@ pub fn debianize(
         "Writing initial changelog with source_name: {}",
         source_name
     );
+    let debian_version = Version {
+        epoch: None,
+        upstream_version: upstream_version.mangled_version.clone(),
+        debian_revision: Some(preferences.debian_revision.clone()),
+    };
     write_initial_changelog(
         wt,
         &debian_path,
         &source_name,
-        &upstream_version.mangled_version,
+        &debian_version,
         &maintainer_name,
         &maintainer_email,
         &wnpp_bugs,
@@ -1719,6 +1724,7 @@ pub fn debianize(
         &upstream_revid,
         &upstream_version.version,
         &upstream_version.mangled_version,
+        &debian_version,
     )?;
 
     // Run lintian fixers if requested
@@ -2215,6 +2221,7 @@ fn commit_debianization(
     upstream_revid: &RevisionId,
     upstream_version: &str,
     mangled_version: &str,
+    debian_version: &Version,
 ) -> Result<HashMap<String, RevisionId>, Error> {
     let mut tag_names = HashMap::new();
 
@@ -2237,7 +2244,7 @@ fn commit_debianization(
             let tag_name = format!("upstream/{}", mangled_version);
             tag_names.insert(tag_name, upstream_revid.clone());
 
-            let debian_tag = format!("debian/{}-1", mangled_version);
+            let debian_tag = format!("debian/{}", debian_version);
             tag_names.insert(debian_tag, revid);
         }
         Err(e) if e.to_string().contains("PointlessCommit") => {
@@ -2254,38 +2261,19 @@ fn write_initial_changelog(
     wt: &dyn PyWorkingTree,
     debian_path: &Path,
     source_name: &str,
-    version: &str,
+    version: &Version,
     maintainer_name: &str,
     maintainer_email: &str,
     wnpp_bugs: &[(BugId, BugKind)],
 ) -> Result<(), Error> {
-    let changelog_path = debian_path.join("changelog");
-
-    let mut content = format!(
-        "{} ({}-1) UNRELEASED; urgency=low\n\n",
-        source_name, version
-    );
-
-    content.push_str("  * Initial release.");
-
-    // Add WNPP bug references
-    for (bug_id, bug_kind) in wnpp_bugs {
-        match bug_kind {
-            BugKind::ITP => content.push_str(&format!(" (Closes: #{})", bug_id)),
-            BugKind::RFP => content.push_str(&format!(" (Closes: #{})", bug_id)),
-        }
-    }
-
-    content.push_str("\n\n");
-
-    // Add maintainer signature
-    let timestamp = chrono::Local::now().format("%a, %d %b %Y %H:%M:%S %z");
-    content.push_str(&format!(
-        " -- {} <{}>  {}\n",
-        maintainer_name, maintainer_email, timestamp
-    ));
-
-    wt.put_file_bytes_non_atomic(&changelog_path, content.as_bytes())?;
+    let changelog_path = wt.abspath(&debian_path.join("changelog"))?;
+    write_changelog_template(
+        &changelog_path,
+        source_name,
+        version,
+        Some((maintainer_name.to_string(), maintainer_email.to_string())),
+        wnpp_bugs,
+    )?;
     Ok(())
 }
 
