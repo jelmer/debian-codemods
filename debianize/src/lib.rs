@@ -1973,7 +1973,7 @@ pub fn determine_upstream_version(
 
     // Ask the upstream source for the latest version.
     if let Some((upstream_version, mangled_version)) =
-        upstream_source.get_latest_version(name, None).unwrap()
+        upstream_source.get_latest_version(name, None)?
     {
         return Ok(UpstreamVersion {
             version: upstream_version,
