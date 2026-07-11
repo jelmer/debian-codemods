@@ -1412,7 +1412,7 @@ pub fn debianize(
     }
 
     // Set up reset on failure
-    let _reset_guard = ResetOnFailure::new(wt, subpath)?;
+    let mut reset_guard = ResetOnFailure::new(wt, subpath)?;
 
     // Gather metadata
     let mut metadata = upstream_metadata.clone();
@@ -1726,6 +1726,8 @@ pub fn debianize(
         run_debianize_fixers(wt, subpath, preferences)?;
     }
 
+    reset_guard.disarm();
+
     Ok(DebianizeResult {
         vcs_url,
         wnpp_bugs,
@@ -1744,7 +1746,14 @@ pub struct DebianizeResult {
     pub upstream_branch_name: Option<String>,
 }
 
-pub(crate) struct ResetOnFailure<'a>(&'a dyn PyWorkingTree, PathBuf);
+/// Guard that resets the working tree to its pre-debianize state unless
+/// disarmed. Disarm on success; any other exit (error return or panic)
+/// rolls back the tree.
+pub(crate) struct ResetOnFailure<'a> {
+    wt: &'a dyn PyWorkingTree,
+    subpath: PathBuf,
+    disarmed: bool,
+}
 
 impl<'a> ResetOnFailure<'a> {
     pub fn new(wt: &'a dyn PyWorkingTree, subpath: &Path) -> Result<Self, BrzError> {
@@ -1766,14 +1775,22 @@ impl<'a> ResetOnFailure<'a> {
                 log::warn!("Could not get basis tree: {:?}", e);
             }
         }
-        Ok(Self(wt, subpath.to_path_buf()))
+        Ok(Self {
+            wt,
+            subpath: subpath.to_path_buf(),
+            disarmed: false,
+        })
+    }
+
+    pub fn disarm(&mut self) {
+        self.disarmed = true;
     }
 }
 
 impl<'a> Drop for ResetOnFailure<'a> {
     fn drop(&mut self) {
-        if std::thread::panicking() {
-            match breezyshim::workspace::reset_tree(self.0, None, Some(&self.1)) {
+        if !self.disarmed {
+            match breezyshim::workspace::reset_tree(self.wt, None, Some(&self.subpath)) {
                 Ok(_) => log::info!("Reset tree after failure"),
                 Err(e) => log::error!("Failed to reset tree: {:?}", e),
             }
