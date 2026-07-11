@@ -184,12 +184,15 @@ pub fn write_changelog_template(
     };
     let mut cl = debian_changelog::ChangeLog::new();
 
+    // distributions() replaces the builder's default; distribution() would
+    // append to it, yielding "UNRELEASED UNRELEASED". Change lines are
+    // indented by the serializer.
     cl.new_entry()
         .package(source_name.to_string())
         .version(version.clone())
-        .distribution("UNRELEASED".to_string())
+        .distributions(vec!["UNRELEASED".to_string()])
         .urgency(debian_changelog::Urgency::Low)
-        .change_line(format!("  * Initial release.{}", closes))
+        .change_line(format!("* Initial release.{}", closes))
         .maintainer(author)
         .finish();
 
@@ -539,9 +542,12 @@ mod tests {
         write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
-        assert!(content.contains("* Initial release. Closes: #123456"));
-        assert!(content.contains("Test Author <test@example.com>"));
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines[0], "test-package (1.0-1) UNRELEASED; urgency=low");
+        assert_eq!(lines[1], "");
+        assert_eq!(lines[2], "  * Initial release. Closes: #123456");
+        assert_eq!(lines[3], "");
+        assert!(lines[4].starts_with(" -- Test Author <test@example.com>  "));
     }
 
     #[test]
@@ -561,10 +567,12 @@ mod tests {
         write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
-        assert!(content.contains("* Initial release."));
-        assert!(!content.contains("Closes:"));
-        assert!(content.contains("Test Author <test@example.com>"));
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines[0], "test-package (1.0-1) UNRELEASED; urgency=low");
+        assert_eq!(lines[1], "");
+        assert_eq!(lines[2], "  * Initial release.");
+        assert_eq!(lines[3], "");
+        assert!(lines[4].starts_with(" -- Test Author <test@example.com>  "));
     }
 
     #[test]
