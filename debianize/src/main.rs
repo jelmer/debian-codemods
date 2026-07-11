@@ -786,7 +786,7 @@ fn main() -> Result<(), i32> {
 fn versions_dict() -> HashMap<String, String> {
     let mut ret = HashMap::new();
     ret.insert(
-        "lintian-brush".to_string(),
+        "debianize".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
     ret
