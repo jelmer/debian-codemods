@@ -728,45 +728,27 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_buildsystem_name() {
-        use std::fs;
+    fn test_generic_get_source_name_from_directory() {
+        breezyshim::init();
+        let td = tempdir().unwrap();
+        let path = td.path().join("foo-bar-1.0");
+        std::fs::create_dir(&path).unwrap();
+        let format = breezyshim::controldir::ControlDirFormat::default();
+        let transport =
+            breezyshim::transport::get_transport(&url::Url::from_file_path(&path).unwrap(), None)
+                .unwrap();
+        let controldir = format.initialize_on_transport(&transport).unwrap();
+        controldir.create_repository(None).unwrap();
+        controldir.create_branch(None).unwrap();
+        let wt = controldir.create_workingtree().unwrap();
 
-        let temp_dir = tempdir().unwrap();
-        let temp_path = temp_dir.path();
-
-        // Create a mock working tree implementation for testing
-        // Since we can't easily create a real WorkingTree, we'll test the logic directly
-        // by creating files and checking the expected behavior
-
-        // Test Python setup.py detection
-        fs::write(temp_path.join("setup.py"), "#!/usr/bin/env python").unwrap();
-        // We can't test the actual function without a WorkingTree implementation
-        // But we can test the logic by verifying the expected order
-
-        let expected_buildfiles = [
-            ("setup.py", "setup.py"),
-            ("pyproject.toml", "setup.py"),
-            ("package.json", "npm"),
-            ("pom.xml", "maven"),
-            ("dist.ini", "dist-zilla"),
-            ("Makefile.PL", "makefile.pl"),
-            ("Build.PL", "perl-build-tiny"),
-            ("Cargo.toml", "cargo"),
-            ("go.mod", "golang"),
-            ("DESCRIPTION", "R"),
-            ("DESCRIPTION.in", "octave"),
-            ("Makefile", "make"),
-            ("CMakeLists.txt", "cmake"),
-            ("configure.ac", "autotools"),
-            ("configure.in", "autotools"),
-        ];
-
-        // Test that we have the expected build files in the right order
-        // This is a structural test since we can't easily mock WorkingTree
-        assert_eq!(expected_buildfiles.len(), 15);
-        assert_eq!(expected_buildfiles[0], ("setup.py", "setup.py"));
-        assert_eq!(expected_buildfiles[2], ("package.json", "npm"));
-        assert_eq!(expected_buildfiles[7], ("Cargo.toml", "cargo"));
+        // With no name in the metadata, the source name is derived from the
+        // directory name, with the version suffix stripped.
+        let metadata = UpstreamMetadata::new();
+        assert_eq!(
+            generic_get_source_name(&wt, Path::new(""), &metadata).as_deref(),
+            Some("foo-bar")
+        );
     }
 
     #[test]
@@ -1884,9 +1866,8 @@ fn generic_get_source_name(
     };
 
     if source_name.is_none() {
-        source_name = names::upstream_name_to_debian_source_name(
-            wt.abspath(subpath).unwrap().to_str().unwrap(),
-        );
+        let directory_name = names::source_name_from_directory_name(&wt.abspath(subpath).unwrap());
+        source_name = names::upstream_name_to_debian_source_name(&directory_name);
         if !valid_debian_package_name(source_name.as_ref().unwrap()) {
             source_name = None;
         }
