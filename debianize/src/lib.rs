@@ -649,6 +649,7 @@ mod tests {
             check_wnpp: true,
             run_fixers: true,
             use_debcargo: false,
+            buildsystem: None,
         };
 
         let fixer_prefs: lintian_brush::FixerPreferences = debianize_prefs.into();
@@ -1204,6 +1205,9 @@ pub struct DebianizePreferences {
     pub check_wnpp: bool,
     pub run_fixers: bool,
     pub use_debcargo: bool,
+    /// Force a specific ognibuild buildsystem by name instead of using the
+    /// highest-priority detected one.
+    pub buildsystem: Option<String>,
 }
 
 impl Default for DebianizePreferences {
@@ -1232,6 +1236,7 @@ impl Default for DebianizePreferences {
             check_wnpp: true,
             run_fixers: true,
             use_debcargo: false,
+            buildsystem: None,
         }
     }
 }
@@ -1574,7 +1579,14 @@ pub fn debianize(
     } else {
         get_maintainer()
     };
-    let maintainer = format!("{} <{}>", maintainer_name, maintainer_email);
+    // The control file Maintainer is the team when one was specified; the
+    // changelog is still attributed to the individual author.
+    // TODO: Also set Uploaders to the author when a team is used.
+    let maintainer = if let Some(ref team) = preferences.team {
+        team.clone()
+    } else {
+        format!("{} <{}>", maintainer_name, maintainer_email)
+    };
 
     // Create buildsystem instance for enhanced dependency resolution
     // If subpath is empty, use the working tree's base directory
@@ -1585,10 +1597,19 @@ pub fn debianize(
     };
     log::debug!("Detecting buildsystems in path: {:?}", buildsystem_path);
     let buildsystems = ognibuild::buildsystem::detect_buildsystems(&buildsystem_path);
-    let buildsystem = buildsystems
-        .into_iter()
-        .next()
-        .ok_or_else(|| Error::Other("No buildsystem detected".to_string()))?;
+    let buildsystem = if let Some(ref name) = preferences.buildsystem {
+        buildsystems
+            .into_iter()
+            .find(|bs| bs.name() == name)
+            .ok_or_else(|| {
+                Error::Other(format!("Requested buildsystem {} was not detected", name))
+            })?
+    } else {
+        buildsystems
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("No buildsystem detected".to_string()))?
+    };
 
     // Use processors to create proper control file
     let compat_release = preferences

@@ -131,6 +131,7 @@ struct Args {
     upstream_version: Option<String>,
 
     /// ognibuild dep server to use
+    // TODO: This is currently accepted but not passed on to ognibuild.
     #[arg(long, env = "OGNIBUILD_DEPS")]
     dep_server_url: Option<String>,
 
@@ -170,6 +171,7 @@ struct Args {
     upstream: Option<String>,
 
     /// Package requirement specification (e.g., ">=1.0.0")
+    // TODO: This is currently accepted but not used to constrain the version.
     #[arg(long)]
     requirement: Option<String>,
 
@@ -388,11 +390,12 @@ fn main() -> Result<(), i32> {
         committer: None,
         upstream_version_kind: args.upstream_version_kind,
         debian_revision: args.debian_revision,
-        team: None,
+        team: args.team,
         author: None,
         compat_level: None,
         check_wnpp: true,
         run_fixers: true,
+        buildsystem: args.buildsystem,
     };
 
     let lock_write = wt.lock_write();
