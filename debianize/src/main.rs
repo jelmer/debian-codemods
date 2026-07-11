@@ -312,7 +312,7 @@ fn main() -> Result<(), i32> {
             return Err(1);
         }
     } else {
-        if wt.has_filename(&subpath.join("debian")) {
+        if !args.force_new_directory && wt.has_filename(&subpath.join("debian")) {
             svp.report_fatal(
                 "debian-directory-exists",
                 &format!(
