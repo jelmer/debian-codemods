@@ -187,9 +187,6 @@ struct Args {
 fn main() -> Result<(), i32> {
     let mut args = Args::parse();
 
-    warn!(
-        "debianize is experimental and often generates packaging that is incomplete or does not build as-is. If you encounter issues, please consider filing a bug.");
-
     if args.release {
         args.upstream_version_kind = VersionKind::Release;
     }
@@ -205,6 +202,9 @@ fn main() -> Result<(), i32> {
             },
         )
         .init();
+
+    warn!(
+        "debianize is experimental and often generates packaging that is incomplete or does not build as-is. If you encounter issues, please consider filing a bug.");
 
     breezyshim::init();
 
