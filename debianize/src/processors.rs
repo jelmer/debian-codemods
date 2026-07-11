@@ -830,6 +830,28 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
     Ok(())
 }
 
+type Processor = fn(&mut ProcessorContext) -> Result<(), Error>;
+
+/// Select the processor for an ognibuild buildsystem name.
+fn select_processor(buildsystem_name: &str, use_debcargo: bool) -> Processor {
+    match buildsystem_name {
+        "setup.py" => process_setup_py,
+        "node" => process_npm,
+        "maven" | "gradle" => process_maven,
+        "Dist::Zilla" => process_dist_zilla,
+        "meson" => process_meson,
+        "Module::Build::Tiny" => process_perl_build_tiny,
+        "cargo" if use_debcargo => process_debcargo, // if debcargo.toml needs to be generated
+        "cargo" => process_cargo,
+        "golang" => process_golang,
+        "R" => process_r,
+        "octave" => process_octave,
+        "cmake" => process_cmake,
+        "make" => process_make, // Handles autotools too
+        _ => process_default,
+    }
+}
+
 pub fn process(
     session: &dyn Session,
     wt: &dyn PyWorkingTree,
@@ -844,7 +866,7 @@ pub fn process(
     _kickstart_from_dist: Option<Box<dyn FnOnce(&dyn PyWorkingTree, &Path) -> Result<(), Error>>>,
     use_debcargo: bool,
 ) -> Result<(), Error> {
-    let bs_name = buildsystem.name().to_string();
+    let processor = select_processor(buildsystem.name(), use_debcargo);
     let mut context = ProcessorContext {
         session,
         wt,
@@ -858,22 +880,7 @@ pub fn process(
         maintainer,
         _kickstart_from_dist,
     };
-    match bs_name.as_str() {
-        "setup.py" => process_setup_py(&mut context),
-        "node" => process_npm(&mut context),
-        "gradle" => process_maven(&mut context), // For Java/gradle projects
-        "Dist::Zilla" => process_dist_zilla(&mut context),
-        "meson" => process_meson(&mut context),
-        "Module::Build::Tiny" => process_perl_build_tiny(&mut context),
-        "cargo" if use_debcargo => process_debcargo(&mut context), // if debcargo.toml needs to be generated
-        "cargo" => process_cargo(&mut context),
-        "golang" => process_golang(&mut context),
-        "R" => process_r(&mut context),
-        "octave" => process_octave(&mut context),
-        "cmake" => process_cmake(&mut context),
-        "make" => process_make(&mut context), // Handles autotools too
-        _ => process_default(&mut context),
-    }
+    processor(&mut context)
 }
 
 /// Check if a Python project supports Python 3
@@ -938,6 +945,19 @@ fn check_python3_support(wt: &dyn PyWorkingTree, subpath: &Path) -> Result<bool,
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    #[allow(unpredictable_function_pointer_comparisons)]
+    fn test_select_processor() {
+        // Both ognibuild java buildsystems route to the maven processor.
+        assert!(select_processor("maven", false) == process_maven as Processor);
+        assert!(select_processor("gradle", false) == process_maven as Processor);
+        assert!(select_processor("setup.py", false) == process_setup_py as Processor);
+        assert!(select_processor("node", false) == process_npm as Processor);
+        assert!(select_processor("cargo", false) == process_cargo as Processor);
+        assert!(select_processor("cargo", true) == process_debcargo as Processor);
+        assert!(select_processor("bazel", false) == process_default as Processor);
+    }
 
     #[test]
     fn test_debhelper_rules() {
