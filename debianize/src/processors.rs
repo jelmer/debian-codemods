@@ -269,7 +269,8 @@ fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
     import_build_deps(&mut source, &build_deps);
     let mut binary = control.add_binary(&format!("lib{}-java", upstream_name));
     binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&"${java:Depends}".parse().unwrap()));
+    // Use a raw deb822 field: substitution variables do not parse as relations
+    binary.as_mut_deb822().insert("Depends", "${java:Depends}");
     control.commit()?;
     Ok(())
 }
@@ -342,7 +343,7 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&"${perl:Depends}".parse().unwrap()));
+    binary.as_mut_deb822().insert("Depends", "${perl:Depends}");
     control.commit()?;
     Ok(())
 }
@@ -410,7 +411,7 @@ fn process_perl_build_tiny(context: &mut ProcessorContext) -> Result<(), Error> 
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&"${perl:Depends}".parse().unwrap()));
+    binary.as_mut_deb822().insert("Depends", "${perl:Depends}");
     control.commit()?;
     Ok(())
 }
@@ -507,13 +508,14 @@ fn process_r(context: &mut ProcessorContext) -> Result<(), Error> {
         context.metadata.name().unwrap().to_lowercase()
     ));
     binary.set_architecture(Some("any"));
-    binary.set_depends(Some(
-        &"${R:Depends}, ${shlibs:Depends}, ${misc:Depends}"
-            .parse()
-            .unwrap(),
-    ));
-    binary.set_recommends(Some(&"${R:Recommends}".parse().unwrap()));
-    binary.set_suggests(Some(&"${R:Suggests}".parse().unwrap()));
+    binary.as_mut_deb822().insert(
+        "Depends",
+        "${R:Depends}, ${shlibs:Depends}, ${misc:Depends}",
+    );
+    binary
+        .as_mut_deb822()
+        .insert("Recommends", "${R:Recommends}");
+    binary.as_mut_deb822().insert("Suggests", "${R:Suggests}");
     control.commit()?;
     Ok(())
 }
@@ -547,7 +549,9 @@ fn process_octave(context: &mut ProcessorContext) -> Result<(), Error> {
         context.metadata.name().unwrap().to_lowercase()
     ));
     binary.set_architecture(Some("all"));
-    binary.set_depends(Some(&"${octave:Depends}, ${misc:Depends}".parse().unwrap()));
+    binary
+        .as_mut_deb822()
+        .insert("Depends", "${octave:Depends}, ${misc:Depends}");
     binary.set_description(Some("${octave:Upstream-Description}"));
     control.commit()?;
     Ok(())
