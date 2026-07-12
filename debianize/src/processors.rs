@@ -381,7 +381,10 @@ fn process_meson(context: &mut ProcessorContext) -> Result<(), Error> {
     )?;
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
-    binary.set_architecture(Some("all"));
+    binary.set_architecture(Some("any"));
+    binary
+        .as_mut_deb822()
+        .insert("Depends", "${misc:Depends}, ${shlibs:Depends}");
     control.commit()?;
     Ok(())
 }
@@ -591,6 +594,9 @@ fn process_default(context: &mut ProcessorContext) -> Result<(), Error> {
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("any"));
+    binary
+        .as_mut_deb822()
+        .insert("Depends", "${misc:Depends}, ${shlibs:Depends}");
     control.commit()?;
     Ok(())
 }
@@ -598,7 +604,14 @@ fn process_default(context: &mut ProcessorContext) -> Result<(), Error> {
 fn process_cmake(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap_or("unknown");
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name of the cmake project".to_string(),
+            ))
+        }
+    };
     let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
         .unwrap_or_else(|| upstream_name.to_string());
 
@@ -629,6 +642,9 @@ fn process_cmake(context: &mut ProcessorContext) -> Result<(), Error> {
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("any"));
+    binary
+        .as_mut_deb822()
+        .insert("Depends", "${misc:Depends}, ${shlibs:Depends}");
 
     control.commit()?;
     Ok(())
@@ -679,6 +695,9 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
     let binary_name = source.name().unwrap();
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("any"));
+    binary
+        .as_mut_deb822()
+        .insert("Depends", "${misc:Depends}, ${shlibs:Depends}");
 
     control.commit()?;
     Ok(())

@@ -151,6 +151,86 @@ fn create_perl_build_tiny_package(wt: &breezyshim::workingtree::GenericWorkingTr
         .unwrap();
 }
 
+#[test]
+#[serial]
+fn test_debianize_make_package() {
+    use breezyshim::tree::MutableTree;
+
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let test_env = TestEnv::new();
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("hello");
+    std::fs::create_dir_all(&repo_path).unwrap();
+    let wt = init_working_tree(&repo_path);
+
+    wt.put_file_bytes_non_atomic(
+        Path::new("Makefile"),
+        b"all: hello\n\nhello: hello.c\n\tcc -o hello hello.c\n\ninstall:\n\tinstall -D hello $(DESTDIR)/usr/bin/hello\n",
+    )
+    .unwrap();
+    wt.put_file_bytes_non_atomic(Path::new("hello.c"), b"int main(void) { return 0; }\n")
+        .unwrap();
+    wt.add(&[Path::new("Makefile"), Path::new("hello.c")])
+        .unwrap();
+    wt.build_commit()
+        .message("Initial commit")
+        .commit()
+        .unwrap();
+
+    let preferences = default_test_preferences();
+    let mut metadata = UpstreamMetadata::new();
+    metadata.insert(UpstreamDatumWithMetadata {
+        datum: UpstreamDatum::Name("hello".to_string()),
+        certainty: Some(Certainty::Certain),
+        origin: None,
+    });
+
+    let result = debianize(
+        &wt,
+        Path::new(""),
+        Some(&wt.branch()),
+        Some(Path::new("")),
+        &preferences,
+        Some("0.1.0"),
+        &metadata,
+    );
+
+    assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
+
+    assert_debian_files_exist(&wt);
+
+    let control_content = read_cleaned_control(&repo_path);
+    let expected_control = format!(
+        "Source: hello\n\
+         Maintainer: Test Packager <packager@example.com>\n\
+         Build-Depends: debhelper-compat (= 13)\n\
+         Standards-Version: {}\n\
+         Rules-Requires-Root: no\n\
+         \n\
+         Package: hello\n\
+         Architecture: any\n\
+         Depends: ${{misc:Depends}}, ${{shlibs:Depends}}\n",
+        latest_standards_version()
+    );
+    assert_eq!(control_content, expected_control);
+
+    let rules_content = std::fs::read_to_string(repo_path.join("debian/rules")).unwrap();
+    assert_eq!(
+        rules_content,
+        "#!/usr/bin/make -f\n%:\n\tdh $@ --buildsystem=makefile\n"
+    );
+
+    std::mem::drop(image_cached);
+    std::mem::drop(test_env);
+}
+
 /// Create a simple ExtUtils::MakeMaker Perl package in the working tree
 fn create_makefile_pl_package(wt: &breezyshim::workingtree::GenericWorkingTree, name: &str) {
     use breezyshim::tree::MutableTree;
