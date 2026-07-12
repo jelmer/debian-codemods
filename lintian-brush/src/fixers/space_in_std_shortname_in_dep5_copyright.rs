@@ -54,15 +54,15 @@ fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
     let mut names = Vec::new();
-    let mut changed = false;
+    let mut recognized = false;
     for name in ors {
         let new_name = if let Some(renamed) = RENAMES_MAP.get(&name.to_lowercase()) {
-            changed = true;
+            recognized = true;
             renamed.clone()
         } else {
             let name_with_dashes = name.replace(' ', "-");
             if REPLACE_SPACES_SET.contains(&name_with_dashes.to_lowercase()) {
-                changed = true;
+                recognized = true;
                 name_with_dashes
             } else {
                 name
@@ -70,8 +70,11 @@ fn fix_spaces_in_synopsis(synopsis: &str) -> Option<String> {
         };
         names.push(new_name);
     }
-    if changed {
-        Some(names.join(" or "))
+    let new_synopsis = names.join(" or ");
+    // Only recognized shortnames justify rewriting, and spaces that are
+    // merely separators in an alternatives expression are not a change.
+    if recognized && new_synopsis != synopsis {
+        Some(new_synopsis)
     } else {
         None
     }
@@ -249,6 +252,12 @@ mod tests {
     }
 
     #[test]
+    fn test_fix_spaces_in_synopsis_or_expression_unchanged() {
+        assert_eq!(fix_spaces_in_synopsis("GPL-2 or Apache-2.0"), None);
+        assert_eq!(fix_spaces_in_synopsis("MIT or GPL-3+"), None);
+    }
+
+    #[test]
     fn test_fix_spaces_in_synopsis_with_or() {
         assert_eq!(
             fix_spaces_in_synopsis("Apache 2.0 | GPL 3"),
@@ -283,6 +292,19 @@ mod tests {
         fs::create_dir(&debian).unwrap();
         let path = debian.join("copyright");
         let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: Apache-2.0\n";
+        fs::write(&path, original).unwrap();
+
+        assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+    }
+
+    #[test]
+    fn test_no_change_for_or_expression() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+        let path = debian.join("copyright");
+        let original = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\nUpstream-Name: foo\n\nFiles: *\nCopyright: 2024 Foo\nLicense: GPL-2 or Apache-2.0\n";
         fs::write(&path, original).unwrap();
 
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
