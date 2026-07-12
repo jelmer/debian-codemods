@@ -1,11 +1,8 @@
 pub fn source_name_from_directory_name(path: &std::path::Path) -> String {
     let d = path.file_name().unwrap().to_str().unwrap();
-    if d.contains('-') {
-        let mut parts = d.split('-').collect::<Vec<_>>();
-        let c = parts.last().unwrap().chars().next().unwrap();
-        if c.is_ascii_digit() {
-            parts.pop();
-            return parts.join("-");
+    if let Some((base, last)) = d.rsplit_once('-') {
+        if last.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return base.to_string();
         }
     }
     d.to_string()
@@ -85,7 +82,7 @@ pub fn upstream_package_to_debian_binary_name(family: &str, name: &str) -> Strin
 }
 
 pub fn go_base_name(package: &str) -> String {
-    let (mut hostname, path) = package.split_once('/').unwrap();
+    let (mut hostname, path) = package.split_once('/').unwrap_or((package, ""));
     if hostname == "github.com" {
         hostname = "github";
     }
@@ -97,7 +94,11 @@ pub fn go_base_name(package: &str) -> String {
     }
     let path = path.trim_end_matches('/').replace(['/', '_'], "-");
     let path = path.strip_suffix(".git").unwrap_or(&path);
-    format!("{}-{}", hostname, path).to_lowercase()
+    if path.is_empty() {
+        hostname.to_lowercase()
+    } else {
+        format!("{}-{}", hostname, path).to_lowercase()
+    }
 }
 
 #[cfg(test)]
@@ -233,6 +234,14 @@ mod tests {
             source_name_from_directory_name(std::path::Path::new("foo-bar-1.0")),
             "foo-bar"
         );
+        assert_eq!(
+            source_name_from_directory_name(std::path::Path::new("foo-")),
+            "foo-"
+        );
+        assert_eq!(
+            source_name_from_directory_name(std::path::Path::new("/home/user/foo-bar-1.0")),
+            "foo-bar"
+        );
     }
 
     #[test]
@@ -298,5 +307,7 @@ mod tests {
             go_base_name("github.com/FiloSottile/torchwood.git"),
             "github-filosottile-torchwood"
         );
+        assert_eq!(go_base_name("example.com"), "example.com");
+        assert_eq!(go_base_name("github.com/"), "github");
     }
 }
