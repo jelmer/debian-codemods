@@ -636,8 +636,24 @@ fn process_cmake(context: &mut ProcessorContext) -> Result<(), Error> {
 
 fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
     context.kickstart_tree(true)?;
+
+    // The ognibuild make buildsystem also claims ExtUtils::MakeMaker projects.
+    if context
+        .wt
+        .has_filename(&context.subpath.join("Makefile.PL"))
+    {
+        return process_makefile_pl(context);
+    }
+
     let mut control = context.create_control_file()?;
-    let upstream_name = context.metadata.name().unwrap_or("unknown");
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name of the make project".to_string(),
+            ))
+        }
+    };
     let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
         .unwrap_or_else(|| upstream_name.to_string());
 
@@ -664,6 +680,36 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
     let mut binary = control.add_binary(&binary_name);
     binary.set_architecture(Some("any"));
 
+    control.commit()?;
+    Ok(())
+}
+
+fn process_makefile_pl(context: &mut ProcessorContext) -> Result<(), Error> {
+    let mut control = context.create_control_file()?;
+    let upstream_name = match context.metadata.name() {
+        Some(name) => name,
+        None => {
+            return Err(Error::MissingUpstreamInfo(
+                "unable to determine the name of the perl project".to_string(),
+            ))
+        }
+    };
+    let mut source = control.add_source(&crate::names::perl_package_name(upstream_name));
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
+    source.set_rules_requires_root(false);
+    source.set_testsuite("autopkgtest-pkg-perl");
+    source.set_standards_version(&latest_standards_version().to_string());
+    let (build_deps, _test_deps) = context.get_project_wide_deps();
+    import_build_deps(&mut source, &build_deps);
+    // dh autodetects perl_makemaker from Makefile.PL; forcing the makefile
+    // buildsystem would skip running Makefile.PL entirely.
+    context.bootstrap_debhelper(&mut source, DebhelperConfig::default())?;
+    let binary_name = source.name().unwrap();
+    let mut binary = control.add_binary(&binary_name);
+    binary.set_architecture(Some("all"));
+    binary.as_mut_deb822().insert("Depends", "${perl:Depends}");
     control.commit()?;
     Ok(())
 }
