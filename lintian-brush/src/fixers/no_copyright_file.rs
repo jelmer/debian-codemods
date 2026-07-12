@@ -50,17 +50,13 @@ mod decopy {
                 return Err(Error::NotAvailable);
             }
 
-            // Import required modules
+            // Import required modules; this requires decopy >= 0.3.2,
+            // which split the flat modules into packages.
             let cmdoptions = py.import("decopy.cmdoptions")?;
-            let dep5 = py.import("decopy.dep5")?;
-            let tree = py.import("decopy.tree")?;
+            let tree = py.import("decopy.fstree.tree")?;
             let decopy_mod = py.import("decopy.decopy")?;
-            // The `License` type moved from `decopy.datatypes` (decopy 0.2.x)
-            // to `decopy.core_types` (decopy 0.3.x). Try the new location
-            // first so a chroot with only the new layout still works.
-            let datatypes = py
-                .import("decopy.core_types")
-                .or_else(|_| py.import("decopy.datatypes"))?;
+            let copyright_reader = py.import("decopy.dep5doc.copyright_reader")?;
+            let grouping = py.import("decopy.grouping.group")?;
 
             // Convert to absolute path
             let abs_path = std::fs::canonicalize(base_path)
@@ -87,19 +83,17 @@ mod decopy {
                 let root_info = tree.getattr("RootInfo")?;
                 let filetree = root_info.call_method1("build", (&options,))?;
 
-                // Build copyright
-                let copyright_class = dep5.getattr("Copyright")?;
-                let copyright_ = copyright_class.call_method1("build", (&filetree, &options))?;
-
-                // Process
+                // Build copyright and process the tree, mirroring decopy's
+                // own run_pipeline.
+                let copyright_ = copyright_reader
+                    .getattr("read_copyright")?
+                    .call1((&options,))?;
                 copyright_.call_method1("process", (&filetree,))?;
                 filetree.call_method1("process", (&options,))?;
+                copyright_.call_method1("remove_misplaced_files", (&options,))?;
 
                 // Delegate the assemble-groups-and-place-ungrouped-files step
-                // to decopy's own helper. The FileInfo group bookkeeping moved
-                // from `.group` to `.existing_group` in decopy 0.3, and
-                // tree iteration changed shape; reusing the helper keeps us
-                // compatible with both 0.2 and 0.3.
+                // to decopy's own helper.
                 let builtins = py.import("builtins")?;
                 let groups = decopy_mod
                     .call_method1("prepare_output_groups", (&filetree, &copyright_, &options))?;
@@ -128,17 +122,10 @@ mod decopy {
 
                 tracing::debug!("decopy returned {} candidate groups", sorted_items.len());
 
-                // decopy 0.3 moved per-node wildcard bookkeeping onto a
-                // `TallyTracker` instance that is shared across all groups
-                // in a single output run, and `FileGroup.get_patterns` now
-                // requires it as an argument. decopy 0.2 has no such class
-                // and `get_patterns` takes no arguments.
-                let tracker = py
-                    .import("decopy.group")
-                    .ok()
-                    .and_then(|m| m.getattr("TallyTracker").ok())
-                    .and_then(|cls| cls.call0().ok())
-                    .map(|t| t.unbind());
+                // Per-node wildcard bookkeeping is shared across all groups
+                // in a single output run through a `TallyTracker`, which
+                // `FileGroup.get_patterns` takes as an argument.
+                let tracker = grouping.getattr("TallyTracker")?.call0()?;
 
                 for (_key, group) in sorted_items {
                     let group = group.bind(py);
@@ -160,12 +147,9 @@ mod decopy {
 
                     // Get files
                     let files = if options.getattr("glob")?.is_truthy()? {
-                        let files_obj = group.getattr("files")?;
-                        if let Some(tracker) = tracker.as_ref() {
-                            files_obj.call_method1("get_patterns", (tracker,))?
-                        } else {
-                            files_obj.call_method0("get_patterns")?
-                        }
+                        group
+                            .getattr("files")?
+                            .call_method1("get_patterns", (&tracker,))?
                     } else {
                         group.getattr("files")?.call_method0("sorted_members")?
                     };
@@ -186,16 +170,11 @@ mod decopy {
                     let license = group.getattr("license")?.extract::<String>()?;
 
                     // Get comments
-                    let comments_obj = group.call_method0("get_comments")?;
-                    let comments = if comments_obj.is_none() {
+                    let comment_str: String = group.call_method0("get_comments")?.extract()?;
+                    let comments = if comment_str.is_empty() {
                         None
                     } else {
-                        let comment_str: String = comments_obj.extract()?;
-                        if comment_str.is_empty() {
-                            None
-                        } else {
-                            Some(comment_str)
-                        }
+                        Some(comment_str)
                     };
 
                     file_groups.push(FileGroup {
@@ -206,8 +185,9 @@ mod decopy {
                     });
                 }
 
-                // Get license names using decopy's License.get()
-                let decopy_license = datatypes.getattr("License")?;
+                // Get license names through the per-run LicenseRegistry
+                // hung off the Copyright.
+                let decopy_license = copyright_.getattr("registry")?;
                 let mut license_names = Vec::new();
                 let mut sorted_licenses: Vec<String> = all_licenses.into_iter().collect();
                 sorted_licenses.sort();
