@@ -253,35 +253,14 @@ pub fn update_official_vcs(
     log::info!("Using repository URL: {}", repo_url);
 
     // Determine VCS type - for now, assume Git
-    let vcs_type = "Git";
-
-    // Since we can't mutably borrow the source from control, we need to recreate it
-    // Parse the control file as a string and modify it directly
-    let mut modified_content = control_str.clone();
-
-    // This is a simple approach - we'll insert the VCS fields after the source paragraph
-    // Find the end of the source paragraph (indicated by a blank line or end of file)
-    let source_end = if let Some(pos) = modified_content.find("\n\n") {
-        pos
-    } else {
-        modified_content.len()
-    };
-
-    // Insert the VCS fields
-    let vcs_fields = format!("Vcs-Git: {}\n", repo_url);
-    let browser_fields = match debian_analyzer::vcs::determine_browser_url(
-        &vcs_type.to_lowercase(),
-        &repo_url,
-        None,
-    ) {
-        Some(browser_url) => format!("Vcs-Browser: {}\n", browser_url),
-        None => String::new(),
-    };
-
-    modified_content.insert_str(source_end, &format!("{}{}", vcs_fields, browser_fields));
+    let mut source = source;
+    source.set_vcs_git(&repo_url);
+    if let Some(browser_url) = debian_analyzer::vcs::determine_browser_url("git", &repo_url, None) {
+        source.set_vcs_browser(Some(browser_url.as_str()));
+    }
 
     // Write the updated control file
-    wt.put_file_bytes_non_atomic(&control_path, modified_content.as_bytes())?;
+    wt.put_file_bytes_non_atomic(&control_path, control.to_string().as_bytes())?;
 
     // Commit the changes
     if let Some(committer) = committer {
@@ -361,8 +340,16 @@ mod tests {
 
         let content =
             String::from_utf8(wt.get_file_text(Path::new("debian/control")).unwrap()).unwrap();
-        assert!(content.contains("Vcs-Git: https://github.com/user/test-package.git"));
-        assert!(content.contains("Vcs-Browser: https://github.com/user/test-package"));
+        assert_eq!(
+            content,
+            "Source: test-package\n\
+             Maintainer: Test User <test@example.com>\n\
+             Vcs-Browser: https://github.com/user/test-package\n\
+             Vcs-Git: https://github.com/user/test-package.git\n\
+             \n\
+             Package: test-package\n\
+             Architecture: all\n"
+        );
     }
 
     #[test]
