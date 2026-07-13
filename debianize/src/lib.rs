@@ -12,6 +12,9 @@ use breezyshim::debian::upstream::{
     UpstreamSource,
 };
 use breezyshim::debian::{TarballKind, VersionKind, DEFAULT_ORIG_DIR};
+
+/// Name of the branch tracking upstream releases, per DEP-14.
+pub const UPSTREAM_BRANCH_NAME: &str = "upstream/latest";
 use breezyshim::error::Error as BrzError;
 use breezyshim::tree::MutableTree;
 use breezyshim::tree::{PyTree, Tree};
@@ -328,7 +331,7 @@ pub fn import_upstream_version_from_dist(
     }
     std::mem::drop(td);
 
-    let upstream_branch_name = "upstream";
+    let upstream_branch_name = UPSTREAM_BRANCH_NAME;
     match wt.controldir().create_branch(Some(upstream_branch_name)) {
         Ok(branch) => {
             branch
@@ -2085,7 +2088,7 @@ fn basic_import_upstream_version(
     _source_name: &str,
     upstream_version: &str,
 ) -> Result<String, Error> {
-    let upstream_branch_name = "upstream";
+    let upstream_branch_name = UPSTREAM_BRANCH_NAME;
 
     // Create an upstream branch if it doesn't exist
     match wt.controldir().create_branch(Some(upstream_branch_name)) {
