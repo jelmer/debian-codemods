@@ -52,6 +52,7 @@ fn test_debianize_simple_python_package() {
     let control_content = read_cleaned_control(&repo_path);
     let expected_control = format!(
         "Source: python-hello-world\n\
+         Section: python\n\
          Maintainer: Test Packager <packager@example.com>\n\
          Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all, python3-setuptools\n\
          Standards-Version: {}\n\
@@ -229,6 +230,158 @@ fn create_perl_build_tiny_package(wt: &breezyshim::workingtree::GenericWorkingTr
 
 #[test]
 #[serial]
+fn test_debianize_autotools_package() {
+    use breezyshim::tree::MutableTree;
+
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let test_env = TestEnv::new();
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("hello");
+    std::fs::create_dir_all(&repo_path).unwrap();
+    let wt = init_working_tree(&repo_path);
+
+    wt.put_file_bytes_non_atomic(
+        Path::new("configure.ac"),
+        b"AC_INIT([hello], [0.1.0])\nAM_INIT_AUTOMAKE([foreign])\nAC_PROG_CC\nAC_CONFIG_FILES([Makefile])\nAC_OUTPUT\n",
+    )
+    .unwrap();
+    wt.put_file_bytes_non_atomic(
+        Path::new("Makefile.am"),
+        b"bin_PROGRAMS = hello\nhello_SOURCES = hello.c\n",
+    )
+    .unwrap();
+    wt.put_file_bytes_non_atomic(Path::new("hello.c"), b"int main(void) { return 0; }\n")
+        .unwrap();
+    wt.add(&[
+        Path::new("configure.ac"),
+        Path::new("Makefile.am"),
+        Path::new("hello.c"),
+    ])
+    .unwrap();
+    wt.build_commit()
+        .message("Initial commit")
+        .commit()
+        .unwrap();
+
+    let preferences = default_test_preferences();
+    let mut metadata = UpstreamMetadata::new();
+    metadata.insert(UpstreamDatumWithMetadata {
+        datum: UpstreamDatum::Name("hello".to_string()),
+        certainty: Some(Certainty::Certain),
+        origin: None,
+    });
+
+    let result = debianize(
+        &wt,
+        Path::new(""),
+        Some(&wt.branch()),
+        Some(Path::new("")),
+        &preferences,
+        Some("0.1.0"),
+        &metadata,
+    );
+
+    assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
+
+    // dh autodetects autoconf; forcing the makefile buildsystem would skip
+    // running configure entirely.
+    let rules_content = std::fs::read_to_string(repo_path.join("debian/rules")).unwrap();
+    assert_eq!(
+        rules_content,
+        "#!/usr/bin/make -f\n%:\n\tdh $@ --buildsystem=makefile\n"
+    );
+
+    std::mem::drop(image_cached);
+    std::mem::drop(test_env);
+}
+
+#[test]
+#[serial]
+fn test_debianize_maven_package() {
+    use breezyshim::tree::MutableTree;
+
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let test_env = TestEnv::new();
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("hello-java");
+    std::fs::create_dir_all(&repo_path).unwrap();
+    let wt = init_working_tree(&repo_path);
+
+    wt.put_file_bytes_non_atomic(
+        Path::new("pom.xml"),
+        b"<project>\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>com.example</groupId>\n  <artifactId>hello-java</artifactId>\n  <version>0.1.0</version>\n  <name>Hello Java</name>\n</project>\n",
+    )
+    .unwrap();
+    wt.add(&[Path::new("pom.xml")]).unwrap();
+    wt.build_commit()
+        .message("Initial commit")
+        .commit()
+        .unwrap();
+
+    let preferences = default_test_preferences();
+    let mut metadata = UpstreamMetadata::new();
+    // The pom.xml name is a human-readable string, not a package name.
+    metadata.insert(UpstreamDatumWithMetadata {
+        datum: UpstreamDatum::Name("Hello Java".to_string()),
+        certainty: Some(Certainty::Certain),
+        origin: None,
+    });
+
+    let result = debianize(
+        &wt,
+        Path::new(""),
+        Some(&wt.branch()),
+        Some(Path::new("")),
+        &preferences,
+        Some("0.1.0"),
+        &metadata,
+    );
+
+    assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
+
+    assert_debian_files_exist(&wt);
+
+    let control_content = read_cleaned_control(&repo_path);
+    let expected_control = format!(
+        "Source: Hello Java\n\
+         Section: java\n\
+         Build-Depends: debhelper-compat (= 13)\n\
+         Standards-Version: {}\n\
+         Rules-Requires-Root: no\n\
+         \n\
+         Package: libHello Java-java\n\
+         Architecture: all\n\
+         Depends: ${{java:Depends}}\n",
+        latest_standards_version()
+    );
+    assert_eq!(control_content, expected_control);
+
+    let rules_content = std::fs::read_to_string(repo_path.join("debian/rules")).unwrap();
+    assert_eq!(
+        rules_content,
+        "#!/usr/bin/make -f\n%:\n\tdh $@ --buildsystem=maven\n"
+    );
+
+    std::mem::drop(image_cached);
+    std::mem::drop(test_env);
+}
+
+#[test]
+#[serial]
 fn test_debianize_make_package() {
     use breezyshim::tree::MutableTree;
 
@@ -285,6 +438,7 @@ fn test_debianize_make_package() {
     let control_content = read_cleaned_control(&repo_path);
     let expected_control = format!(
         "Source: hello\n\
+         Section: misc\n\
          Maintainer: Test Packager <packager@example.com>\n\
          Build-Depends: debhelper-compat (= 13)\n\
          Standards-Version: {}\n\
@@ -387,6 +541,7 @@ fn test_debianize_makefile_pl_package() {
     let control_content = read_cleaned_control(&repo_path);
     let expected_control = format!(
         "Source: libfoo-bar-perl\n\
+         Section: perl\n\
          Maintainer: Test Packager <packager@example.com>\n\
          Build-Depends: debhelper-compat (= 13)\n\
          Standards-Version: {}\n\
@@ -455,6 +610,7 @@ fn test_debianize_perl_build_tiny_package() {
     let control_content = read_cleaned_control(&repo_path);
     let expected_control = format!(
         "Source: libfoo-bar-perl\n\
+         Section: perl\n\
          Maintainer: Test Packager <packager@example.com>\n\
          Build-Depends: debhelper-compat (= 13), libmodule-build-perl\n\
          Standards-Version: {}\n\
