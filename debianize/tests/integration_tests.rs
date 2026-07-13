@@ -466,6 +466,87 @@ fn test_debianize_make_package() {
     std::mem::drop(test_env);
 }
 
+#[test]
+#[serial]
+fn test_debianize_release_tag_content() {
+    use breezyshim::branch::Branch;
+    use breezyshim::tree::MutableTree;
+
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let test_env = TestEnv::new();
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("hello");
+    std::fs::create_dir_all(&repo_path).unwrap();
+    let wt = init_working_tree(&repo_path);
+
+    wt.put_file_bytes_non_atomic(
+        Path::new("Makefile"),
+        b"all: hello\n\nhello: hello.c\n\tcc -o hello hello.c\n",
+    )
+    .unwrap();
+    wt.put_file_bytes_non_atomic(Path::new("VERSION"), b"1.0\n")
+        .unwrap();
+    wt.add(&[Path::new("Makefile"), Path::new("VERSION")])
+        .unwrap();
+    let release_revid = wt.build_commit().message("Release 1.0").commit().unwrap();
+    wt.branch()
+        .tags()
+        .unwrap()
+        .set_tag("v1.0", &release_revid)
+        .unwrap();
+
+    // Development continues after the release.
+    wt.put_file_bytes_non_atomic(Path::new("VERSION"), b"post-release\n")
+        .unwrap();
+    wt.build_commit()
+        .message("Post-release development")
+        .commit()
+        .unwrap();
+
+    let preferences = default_test_preferences();
+    let mut metadata = UpstreamMetadata::new();
+    metadata.insert(UpstreamDatumWithMetadata {
+        datum: UpstreamDatum::Name("hello".to_string()),
+        certainty: Some(Certainty::Certain),
+        origin: None,
+    });
+
+    // No explicit version: debianize picks the latest release.
+    let result = debianize(
+        &wt,
+        Path::new(""),
+        Some(&wt.branch()),
+        Some(Path::new("")),
+        &preferences,
+        None,
+        &metadata,
+    );
+
+    assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
+    let result = result.unwrap();
+    assert_eq!(result.upstream_version, Some("1.0".to_string()));
+
+    // The packaged tree must contain the 1.0 release, not the branch tip.
+    let version_content = std::fs::read_to_string(repo_path.join("VERSION")).unwrap();
+    assert_eq!(version_content, "1.0\n");
+
+    let changelog = std::fs::read_to_string(repo_path.join("debian/changelog")).unwrap();
+    assert_eq!(
+        changelog.lines().next().unwrap(),
+        "hello (1.0-1) UNRELEASED; urgency=low"
+    );
+
+    std::mem::drop(image_cached);
+    std::mem::drop(test_env);
+}
+
 /// Create a simple ExtUtils::MakeMaker Perl package in the working tree
 fn create_makefile_pl_package(wt: &breezyshim::workingtree::GenericWorkingTree, name: &str) {
     use breezyshim::tree::MutableTree;
