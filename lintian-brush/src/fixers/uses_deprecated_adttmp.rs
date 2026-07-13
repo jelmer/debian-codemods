@@ -3,13 +3,16 @@ use crate::diagnostic::{Action, ActionPlan, Diagnostic, FilesystemAction};
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use regex::bytes::Regex;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    let mut entries = match ws.list_dir(Path::new("debian/tests"))? {
+    // walk_dir rather than list_dir: test scripts can live in
+    // subdirectories (e.g. debian/tests/pkg-js/test), and reading a
+    // directory entry as a file fails.
+    let mut entries = match ws.walk_dir(Path::new("debian/tests"))? {
         Some(e) => e,
         None => return Ok(Vec::new()),
     };
@@ -18,8 +21,7 @@ pub fn detect(
     let pattern = Regex::new(r"\bADTTMP\b").unwrap();
     let mut diagnostics = Vec::new();
 
-    for name in entries {
-        let rel = PathBuf::from("debian/tests").join(&name);
+    for rel in entries {
         let Some(content) = ws.read_file(&rel)? else {
             continue;
         };
@@ -127,6 +129,26 @@ mod tests {
     fn test_no_change_when_no_tests_dir() {
         let tmp = TempDir::new().unwrap();
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_recurses_into_subdirectories() {
+        let tmp = TempDir::new().unwrap();
+        let tests_dir = tmp.path().join("debian/tests");
+        fs::create_dir_all(tests_dir.join("pkg-js")).unwrap();
+        fs::write(tests_dir.join("athing"), b"echo $ADTTMP\n").unwrap();
+        fs::write(tests_dir.join("pkg-js/test"), b"cd $ADTTMP && ls\n").unwrap();
+
+        run_apply(tmp.path()).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(tests_dir.join("athing")).unwrap(),
+            "echo $AUTOPKGTEST_TMP\n"
+        );
+        assert_eq!(
+            fs::read_to_string(tests_dir.join("pkg-js/test")).unwrap(),
+            "cd $AUTOPKGTEST_TMP && ls\n"
+        );
     }
 
     #[test]
