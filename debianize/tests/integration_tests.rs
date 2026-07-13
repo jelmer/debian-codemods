@@ -413,7 +413,8 @@ fn test_debianize_make_package() {
         .commit()
         .unwrap();
 
-    let preferences = default_test_preferences();
+    let mut preferences = default_test_preferences();
+    preferences.gbp = true;
     let mut metadata = UpstreamMetadata::new();
     metadata.insert(UpstreamDatumWithMetadata {
         datum: UpstreamDatum::Name("hello".to_string()),
@@ -456,6 +457,10 @@ fn test_debianize_make_package() {
         rules_content,
         "#!/usr/bin/make -f\n%:\n\tdh $@ --buildsystem=makefile\n"
     );
+
+    // The test tree's git branch has no name, so no debian-branch entry.
+    let gbp_conf = std::fs::read_to_string(repo_path.join("debian/gbp.conf")).unwrap();
+    assert_eq!(gbp_conf, "[DEFAULT]\nupstream-branch = upstream\n");
 
     std::mem::drop(image_cached);
     std::mem::drop(test_env);
