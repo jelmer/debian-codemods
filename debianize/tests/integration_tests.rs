@@ -82,6 +82,82 @@ fn test_debianize_simple_python_package() {
 
 #[test]
 #[serial]
+fn test_debianize_pyproject_package() {
+    use breezyshim::tree::MutableTree;
+
+    let image_cached = match DebianImageCached::new() {
+        Ok(cached) => cached,
+        Err(e) => {
+            eprintln!("Failed to cache Debian image: {:?}", e);
+            return;
+        }
+    };
+    let test_env = TestEnv::new();
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("hello-toml");
+    std::fs::create_dir_all(&repo_path).unwrap();
+    let wt = init_working_tree(&repo_path);
+
+    wt.put_file_bytes_non_atomic(
+        Path::new("pyproject.toml"),
+        b"[build-system]\nrequires = [\"setuptools\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"hello-toml\"\nversion = \"0.1.0\"\ndescription = \"Test package\"\n",
+    )
+    .unwrap();
+    wt.put_file_bytes_non_atomic(Path::new("hello_toml.py"), b"__version__ = \"0.1.0\"\n")
+        .unwrap();
+    wt.add(&[Path::new("pyproject.toml"), Path::new("hello_toml.py")])
+        .unwrap();
+    wt.build_commit()
+        .message("Initial commit")
+        .commit()
+        .unwrap();
+
+    let preferences = default_test_preferences();
+    let mut metadata = UpstreamMetadata::new();
+    metadata.insert(UpstreamDatumWithMetadata {
+        datum: UpstreamDatum::Name("hello-toml".to_string()),
+        certainty: Some(Certainty::Certain),
+        origin: None,
+    });
+
+    let result = debianize(
+        &wt,
+        Path::new(""),
+        Some(&wt.branch()),
+        Some(Path::new("")),
+        &preferences,
+        Some("0.1.0"),
+        &metadata,
+    );
+
+    assert!(result.is_ok(), "Debianize failed: {:?}", result.err());
+
+    // pybuild needs the pyproject plugin for PEP 517 backends; without it
+    // the build fails at dh_auto_configure.
+    let control_content = read_cleaned_control(&repo_path);
+    let expected_control = format!(
+        "Source: python-hello-toml\n\
+         Section: python\n\
+         Maintainer: Test Packager <packager@example.com>\n\
+         Build-Depends: debhelper-compat (= 13), dh-sequence-python3, pybuild-plugin-pyproject, python3-all, python3-setuptools\n\
+         Standards-Version: {}\n\
+         Rules-Requires-Root: no\n\
+         Testsuite: autopkgtest-pkg-python\n\
+         \n\
+         Package: python3-hello-toml\n\
+         Architecture: all\n\
+         Depends: ${{python3:Depends}}\n",
+        latest_standards_version()
+    );
+    assert_eq!(control_content, expected_control);
+
+    std::mem::drop(image_cached);
+    std::mem::drop(test_env);
+}
+
+#[test]
+#[serial]
 fn test_debianize_with_custom_maintainer() {
     let image_cached = match DebianImageCached::new() {
         Ok(cached) => cached,
