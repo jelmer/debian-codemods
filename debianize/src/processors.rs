@@ -225,9 +225,19 @@ fn process_setup_py(context: &mut ProcessorContext) -> Result<(), Error> {
 
     let mut build_depends = source.build_depends().unwrap_or_default();
     ensure_relation(&mut build_depends, "python3-all".parse().unwrap());
-    // TODO: We should double check that the package really uses setuptools and not a different
-    // python build mechanism
-    ensure_relation(&mut build_depends, "python3-setuptools".parse().unwrap());
+    if context
+        .wt
+        .has_filename(&context.subpath.join("pyproject.toml"))
+    {
+        // pybuild needs this plugin to drive PEP 517 build backends.
+        ensure_relation(
+            &mut build_depends,
+            "pybuild-plugin-pyproject".parse().unwrap(),
+        );
+    }
+    if context.wt.has_filename(&context.subpath.join("setup.py")) {
+        ensure_relation(&mut build_depends, "python3-setuptools".parse().unwrap());
+    }
     source.set_build_depends(&build_depends);
     let (build_deps, test_deps) = context.get_project_wide_deps();
     import_build_deps(&mut source, &build_deps);
