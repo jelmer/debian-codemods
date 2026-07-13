@@ -1047,15 +1047,29 @@ pub fn run_lintian_fixer(
             "No entries in changelog".to_string(),
         ));
     };
-    let package = first_entry.package().unwrap();
-    let current_version: Version =
-        if first_entry.distributions().as_deref().unwrap() == vec!["UNRELEASED"] {
-            first_entry.version().unwrap()
-        } else {
-            let mut version = first_entry.version().unwrap();
-            version.increment_debian();
-            version
-        };
+    let package = first_entry.package().ok_or_else(|| {
+        FixerError::InvalidChangelog(
+            basedir.clone(),
+            "First changelog entry has no package name".to_string(),
+        )
+    })?;
+    let version = first_entry.version().ok_or_else(|| {
+        FixerError::InvalidChangelog(
+            basedir.clone(),
+            "First changelog entry has no version".to_string(),
+        )
+    })?;
+    let current_version: Version = if first_entry
+        .distributions()
+        .as_deref()
+        .is_some_and(|d| d == vec!["UNRELEASED"])
+    {
+        version
+    } else {
+        let mut version = version;
+        version.increment_debian();
+        version
+    };
 
     let mut _bt: Option<breezyshim::tree::RevisionTree> = None;
     let basis_tree = if let Some(_basis_tree) = basis_tree {
@@ -2067,6 +2081,48 @@ Arch: all
                 .commit()
                 .unwrap();
             (td, tree)
+        }
+
+        #[test]
+        fn test_invalid_changelog_entry() {
+            let (td, tree) = setup(None);
+            // A package name with a space does not parse as a changelog entry.
+            std::fs::write(
+                td.path().join("debian/changelog"),
+                r#"Gson Parent (1.7-1) UNRELEASED; urgency=low
+
+  * Initial release.
+
+ -- Blah <example@debian.org>  Sat, 13 Oct 2018 11:21:39 +0100
+"#,
+            )
+            .unwrap();
+            tree.build_commit()
+                .message("Break the changelog.")
+                .committer(COMMITTER)
+                .commit()
+                .unwrap();
+
+            let lock = tree.lock_write().unwrap();
+            let result = run_lintian_fixer(
+                &tree,
+                &DummyFixer::new("dummy", &["some-tag"]),
+                Some(COMMITTER),
+                || false,
+                &FixerPreferences::default(),
+                &mut None,
+                Path::new(""),
+                None,
+                None,
+                None,
+            );
+            assert!(
+                matches!(result, Err(FixerError::InvalidChangelog(..))),
+                "{:?}",
+                result
+            );
+            std::mem::drop(lock);
+            std::mem::drop(td);
         }
 
         #[test]
