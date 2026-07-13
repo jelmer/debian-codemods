@@ -205,6 +205,7 @@ fn process_setup_py(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("python"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
     context.bootstrap_debhelper(
@@ -256,6 +257,7 @@ fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
         }
     };
     let mut source = control.add_source(upstream_name);
+    source.set_section(Some("java"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
     context.bootstrap_debhelper(
@@ -302,6 +304,7 @@ fn process_npm(context: &mut ProcessorContext) -> Result<(), Error> {
             ..Default::default()
         },
     )?;
+    source.set_section(Some("javascript"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
     let (build_deps, _test_deps) = context.get_project_wide_deps();
@@ -328,6 +331,7 @@ fn process_dist_zilla(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("perl"));
     source.set_rules_requires_root(false);
     source.set_testsuite("autopkgtest-pkg-perl");
     source.set_standards_version(&latest_standards_version().to_string());
@@ -366,6 +370,7 @@ fn process_meson(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("misc"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
     source.set_build_depends(&"meson".parse().unwrap());
@@ -404,6 +409,7 @@ fn process_perl_build_tiny(context: &mut ProcessorContext) -> Result<(), Error> 
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("perl"));
     source.set_rules_requires_root(false);
     source.set_testsuite("autopkgtest-pkg-perl");
     source.set_standards_version(&latest_standards_version().to_string());
@@ -496,6 +502,7 @@ fn process_r(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("gnu-r"));
     source.set_rules_requires_root(false);
     source.set_build_depends(&"dh-r, r-base-dev".parse().unwrap());
     source.set_standards_version(&latest_standards_version().to_string());
@@ -539,6 +546,7 @@ fn process_octave(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("math"));
     source.set_rules_requires_root(false);
     source.set_build_depends(&"dh-octave".parse().unwrap());
     source.set_standards_version(&latest_standards_version().to_string());
@@ -585,6 +593,7 @@ fn process_default(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("misc"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
     let (build_deps, _test_deps) = context.get_project_wide_deps();
@@ -620,6 +629,7 @@ fn process_cmake(context: &mut ProcessorContext) -> Result<(), Error> {
         source.set_maintainer(maintainer);
     }
     source.set_standards_version(&latest_standards_version().to_string());
+    source.set_section(Some("misc"));
     source.set_rules_requires_root(false);
 
     // CMake-specific build dependencies
@@ -678,6 +688,7 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
         source.set_maintainer(maintainer);
     }
     source.set_standards_version(&latest_standards_version().to_string());
+    source.set_section(Some("misc"));
     source.set_rules_requires_root(false);
 
     context.bootstrap_debhelper(
@@ -717,6 +728,7 @@ fn process_makefile_pl(context: &mut ProcessorContext) -> Result<(), Error> {
     if let Some(ref maintainer) = context.maintainer {
         source.set_maintainer(maintainer);
     }
+    source.set_section(Some("perl"));
     source.set_rules_requires_root(false);
     source.set_testsuite("autopkgtest-pkg-perl");
     source.set_standards_version(&latest_standards_version().to_string());
