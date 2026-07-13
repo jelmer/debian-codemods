@@ -1363,7 +1363,52 @@ pub fn debianize(
     // Import upstream version
     // For now, create a basic implementation that imports content from the upstream branch
     let upstream_branch_ref = upstream_branch.unwrap();
-    let _orig_revid = upstream_branch_ref.last_revision();
+
+    // Find the revision matching the upstream version: the branch tip may
+    // have moved on since the release was tagged.
+    // TODO: Also resolve explicitly requested versions; that needs a
+    // breezyshim release with the DistCommandFailed import fix, since the
+    // PackageVersionNotPresent conversion panics before it.
+    let upstream_revid = match (&upstream_source, version) {
+        (Some(upstream_source), None) => {
+            match upstream_source.version_as_revision(
+                metadata.name(),
+                &upstream_version.version,
+                None,
+            ) {
+                Ok((revid, _subpath)) => revid,
+                Err(BrzDebianError::PackageVersionNotPresent { .. }) => {
+                    log::warn!(
+                        "No revision found for upstream version {}, using branch tip",
+                        upstream_version.version
+                    );
+                    upstream_branch_ref.last_revision()
+                }
+                Err(BrzDebianError::BrzError(e)) => return Err(Error::BrzError(e)),
+                Err(e) => {
+                    return Err(Error::Other(format!(
+                        "Unable to find revision for upstream version {}: {}",
+                        upstream_version.version, e
+                    )))
+                }
+            }
+        }
+        _ => upstream_branch_ref.last_revision(),
+    };
+
+    if wt.branch().last_revision() != upstream_revid {
+        wt.pull(
+            upstream_branch_ref,
+            Some(true), // overwrite
+            Some(&upstream_revid),
+            Some(false), // local
+        )?;
+        log::info!(
+            "Updated working tree to upstream version {} (revision {})",
+            upstream_version.version,
+            upstream_revid
+        );
+    }
 
     // Create a basic upstream import by copying content from the upstream branch
     let source_name = generic_get_source_name(wt, subpath, &metadata)
@@ -1371,7 +1416,7 @@ pub fn debianize(
     let upstream_branch_name = basic_import_upstream_version(
         wt,
         subpath,
-        upstream_branch_ref,
+        &upstream_revid,
         &source_name,
         &upstream_version.version,
     )?;
@@ -1578,7 +1623,6 @@ pub fn debianize(
     )?;
 
     // Commit the changes
-    let upstream_revid = upstream_branch.unwrap().last_revision();
     let tag_names = commit_debianization(
         wt,
         subpath,
@@ -2160,7 +2204,7 @@ fn write_initial_changelog(
 fn basic_import_upstream_version(
     wt: &dyn PyWorkingTree,
     _subpath: &Path,
-    upstream_branch: &dyn PyBranch,
+    upstream_revid: &RevisionId,
     _source_name: &str,
     upstream_version: &str,
 ) -> Result<String, Error> {
@@ -2169,9 +2213,7 @@ fn basic_import_upstream_version(
     // Create an upstream branch if it doesn't exist
     match wt.controldir().create_branch(Some(upstream_branch_name)) {
         Ok(branch) => {
-            // Set the upstream branch to point to the same revision as the upstream branch
-            let upstream_revid = upstream_branch.last_revision();
-            branch.generate_revision_history(&upstream_revid)?;
+            branch.generate_revision_history(upstream_revid)?;
             log::info!(
                 "Created upstream branch pointing to revision {}",
                 upstream_revid
@@ -2185,11 +2227,10 @@ fn basic_import_upstream_version(
 
     // Create upstream tag
     let upstream_tag = format!("upstream/{}", upstream_version);
-    let upstream_revid = upstream_branch.last_revision();
 
     // Try to create the tag
     match wt.branch().tags() {
-        Ok(tags) => match tags.set_tag(&upstream_tag, &upstream_revid) {
+        Ok(tags) => match tags.set_tag(&upstream_tag, upstream_revid) {
             Ok(_) => {
                 log::info!("Created upstream tag: {}", upstream_tag);
             }
