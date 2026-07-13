@@ -266,7 +266,13 @@ fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
             ))
         }
     };
-    let mut source = control.add_source(upstream_name);
+    // The pom.xml name can be a human-readable string like "Gson Parent".
+    let source_name = crate::names::upstream_name_to_debian_source_name(upstream_name)
+        .unwrap_or_else(|| upstream_name.to_string());
+    let mut source = control.add_source(&source_name);
+    if let Some(ref maintainer) = context.maintainer {
+        source.set_maintainer(maintainer);
+    }
     source.set_section(Some("java"));
     source.set_rules_requires_root(false);
     source.set_standards_version(&latest_standards_version().to_string());
@@ -279,7 +285,7 @@ fn process_maven(context: &mut ProcessorContext) -> Result<(), Error> {
     )?;
     let (build_deps, _test_deps) = context.get_project_wide_deps();
     import_build_deps(&mut source, &build_deps);
-    let mut binary = control.add_binary(&format!("lib{}-java", upstream_name));
+    let mut binary = control.add_binary(&format!("lib{}-java", source_name));
     binary.set_architecture(Some("all"));
     // Use a raw deb822 field: substitution variables do not parse as relations
     binary.as_mut_deb822().insert("Depends", "${java:Depends}");

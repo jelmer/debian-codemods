@@ -357,13 +357,14 @@ fn test_debianize_maven_package() {
 
     let control_content = read_cleaned_control(&repo_path);
     let expected_control = format!(
-        "Source: Hello Java\n\
+        "Source: hello-java\n\
          Section: java\n\
+         Maintainer: Test Packager <packager@example.com>\n\
          Build-Depends: debhelper-compat (= 13)\n\
          Standards-Version: {}\n\
          Rules-Requires-Root: no\n\
          \n\
-         Package: libHello Java-java\n\
+         Package: libhello-java-java\n\
          Architecture: all\n\
          Depends: ${{java:Depends}}\n",
         latest_standards_version()
@@ -460,7 +461,7 @@ fn test_debianize_make_package() {
 
     // The test tree's git branch has no name, so no debian-branch entry.
     let gbp_conf = std::fs::read_to_string(repo_path.join("debian/gbp.conf")).unwrap();
-    assert_eq!(gbp_conf, "[DEFAULT]\nupstream-branch = upstream\n");
+    assert_eq!(gbp_conf, "[DEFAULT]\nupstream-branch = upstream/latest\n");
 
     std::mem::drop(image_cached);
     std::mem::drop(test_env);
