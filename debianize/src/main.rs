@@ -152,7 +152,7 @@ struct Args {
     recursive: bool,
 
     /// Name of Debian branch to create. Empty string to stay at current branch.
-    #[arg(long, default_value = "%(vendor)s/main")]
+    #[arg(long, default_value = "%(vendor)s/latest")]
     debian_branch: Option<String>,
 
     /// Package whatever source will create the named Debian binary package.
