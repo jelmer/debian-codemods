@@ -182,6 +182,10 @@ struct Args {
     // Generate the debcargo.toml file for rust package if required
     #[arg(long)]
     debcargo: bool,
+
+    /// Write a debian/gbp.conf for use with git-buildpackage
+    #[arg(long)]
+    gbp: bool,
 }
 
 fn main() -> Result<(), i32> {
@@ -361,6 +365,7 @@ fn main() -> Result<(), i32> {
         consult_external_directory: args.consult_external_directory,
         verbose: args.verbose,
         use_debcargo: args.debcargo,
+        gbp: args.gbp,
         session: match args.session {
             SessionType::Plain => {
                 log::info!("Using plain session (no isolation)");
