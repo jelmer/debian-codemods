@@ -167,7 +167,7 @@ pub fn write_changelog_template(
     source_name: &str,
     version: &Version,
     author: Option<(String, String)>,
-    wnpp_bugs: Vec<(BugId, BugKind)>,
+    wnpp_bugs: &[(BugId, BugKind)],
 ) -> Result<(), std::io::Error> {
     let author = author.unwrap_or_else(|| debian_changelog::get_maintainer().unwrap());
     let closes = if !wnpp_bugs.is_empty() {
@@ -184,12 +184,15 @@ pub fn write_changelog_template(
     };
     let mut cl = debian_changelog::ChangeLog::new();
 
+    // distributions() replaces the builder's default; distribution() would
+    // append to it, yielding "UNRELEASED UNRELEASED". Change lines are
+    // indented by the serializer.
     cl.new_entry()
         .package(source_name.to_string())
         .version(version.clone())
-        .distribution("UNRELEASED".to_string())
+        .distributions(vec!["UNRELEASED".to_string()])
         .urgency(debian_changelog::Urgency::Low)
-        .change_line(format!("  * Initial release.{}", closes))
+        .change_line(format!("* Initial release.{}", closes))
         .maintainer(author)
         .finish();
 
@@ -519,7 +522,6 @@ pub fn last_resort_upstream_version(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use std::fs;
     use tempfile::tempdir;
 
@@ -537,12 +539,15 @@ mod tests {
         let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
         let wnpp_bugs = vec![(123456, BugKind::ITP)];
 
-        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+        write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
-        assert!(content.contains("* Initial release. Closes: #123456"));
-        assert!(content.contains("Test Author <test@example.com>"));
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines[0], "test-package (1.0-1) UNRELEASED; urgency=low");
+        assert_eq!(lines[1], "");
+        assert_eq!(lines[2], "  * Initial release. Closes: #123456");
+        assert_eq!(lines[3], "");
+        assert!(lines[4].starts_with(" -- Test Author <test@example.com>  "));
     }
 
     #[test]
@@ -559,13 +564,15 @@ mod tests {
         let author = Some(("Test Author".to_string(), "test@example.com".to_string()));
         let wnpp_bugs = vec![];
 
-        write_changelog_template(&path, source_name, &version, author, wnpp_bugs).unwrap();
+        write_changelog_template(&path, source_name, &version, author, &wnpp_bugs).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("test-package (1.0-1) UNRELEASED"));
-        assert!(content.contains("* Initial release."));
-        assert!(!content.contains("Closes:"));
-        assert!(content.contains("Test Author <test@example.com>"));
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines[0], "test-package (1.0-1) UNRELEASED; urgency=low");
+        assert_eq!(lines[1], "");
+        assert_eq!(lines[2], "  * Initial release.");
+        assert_eq!(lines[3], "");
+        assert!(lines[4].starts_with(" -- Test Author <test@example.com>  "));
     }
 
     #[test]
@@ -649,6 +656,7 @@ mod tests {
             check_wnpp: true,
             run_fixers: true,
             use_debcargo: false,
+            buildsystem: None,
         };
 
         let fixer_prefs: lintian_brush::FixerPreferences = debianize_prefs.into();
@@ -728,45 +736,27 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_buildsystem_name() {
-        use std::fs;
+    fn test_generic_get_source_name_from_directory() {
+        breezyshim::init();
+        let td = tempdir().unwrap();
+        let path = td.path().join("foo-bar-1.0");
+        std::fs::create_dir(&path).unwrap();
+        let format = breezyshim::controldir::ControlDirFormat::default();
+        let transport =
+            breezyshim::transport::get_transport(&url::Url::from_file_path(&path).unwrap(), None)
+                .unwrap();
+        let controldir = format.initialize_on_transport(&transport).unwrap();
+        controldir.create_repository(None).unwrap();
+        controldir.create_branch(None).unwrap();
+        let wt = controldir.create_workingtree().unwrap();
 
-        let temp_dir = tempdir().unwrap();
-        let temp_path = temp_dir.path();
-
-        // Create a mock working tree implementation for testing
-        // Since we can't easily create a real WorkingTree, we'll test the logic directly
-        // by creating files and checking the expected behavior
-
-        // Test Python setup.py detection
-        fs::write(temp_path.join("setup.py"), "#!/usr/bin/env python").unwrap();
-        // We can't test the actual function without a WorkingTree implementation
-        // But we can test the logic by verifying the expected order
-
-        let expected_buildfiles = [
-            ("setup.py", "setup.py"),
-            ("pyproject.toml", "setup.py"),
-            ("package.json", "npm"),
-            ("pom.xml", "maven"),
-            ("dist.ini", "dist-zilla"),
-            ("Makefile.PL", "makefile.pl"),
-            ("Build.PL", "perl-build-tiny"),
-            ("Cargo.toml", "cargo"),
-            ("go.mod", "golang"),
-            ("DESCRIPTION", "R"),
-            ("DESCRIPTION.in", "octave"),
-            ("Makefile", "make"),
-            ("CMakeLists.txt", "cmake"),
-            ("configure.ac", "autotools"),
-            ("configure.in", "autotools"),
-        ];
-
-        // Test that we have the expected build files in the right order
-        // This is a structural test since we can't easily mock WorkingTree
-        assert_eq!(expected_buildfiles.len(), 15);
-        assert_eq!(expected_buildfiles[0], ("setup.py", "setup.py"));
-        assert_eq!(expected_buildfiles[2], ("package.json", "npm"));
-        assert_eq!(expected_buildfiles[7], ("Cargo.toml", "cargo"));
+        // With no name in the metadata, the source name is derived from the
+        // directory name, with the version suffix stripped.
+        let metadata = UpstreamMetadata::new();
+        assert_eq!(
+            generic_get_source_name(&wt, Path::new(""), &metadata).as_deref(),
+            Some("foo-bar")
+        );
     }
 
     #[test]
@@ -838,78 +828,6 @@ mod tests {
     }
 
     #[test]
-    fn test_find_wnpp_bugs_for_package() {
-        // Test that find_wnpp_bugs_for_package returns without error
-        // We can't easily test the actual functionality without network access
-        // but we can test that the function signature is correct
-        let result = find_wnpp_bugs_for_package("test-package", Some("upstream-name"));
-        // The function should return a Result<Vec<(BugId, BugKind)>, Error>
-        // We'll just verify it's callable and returns the right type
-        assert!(result.is_ok() || result.is_err()); // Either is fine for this test
-
-        // Test with None upstream name
-        let result2 = find_wnpp_bugs_for_package("test-package", None);
-        assert!(result2.is_ok() || result2.is_err()); // Either is fine for this test
-    }
-
-    #[test]
-    fn test_import_metadata_from_path() {
-        // Test that the function signature is correct
-        // We can't easily test the full functionality without a WorkingTree and network
-        let temp_dir = tempdir().unwrap();
-        let temp_path = temp_dir.path();
-
-        // Create a simple metadata file that upstream-ontologist can read
-        let pyproject_content = r#"
-[project]
-name = "test-package"
-version = "1.0.0"
-description = "A test package"
-"#;
-        std::fs::write(temp_path.join("pyproject.toml"), pyproject_content).unwrap();
-
-        // Test that we can create the basic structures
-        let _metadata = UpstreamMetadata::new();
-        let prefs = DebianizePreferences::default();
-
-        // The function requires a WorkingTree, so we can't test it directly
-        // But we can verify the setup is correct
-        assert!(!prefs.trust);
-        assert!(prefs.net_access);
-        assert!(!prefs.check);
-    }
-
-    #[test]
-    fn test_write_initial_changelog() {
-        let temp_dir = tempdir().unwrap();
-        let debian_path = temp_dir.path().join("debian");
-        std::fs::create_dir_all(&debian_path).unwrap();
-
-        let changelog_path = debian_path.join("changelog");
-        let source_name = "test-package";
-        let version = UpstreamVersion::from("1.0.0".to_string());
-        let author = ("Test Author".to_string(), "test@example.com".to_string());
-        let wnpp_bugs = vec![(123456, BugKind::ITP)];
-
-        // We can't test the function directly without a WorkingTree,
-        // but we can test write_changelog_template which it uses
-        write_changelog_template(
-            &changelog_path,
-            source_name,
-            &version.as_debian_version(),
-            Some(author),
-            wnpp_bugs,
-        )
-        .unwrap();
-
-        let content = std::fs::read_to_string(&changelog_path).unwrap();
-        assert!(content.contains("test-package"));
-        assert!(content.contains("1.0.0-1"));
-        assert!(content.contains("Test Author"));
-        assert!(content.contains("Closes: #123456"));
-    }
-
-    #[test]
     fn test_upstream_version_as_debian_version() {
         let upstream_version = UpstreamVersion::from("1.0.0".to_string());
         let debian_version = upstream_version.as_debian_version();
@@ -932,162 +850,6 @@ description = "A test package"
         let upstream_version2 = UpstreamVersion::from("1.0.0~beta1".to_string());
         assert_eq!(upstream_version2.version, "1.0.0~beta1");
         assert!(!upstream_version2.mangled_version.is_empty());
-    }
-
-    #[test]
-    fn test_debianize_result_structure() {
-        // Test that DebianizeResult has all expected fields
-        let result = DebianizeResult {
-            vcs_url: Some(url::Url::parse("https://github.com/user/repo").unwrap()),
-            wnpp_bugs: vec![(123456, BugKind::ITP)],
-            upstream_version: Some("1.0.0".to_string()),
-            tag_names: HashMap::new(),
-            upstream_branch_name: Some("upstream".to_string()),
-        };
-
-        assert!(result.vcs_url.is_some());
-        assert_eq!(result.wnpp_bugs.len(), 1);
-        assert_eq!(result.wnpp_bugs[0].0, 123456);
-        assert_eq!(result.wnpp_bugs[0].1, BugKind::ITP);
-        assert_eq!(result.upstream_version, Some("1.0.0".to_string()));
-        assert_eq!(result.tag_names.len(), 0);
-        assert_eq!(result.upstream_branch_name, Some("upstream".to_string()));
-    }
-
-    #[test]
-    fn test_version_kind_default() {
-        // Test that version kind defaults work correctly
-        let prefs = DebianizePreferences::default();
-        assert_eq!(prefs.upstream_version_kind, VersionKind::Auto);
-
-        // Test that other version kinds can be set
-        let prefs = DebianizePreferences {
-            upstream_version_kind: VersionKind::Release,
-            ..Default::default()
-        };
-        assert_eq!(prefs.upstream_version_kind, VersionKind::Release);
-    }
-
-    #[test]
-    fn test_error_variants() {
-        // Test all error variants to ensure completeness
-        let errors = vec![
-            Error::NoVcsLocation,
-            Error::SourceNameUnknown(Some("test".to_string())),
-            Error::SourceNameUnknown(None),
-            Error::SourcePackageNameInvalid("invalid".to_string()),
-            Error::MissingUpstreamInfo("test".to_string()),
-            Error::NoUpstreamReleases(Some("test".to_string())),
-            Error::NoUpstreamReleases(None),
-            Error::Other("test".to_string()),
-        ];
-
-        for error in errors {
-            // Test that each error can be displayed
-            let _display = format!("{}", error);
-
-            // Test that each error can be debugged
-            let _debug = format!("{:?}", error);
-        }
-    }
-
-    #[test]
-    fn test_session_preferences_all_variants() {
-        // Test all SessionPreferences variants
-        let plain = SessionPreferences::Plain;
-        let schroot = SessionPreferences::Schroot("test".to_string());
-        let temp_dir = tempdir().unwrap();
-        let tarball_path = temp_dir.path().join("test.tar.gz");
-        std::fs::write(&tarball_path, b"test").unwrap();
-        let unshare = SessionPreferences::Unshare(tarball_path);
-
-        // Test that all variants are distinct
-        assert_ne!(
-            std::mem::discriminant(&plain),
-            std::mem::discriminant(&schroot)
-        );
-        assert_ne!(
-            std::mem::discriminant(&plain),
-            std::mem::discriminant(&unshare)
-        );
-        assert_ne!(
-            std::mem::discriminant(&schroot),
-            std::mem::discriminant(&unshare)
-        );
-    }
-
-    #[test]
-    fn test_bug_kind_usage() {
-        // Test that BugKind enum works as expected
-        let itp_bug = BugKind::ITP;
-        let rfp_bug = BugKind::RFP;
-
-        // Test that bug kinds can be used in vectors
-        let bugs = [(123456, itp_bug), (789012, rfp_bug)];
-        assert_eq!(bugs.len(), 2);
-
-        // Test that bug kinds are distinct
-        assert_ne!(
-            std::mem::discriminant(&BugKind::ITP),
-            std::mem::discriminant(&BugKind::RFP)
-        );
-    }
-
-    #[test]
-    fn test_upstream_metadata_basic_usage() {
-        // Test basic upstream metadata functionality
-        let metadata = UpstreamMetadata::new();
-
-        // Test that new metadata is empty
-        assert_eq!(metadata.name(), None);
-        assert_eq!(metadata.summary(), None);
-        assert_eq!(metadata.description(), None);
-        assert_eq!(metadata.homepage(), None);
-        assert_eq!(metadata.repository(), None);
-        assert_eq!(metadata.archive(), None);
-        assert_eq!(metadata.license(), None);
-        assert_eq!(metadata.maintainer(), None);
-        assert_eq!(metadata.author(), None);
-        assert_eq!(metadata.version(), None);
-    }
-
-    #[test]
-    fn test_compat_level_handling() {
-        // Test that compat level is handled correctly
-        let mut prefs = DebianizePreferences::default();
-        assert_eq!(prefs.compat_level, None);
-
-        prefs.compat_level = Some(13);
-        assert_eq!(prefs.compat_level, Some(13));
-
-        prefs.compat_level = Some(14);
-        assert_eq!(prefs.compat_level, Some(14));
-    }
-
-    #[test]
-    fn test_run_fixers_flag() {
-        // Test that run_fixers flag works as expected
-        let mut prefs = DebianizePreferences::default();
-        assert!(prefs.run_fixers);
-
-        prefs.run_fixers = false;
-        assert!(!prefs.run_fixers);
-
-        prefs.run_fixers = true;
-        assert!(prefs.run_fixers);
-    }
-
-    #[test]
-    fn test_check_wnpp_flag() {
-        // Test that check_wnpp flag works as expected
-        let mut prefs = DebianizePreferences::default();
-        assert!(prefs.check_wnpp);
-
-        prefs.check_wnpp = false;
-        assert!(!prefs.check_wnpp);
-
-        prefs.check_wnpp = true;
-        assert!(prefs.check_wnpp);
     }
 }
 
@@ -1222,6 +984,9 @@ pub struct DebianizePreferences {
     pub check_wnpp: bool,
     pub run_fixers: bool,
     pub use_debcargo: bool,
+    /// Force a specific ognibuild buildsystem by name instead of using the
+    /// highest-priority detected one.
+    pub buildsystem: Option<String>,
 }
 
 impl Default for DebianizePreferences {
@@ -1250,6 +1015,7 @@ impl Default for DebianizePreferences {
             check_wnpp: true,
             run_fixers: true,
             use_debcargo: false,
+            buildsystem: None,
         }
     }
 }
@@ -1430,7 +1196,7 @@ pub fn debianize(
     }
 
     // Set up reset on failure
-    let _reset_guard = ResetOnFailure::new(wt, subpath)?;
+    let mut reset_guard = ResetOnFailure::new(wt, subpath)?;
 
     // Gather metadata
     let mut metadata = upstream_metadata.clone();
@@ -1592,7 +1358,14 @@ pub fn debianize(
     } else {
         get_maintainer()
     };
-    let maintainer = format!("{} <{}>", maintainer_name, maintainer_email);
+    // The control file Maintainer is the team when one was specified; the
+    // changelog is still attributed to the individual author.
+    // TODO: Also set Uploaders to the author when a team is used.
+    let maintainer = if let Some(ref team) = preferences.team {
+        team.clone()
+    } else {
+        format!("{} <{}>", maintainer_name, maintainer_email)
+    };
 
     // Create buildsystem instance for enhanced dependency resolution
     // If subpath is empty, use the working tree's base directory
@@ -1603,10 +1376,19 @@ pub fn debianize(
     };
     log::debug!("Detecting buildsystems in path: {:?}", buildsystem_path);
     let buildsystems = ognibuild::buildsystem::detect_buildsystems(&buildsystem_path);
-    let buildsystem = buildsystems
-        .into_iter()
-        .next()
-        .ok_or_else(|| Error::Other("No buildsystem detected".to_string()))?;
+    let buildsystem = if let Some(ref name) = preferences.buildsystem {
+        buildsystems
+            .into_iter()
+            .find(|bs| bs.name() == name)
+            .ok_or_else(|| {
+                Error::Other(format!("Requested buildsystem {} was not detected", name))
+            })?
+    } else {
+        buildsystems
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("No buildsystem detected".to_string()))?
+    };
 
     // Use processors to create proper control file
     let compat_release = preferences
@@ -1719,11 +1501,16 @@ pub fn debianize(
         "Writing initial changelog with source_name: {}",
         source_name
     );
+    let debian_version = Version {
+        epoch: None,
+        upstream_version: upstream_version.mangled_version.clone(),
+        debian_revision: Some(preferences.debian_revision.clone()),
+    };
     write_initial_changelog(
         wt,
         &debian_path,
         &source_name,
-        &upstream_version.mangled_version,
+        &debian_version,
         &maintainer_name,
         &maintainer_email,
         &wnpp_bugs,
@@ -1737,12 +1524,15 @@ pub fn debianize(
         &upstream_revid,
         &upstream_version.version,
         &upstream_version.mangled_version,
+        &debian_version,
     )?;
 
     // Run lintian fixers if requested
     if preferences.run_fixers {
         run_debianize_fixers(wt, subpath, preferences)?;
     }
+
+    reset_guard.disarm();
 
     Ok(DebianizeResult {
         vcs_url,
@@ -1762,7 +1552,14 @@ pub struct DebianizeResult {
     pub upstream_branch_name: Option<String>,
 }
 
-pub(crate) struct ResetOnFailure<'a>(&'a dyn PyWorkingTree, PathBuf);
+/// Guard that resets the working tree to its pre-debianize state unless
+/// disarmed. Disarm on success; any other exit (error return or panic)
+/// rolls back the tree.
+pub(crate) struct ResetOnFailure<'a> {
+    wt: &'a dyn PyWorkingTree,
+    subpath: PathBuf,
+    disarmed: bool,
+}
 
 impl<'a> ResetOnFailure<'a> {
     pub fn new(wt: &'a dyn PyWorkingTree, subpath: &Path) -> Result<Self, BrzError> {
@@ -1784,14 +1581,22 @@ impl<'a> ResetOnFailure<'a> {
                 log::warn!("Could not get basis tree: {:?}", e);
             }
         }
-        Ok(Self(wt, subpath.to_path_buf()))
+        Ok(Self {
+            wt,
+            subpath: subpath.to_path_buf(),
+            disarmed: false,
+        })
+    }
+
+    pub fn disarm(&mut self) {
+        self.disarmed = true;
     }
 }
 
 impl<'a> Drop for ResetOnFailure<'a> {
     fn drop(&mut self) {
-        if std::thread::panicking() {
-            match breezyshim::workspace::reset_tree(self.0, None, Some(&self.1)) {
+        if !self.disarmed {
+            match breezyshim::workspace::reset_tree(self.wt, None, Some(&self.subpath)) {
                 Ok(_) => log::info!("Reset tree after failure"),
                 Err(e) => log::error!("Failed to reset tree: {:?}", e),
             }
@@ -1884,9 +1689,8 @@ fn generic_get_source_name(
     };
 
     if source_name.is_none() {
-        source_name = names::upstream_name_to_debian_source_name(
-            wt.abspath(subpath).unwrap().to_str().unwrap(),
-        );
+        let directory_name = names::source_name_from_directory_name(&wt.abspath(subpath).unwrap());
+        source_name = names::upstream_name_to_debian_source_name(&directory_name);
         if !valid_debian_package_name(source_name.as_ref().unwrap()) {
             source_name = None;
         }
@@ -1948,7 +1752,7 @@ pub fn determine_upstream_version(
 
     // Ask the upstream source for the latest version.
     if let Some((upstream_version, mangled_version)) =
-        upstream_source.get_latest_version(name, None).unwrap()
+        upstream_source.get_latest_version(name, None)?
     {
         return Ok(UpstreamVersion {
             version: upstream_version,
@@ -2217,6 +2021,7 @@ fn commit_debianization(
     upstream_revid: &RevisionId,
     upstream_version: &str,
     mangled_version: &str,
+    debian_version: &Version,
 ) -> Result<HashMap<String, RevisionId>, Error> {
     let mut tag_names = HashMap::new();
 
@@ -2239,7 +2044,7 @@ fn commit_debianization(
             let tag_name = format!("upstream/{}", mangled_version);
             tag_names.insert(tag_name, upstream_revid.clone());
 
-            let debian_tag = format!("debian/{}-1", mangled_version);
+            let debian_tag = format!("debian/{}", debian_version);
             tag_names.insert(debian_tag, revid);
         }
         Err(e) if e.to_string().contains("PointlessCommit") => {
@@ -2256,38 +2061,19 @@ fn write_initial_changelog(
     wt: &dyn PyWorkingTree,
     debian_path: &Path,
     source_name: &str,
-    version: &str,
+    version: &Version,
     maintainer_name: &str,
     maintainer_email: &str,
     wnpp_bugs: &[(BugId, BugKind)],
 ) -> Result<(), Error> {
-    let changelog_path = debian_path.join("changelog");
-
-    let mut content = format!(
-        "{} ({}-1) UNRELEASED; urgency=low\n\n",
-        source_name, version
-    );
-
-    content.push_str("  * Initial release.");
-
-    // Add WNPP bug references
-    for (bug_id, bug_kind) in wnpp_bugs {
-        match bug_kind {
-            BugKind::ITP => content.push_str(&format!(" (Closes: #{})", bug_id)),
-            BugKind::RFP => content.push_str(&format!(" (Closes: #{})", bug_id)),
-        }
-    }
-
-    content.push_str("\n\n");
-
-    // Add maintainer signature
-    let timestamp = chrono::Local::now().format("%a, %d %b %Y %H:%M:%S %z");
-    content.push_str(&format!(
-        " -- {} <{}>  {}\n",
-        maintainer_name, maintainer_email, timestamp
-    ));
-
-    wt.put_file_bytes_non_atomic(&changelog_path, content.as_bytes())?;
+    let changelog_path = wt.abspath(&debian_path.join("changelog"))?;
+    write_changelog_template(
+        &changelog_path,
+        source_name,
+        version,
+        Some((maintainer_name.to_string(), maintainer_email.to_string())),
+        wnpp_bugs,
+    )?;
     Ok(())
 }
 

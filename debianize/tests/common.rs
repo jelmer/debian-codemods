@@ -131,6 +131,7 @@ pub fn default_test_preferences() -> DebianizePreferences {
         check_wnpp: false,
         run_fixers: false,
         use_debcargo: false,
+        buildsystem: None,
     }
 }
 
