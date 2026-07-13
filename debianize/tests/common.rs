@@ -132,6 +132,7 @@ pub fn default_test_preferences() -> DebianizePreferences {
         run_fixers: false,
         use_debcargo: false,
         buildsystem: None,
+        gbp: false,
     }
 }
 

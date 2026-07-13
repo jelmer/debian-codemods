@@ -660,6 +660,7 @@ mod tests {
             run_fixers: true,
             use_debcargo: false,
             buildsystem: None,
+            gbp: false,
         };
 
         let fixer_prefs: lintian_brush::FixerPreferences = debianize_prefs.into();
@@ -854,6 +855,48 @@ mod tests {
         assert_eq!(upstream_version2.version, "1.0.0~beta1");
         assert!(!upstream_version2.mangled_version.is_empty());
     }
+
+    fn test_working_tree(path: &Path) -> breezyshim::workingtree::GenericWorkingTree {
+        breezyshim::init();
+        let format = breezyshim::controldir::ControlDirFormat::default();
+        let transport =
+            breezyshim::transport::get_transport(&url::Url::from_file_path(path).unwrap(), None)
+                .unwrap();
+        let controldir = format.initialize_on_transport(&transport).unwrap();
+        controldir.create_repository(None).unwrap();
+        controldir.create_branch(None).unwrap();
+        controldir.create_workingtree().unwrap()
+    }
+
+    #[test]
+    fn test_write_gbp_conf() {
+        let td = tempdir().unwrap();
+        let wt = test_working_tree(td.path());
+        let debian_path = Path::new("debian");
+        wt.mkdir(debian_path).unwrap();
+
+        write_gbp_conf(&wt, debian_path, Some("debian/latest"), Some("upstream")).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(td.path().join("debian/gbp.conf")).unwrap(),
+            "[DEFAULT]\ndebian-branch = debian/latest\nupstream-branch = upstream\n"
+        );
+    }
+
+    #[test]
+    fn test_write_gbp_conf_without_debian_branch() {
+        let td = tempdir().unwrap();
+        let wt = test_working_tree(td.path());
+        let debian_path = Path::new("debian");
+        wt.mkdir(debian_path).unwrap();
+
+        write_gbp_conf(&wt, debian_path, None, Some("upstream")).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(td.path().join("debian/gbp.conf")).unwrap(),
+            "[DEFAULT]\nupstream-branch = upstream\n"
+        );
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -990,6 +1033,8 @@ pub struct DebianizePreferences {
     /// Force a specific ognibuild buildsystem by name instead of using the
     /// highest-priority detected one.
     pub buildsystem: Option<String>,
+    /// Write a debian/gbp.conf for use with git-buildpackage.
+    pub gbp: bool,
 }
 
 impl Default for DebianizePreferences {
@@ -1019,6 +1064,7 @@ impl Default for DebianizePreferences {
             run_fixers: true,
             use_debcargo: false,
             buildsystem: None,
+            gbp: false,
         }
     }
 }
@@ -1322,7 +1368,7 @@ pub fn debianize(
     // Create a basic upstream import by copying content from the upstream branch
     let source_name = generic_get_source_name(wt, subpath, &metadata)
         .ok_or_else(|| Error::SourceNameUnknown(metadata.name().map(|s| s.to_string())))?;
-    let _upstream_branch_name = basic_import_upstream_version(
+    let upstream_branch_name = basic_import_upstream_version(
         wt,
         subpath,
         upstream_branch_ref,
@@ -1498,6 +1544,18 @@ pub fn debianize(
     } else {
         vec![]
     };
+
+    if preferences.gbp {
+        write_gbp_conf(
+            wt,
+            &debian_path,
+            wt.branch()
+                .name()
+                .as_deref()
+                .filter(|name| !name.is_empty()),
+            Some(upstream_branch_name.as_str()),
+        )?;
+    }
 
     // Create changelog
     log::info!(
@@ -2015,6 +2073,24 @@ pub fn get_project_wide_deps_with_session(
     );
 
     Ok((build_deps, test_deps))
+}
+
+/// Write a debian/gbp.conf reflecting the branch layout debianize created.
+fn write_gbp_conf(
+    wt: &dyn PyWorkingTree,
+    debian_path: &Path,
+    debian_branch: Option<&str>,
+    upstream_branch: Option<&str>,
+) -> Result<(), Error> {
+    let mut content = String::from("[DEFAULT]\n");
+    if let Some(branch) = debian_branch {
+        content.push_str(&format!("debian-branch = {}\n", branch));
+    }
+    if let Some(branch) = upstream_branch {
+        content.push_str(&format!("upstream-branch = {}\n", branch));
+    }
+    wt.put_file_bytes_non_atomic(&debian_path.join("gbp.conf"), content.as_bytes())?;
+    Ok(())
 }
 
 /// Commit the debianization
