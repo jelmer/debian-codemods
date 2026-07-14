@@ -293,10 +293,7 @@ fn test_debianize_autotools_package() {
     // dh autodetects autoconf; forcing the makefile buildsystem would skip
     // running configure entirely.
     let rules_content = std::fs::read_to_string(repo_path.join("debian/rules")).unwrap();
-    assert_eq!(
-        rules_content,
-        "#!/usr/bin/make -f\n%:\n\tdh $@ --buildsystem=makefile\n"
-    );
+    assert_eq!(rules_content, "#!/usr/bin/make -f\n%:\n\tdh $@\n");
 
     std::mem::drop(image_cached);
     std::mem::drop(test_env);

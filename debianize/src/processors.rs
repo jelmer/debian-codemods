@@ -707,10 +707,16 @@ fn process_make(context: &mut ProcessorContext) -> Result<(), Error> {
     source.set_section(Some("misc"));
     source.set_rules_requires_root(false);
 
+    // The ognibuild make buildsystem also claims autotools trees. Those have
+    // no Makefile until configure has run, so forcing the makefile
+    // buildsystem would break the build; dh autodetects autoconf.
+    let autotools = ["configure.ac", "configure.in", "Makefile.am", "autogen.sh"]
+        .iter()
+        .any(|f| context.wt.has_filename(&context.subpath.join(f)));
     context.bootstrap_debhelper(
         &mut source,
         DebhelperConfig {
-            buildsystem: Some("makefile"),
+            buildsystem: if autotools { None } else { Some("makefile") },
             ..Default::default()
         },
     )?;
