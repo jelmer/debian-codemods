@@ -1,19 +1,9 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Deb822Action, Diagnostic, ParagraphSelector};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_changelog::parseaddr;
 use debian_workspace::Workspace;
 use std::path::PathBuf;
-
-fn extract_email_address(address_str: &str) -> String {
-    if let Some(start) = address_str.find('<') {
-        if let Some(end) = address_str.find('>') {
-            if end > start {
-                return address_str[start + 1..end].to_string();
-            }
-        }
-    }
-    address_str.trim().to_string()
-}
 
 pub fn detect(
     ws: &dyn Workspace,
@@ -31,7 +21,8 @@ pub fn detect(
     let Some(maintainer) = source.get("Maintainer") else {
         return Ok(Vec::new());
     };
-    if extract_email_address(&maintainer) != "packages@qa.debian.org" {
+    let (_, maintainer_email) = parseaddr(maintainer.trim());
+    if maintainer_email != "packages@qa.debian.org" {
         return Ok(Vec::new());
     }
     if !source.as_deb822().contains_key("Uploaders") {
@@ -150,26 +141,6 @@ mod tests {
             run_apply(temp_dir.path()),
             Err(FixerError::NoChanges)
         ));
-    }
-
-    #[test]
-    fn test_email_extraction() {
-        assert_eq!(
-            extract_email_address("Debian QA Team <packages@qa.debian.org>"),
-            "packages@qa.debian.org"
-        );
-        assert_eq!(
-            extract_email_address("packages@qa.debian.org"),
-            "packages@qa.debian.org"
-        );
-        assert_eq!(
-            extract_email_address("  packages@qa.debian.org  "),
-            "packages@qa.debian.org"
-        );
-        assert_eq!(
-            extract_email_address("Name <email@example.com>"),
-            "email@example.com"
-        );
     }
 
     #[test]
