@@ -1,8 +1,9 @@
 debian-codemods (0.184) UNRELEASED; urgency=medium
 
   * Add fixer for no-qa-in-changelog
+  * Add fixer for debian-watch-file-uses-deprecated-sf-redirector-method
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 22 Jul 2026 22:37:47 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 23 Jul 2026 00:14:34 +0100
 
 debian-codemods (0.183) unstable; urgency=medium
 

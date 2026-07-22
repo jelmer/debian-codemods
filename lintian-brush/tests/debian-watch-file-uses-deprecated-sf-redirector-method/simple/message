@@ -1,0 +1,4 @@
+Use the sf.net redirector form in debian/watch.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: debian-watch-file-uses-deprecated-sf-redirector-method http://qa.debian.org/watch/sf.php?project=foo scripts\.([\d.]+)\.tar\.gz [debian/watch:2]
