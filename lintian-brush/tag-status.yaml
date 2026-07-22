@@ -3654,7 +3654,8 @@
     Missing Source field in debian/control. Requires knowing the
     package name.
 - tag: no-qa-in-changelog
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Add QA upload indicator to debian/changelog.
