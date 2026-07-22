@@ -65,6 +65,7 @@ mod debian_watch_contains_dh_make_template;
 mod debian_watch_file_is_missing;
 mod debian_watch_file_old_format;
 mod debian_watch_file_uses_deprecated_githubredir;
+mod debian_watch_file_uses_deprecated_sf_redirector_method;
 mod debian_watch_file_uses_github_releases;
 mod debian_watch_file_uses_old_github_pattern;
 mod debian_watch_lacks_sourceforge_redirector;
