@@ -136,6 +136,7 @@ mod no_homepage_field;
 mod no_maintainer_field;
 mod no_newline_at_end;
 mod no_priority_field;
+mod no_qa_in_changelog;
 mod no_section_field;
 mod obsolete_field_in_dep5_copyright;
 mod obsolete_runtime_tests_restriction;

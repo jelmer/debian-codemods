@@ -1,3 +1,9 @@
+debian-codemods (0.184) UNRELEASED; urgency=medium
+
+  * Add fixer for no-qa-in-changelog
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 22 Jul 2026 22:37:47 +0100
+
 debian-codemods (0.183) unstable; urgency=medium
 
   * Add fixer for alien-tag
