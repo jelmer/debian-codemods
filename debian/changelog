@@ -2,6 +2,7 @@ debian-codemods (0.184) UNRELEASED; urgency=medium
 
   * Add fixer for no-qa-in-changelog
   * Add fixer for debian-watch-file-uses-deprecated-sf-redirector-method
+  * Add fixer for build-depends-on-python-dev-with-no-arch-any
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 23 Jul 2026 00:14:34 +0100
 
