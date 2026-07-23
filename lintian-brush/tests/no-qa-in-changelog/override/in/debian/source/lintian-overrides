@@ -1,0 +1,3 @@
+# The maintainer has explicitly overridden no-qa-in-changelog, so the
+# fixer must leave the changelog untouched.
+no-qa-in-changelog

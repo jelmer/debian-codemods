@@ -1,0 +1,13 @@
+Source: examplepkg
+Section: utils
+Priority: optional
+Maintainer: Real Maintainer <maint@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: examplepkg
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: example package
+ A longer description of the example package spanning
+ more than one line.
