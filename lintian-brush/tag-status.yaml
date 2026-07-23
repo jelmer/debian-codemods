@@ -6602,7 +6602,8 @@
     Improve superficial autopkgtests to be more thorough. Add Restrictions:
     superficial to acknowledge, or improve the test.
 - tag: superfluous-file-pattern
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove superfluous file patterns from debian/copyright or lintian

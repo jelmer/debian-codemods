@@ -1,0 +1,4 @@
+Remove superfluous file pattern man/* from debian/copyright.
+Certainty: likely
+Fixed-Lintian-Issues:
+ source: superfluous-file-pattern man/* [debian/copyright:8]
