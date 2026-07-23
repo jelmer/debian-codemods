@@ -1093,7 +1093,8 @@
     debian/watch declares an unknown version. Would need to determine
     the correct watch file format version.
 - tag: debian-watch-file-uses-deprecated-sf-redirector-method
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Update SourceForge URL pattern in debian/watch to use the modern
