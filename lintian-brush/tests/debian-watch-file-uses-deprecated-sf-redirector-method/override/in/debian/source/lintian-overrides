@@ -1,0 +1,1 @@
+debian-watch-file-uses-deprecated-sf-redirector-method http://qa.debian.org/watch/sf.php?project=foo *
