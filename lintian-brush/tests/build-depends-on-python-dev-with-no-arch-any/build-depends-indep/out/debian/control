@@ -1,0 +1,11 @@
+Source: blah
+Section: python
+Priority: optional
+Maintainer: Jane Developer <jane@example.com>
+Build-Depends: debhelper-compat (= 13)
+Build-Depends-Indep: python3-all (>= 3.9)
+
+Package: python3-blah
+Architecture: all
+Description: a useful python module
+ Some long description.
