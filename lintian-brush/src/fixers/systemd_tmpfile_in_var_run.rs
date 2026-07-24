@@ -24,7 +24,7 @@ fn tmpfiles_installed_name(filename: &str) -> Option<String> {
 /// tmpfiles.d entry rooted at `/var/run/`.
 ///
 /// Lintian's check fires when the file contains such a line, ignoring the
-/// rest of the fields — see Lintian::Check::Systemd::Tmpfiles.
+/// rest of the fields - see Lintian::Check::Systemd::Tmpfiles.
 fn has_var_run_directory_entry(content: &str) -> bool {
     for line in content.lines() {
         let trimmed = line.trim_start();
@@ -176,7 +176,7 @@ mod tests {
         assert!(!has_var_run_directory_entry(
             "f /var/run/foo 0755 root root -\n"
         ));
-        // /var/runfoo — not under /var/run.
+        // /var/runfoo - not under /var/run.
         assert!(!has_var_run_directory_entry(
             "d /var/runfoo 0755 root root -\n"
         ));

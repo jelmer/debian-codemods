@@ -32,7 +32,7 @@ pub fn detect(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
+        let unit = systemd_unit_edit::SystemdUnit::from_str(content).map_err(|e| {
             FixerError::Other(format!("Failed to parse {}: {:?}", rel.display(), e))
         })?;
         let Some(unit_section) = unit.get_section("Unit") else {
@@ -41,7 +41,7 @@ pub fn detect(
 
         // Trigger only when the unit shuts down on its own (DefaultDependencies=no)
         // and conflicts with shutdown.target but doesn't already declare
-        // Before=shutdown.target — see systemd.unit(5) for the rationale.
+        // Before=shutdown.target - see systemd.unit(5) for the rationale.
         let default_deps_no = unit_section.get("DefaultDependencies").as_deref() == Some("no");
         let conflicts_shutdown = unit_section
             .get("Conflicts")

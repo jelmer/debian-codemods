@@ -75,7 +75,7 @@ pub fn apply_action(base_path: &Path, action: &Action) -> Result<bool, FixerErro
 fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<Vec<PathBuf>, FixerError> {
     // Decide which applier to use based on the kinds present. We don't allow
     // mixing kinds for the same file (e.g. a Deb822 SetField alongside a
-    // Filesystem Delete on debian/control) — that is almost certainly a bug
+    // Filesystem Delete on debian/control) - that is almost certainly a bug
     // in the detector.
     let mut kinds = std::collections::HashSet::new();
     for action in group {
@@ -533,23 +533,19 @@ fn apply_copyright_deb822_group(
                     if let Some(mut files_para) = copyright
                         .iter_files()
                         .find(|p| p.as_deb822().get("Files").as_deref() == Some(glob.as_str()))
-                    {
-                        if files_para.as_deb822().get(field).is_some() {
+                        && files_para.as_deb822().get(field).is_some() {
                             files_para.remove_field(field);
                             any_change = true;
                         }
-                    }
                 }
                 ParagraphSelector::CopyrightLicense { name } => {
                     if let Some(mut license_para) = copyright
                         .iter_licenses()
                         .find(|p| p.name().as_deref() == Some(name.as_str()))
-                    {
-                        if license_para.as_deb822().get(field).is_some() {
+                        && license_para.as_deb822().get(field).is_some() {
                             license_para.remove_field(field);
                             any_change = true;
                         }
-                    }
                 }
                 other => {
                     return Err(FixerError::Other(format!(
@@ -681,11 +677,10 @@ fn apply_generic_deb822_group(
                 let Some(p) = pick_generic_paragraph(&deb822, paragraph)? else {
                     continue;
                 };
-                if let Some(mut entry) = p.get_entry(field) {
-                    if entry.normalize_field_spacing() {
+                if let Some(mut entry) = p.get_entry(field)
+                    && entry.normalize_field_spacing() {
                         any_change = true;
                     }
-                }
             }
             Deb822Action::DropRelation {
                 paragraph,
@@ -958,7 +953,7 @@ fn find_generic_paragraph_index(
 
 /// Pick a paragraph from a deb822 file using a generic-applicable selector.
 ///
-/// Source/Binary selectors aren't accepted here — those go through the
+/// Source/Binary selectors aren't accepted here - those go through the
 /// typed control editor in [`apply_control_deb822_group`].
 fn pick_generic_paragraph(
     deb822: &deb822_lossless::Deb822,
@@ -1001,7 +996,7 @@ fn set_deb822_field(
     // (e.g. Priority lands after Section, before Description). When it's
     // Some we fall through to set_with_indent_pattern on the underlying
     // deb822 paragraph, which preserves position but skips the typed
-    // editor's reordering — that's acceptable for fields like
+    // editor's reordering - that's acceptable for fields like
     // Description that are already in canonical position when set.
     match paragraph {
         ParagraphSelector::Source => {
@@ -2325,13 +2320,11 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
                         parent_path
                     )));
                 };
-                if let Some(existing) = mapping.get(key.as_str()) {
-                    if let yaml_edit::YamlNode::Scalar(scalar) = existing {
-                        if scalar.as_string() == *value {
+                if let Some(existing) = mapping.get(key.as_str())
+                    && let yaml_edit::YamlNode::Scalar(scalar) = existing
+                        && scalar.as_string() == *value {
                             continue;
                         }
-                    }
-                }
                 mapping.set(key.as_str(), value.as_str());
                 any_change = true;
             }
@@ -2349,13 +2342,11 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
                         parent_path
                     )));
                 };
-                if let Some(existing) = mapping.get(key.as_str()) {
-                    if let yaml_edit::YamlNode::Scalar(scalar) = existing {
-                        if scalar.as_string() == *value {
+                if let Some(existing) = mapping.get(key.as_str())
+                    && let yaml_edit::YamlNode::Scalar(scalar) = existing
+                        && scalar.as_string() == *value {
                             continue;
                         }
-                    }
-                }
                 mapping.set_with_field_order(
                     key.as_str(),
                     value.as_str(),
@@ -2479,7 +2470,7 @@ fn apply_changelog_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<b
                         .unwrap_or(false)
                 });
                 let Some(entry) = target else {
-                    // Entry has been renamed/removed since detection — treat
+                    // Entry has been renamed/removed since detection - treat
                     // as a no-op rather than erroring out.
                     continue;
                 };
@@ -2701,11 +2692,10 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                         continue;
                     }
                     // Templates are a v5 (deb822) feature only.
-                    if let debian_watch::parse::ParsedEntry::Deb822(e) = &mut entry {
-                        if e.try_convert_to_template().is_some() {
+                    if let debian_watch::parse::ParsedEntry::Deb822(e) = &mut entry
+                        && e.try_convert_to_template().is_some() {
                             any_change = true;
                         }
-                    }
                     break;
                 }
             }
@@ -2799,23 +2789,19 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 if let Some(mut var) = makefile
                     .variable_definitions()
                     .find(|v| v.name().as_deref() == Some(name.as_str()))
-                {
-                    if var.raw_value().as_deref().map(str::trim) != Some(value.as_str()) {
+                    && var.raw_value().as_deref().map(str::trim) != Some(value.as_str()) {
                         var.set_value(value);
                         any_change = true;
                     }
-                }
             }
             MakefileAction::SetVariableOperator { name, operator, .. } => {
                 if let Some(mut var) = makefile
                     .variable_definitions()
                     .find(|v| v.name().as_deref() == Some(name.as_str()))
-                {
-                    if var.assignment_operator().as_deref() != Some(operator.as_str()) {
+                    && var.assignment_operator().as_deref() != Some(operator.as_str()) {
                         var.set_assignment_operator(operator);
                         any_change = true;
                     }
-                }
             }
             MakefileAction::RemoveVariable { name, .. } => {
                 if let Some(mut var) = makefile
@@ -2963,8 +2949,8 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 let items: Vec<_> = makefile.items().collect();
                 let mut found = false;
                 for mut item in items {
-                    if let makefile_lossless::MakefileItem::Variable(var) = &item {
-                        if var.name().as_deref() == Some(name.as_str()) {
+                    if let makefile_lossless::MakefileItem::Variable(var) = &item
+                        && var.name().as_deref() == Some(name.as_str()) {
                             item.replace(makefile_lossless::MakefileItem::Include(include.clone()))
                                 .map_err(|e| {
                                     FixerError::Other(format!("Failed to replace variable: {}", e))
@@ -2972,7 +2958,6 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                             found = true;
                             break;
                         }
-                    }
                 }
                 if found {
                     rules = makefile.rules().collect();
@@ -2998,8 +2983,8 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 let items: Vec<_> = makefile.items().collect();
                 let mut inserted = false;
                 for mut item in items {
-                    if let makefile_lossless::MakefileItem::Variable(var) = &item {
-                        if var.name().as_deref() == Some(before_variable.as_str()) {
+                    if let makefile_lossless::MakefileItem::Variable(var) = &item
+                        && var.name().as_deref() == Some(before_variable.as_str()) {
                             item.insert_before(makefile_lossless::MakefileItem::Include(
                                 include.clone(),
                             ))
@@ -3009,7 +2994,6 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                             inserted = true;
                             break;
                         }
-                    }
                 }
                 if inserted {
                     rules = makefile.rules().collect();
@@ -3274,7 +3258,7 @@ fn apply_lintian_overrides_group(
         return Ok(false);
     }
     // If the file has nothing meaningful left, remove it. The driver
-    // already handles partial deletes for us — emit the same behaviour
+    // already handles partial deletes for us - emit the same behaviour
     // the legacy fixers had.
     let has_content = overrides.lines().any(|l| !l.is_comment() && !l.is_empty());
     if !has_content {
@@ -3536,7 +3520,7 @@ fn apply_filesystem_group(
             FilesystemAction::Rename { to, .. } => {
                 let to_abs = base.join(to);
                 if !abs.exists() {
-                    // Source already gone — treat as a no-op rather than
+                    // Source already gone - treat as a no-op rather than
                     // an error, mirroring the other actions' idempotency.
                     continue;
                 }
@@ -3555,7 +3539,7 @@ fn apply_filesystem_group(
                     if e.kind() == std::io::ErrorKind::NotFound
                         || e.kind() == std::io::ErrorKind::DirectoryNotEmpty =>
                 {
-                    // The dir is gone or still has siblings — neither is
+                    // The dir is gone or still has siblings - neither is
                     // a fixer error.
                 }
                 Err(e) => return Err(FixerError::Io(e)),

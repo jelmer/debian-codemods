@@ -83,7 +83,7 @@ pub fn detect(
     } else if any_path_tool && !any_pkg_prog {
         "This patch changes it to use AC_PATH_TOOL."
     } else {
-        // Mixed — report the second one (matches the legacy single-string
+        // Mixed - report the second one (matches the legacy single-string
         // resolution that gets overwritten by later iterations).
         "This patch changes it to use AC_PATH_TOOL."
     };
@@ -131,7 +131,7 @@ pub fn detect(
                 let bd = source.as_deb822().get("Build-Depends").unwrap_or_default();
                 if !bd
                     .split(',')
-                    .any(|e| e.trim().split_whitespace().next() == Some("pkg-config"))
+                    .any(|e| e.split_whitespace().next() == Some("pkg-config"))
                 {
                     actions.push(Action::Deb822(Deb822Action::EnsureRelation {
                         file: control_rel,

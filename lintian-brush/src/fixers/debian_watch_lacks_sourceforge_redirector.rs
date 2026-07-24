@@ -55,11 +55,10 @@ fn redirect_for(url: &str, pattern: Option<&str>) -> Option<Redirect> {
             // showfiles.php?group_id=... - the project is identified by a
             // numeric group id we can't translate, so bail out.
             return None;
-        } else if let Some(rest) = path.strip_prefix("/projects/") {
+        } else {
+            let rest = path.strip_prefix("/projects/")?;
             // projects/<project>/files/...
             project_from_projects_path(rest)?
-        } else {
-            return None;
         }
     } else {
         return None;

@@ -40,7 +40,7 @@ fn names_package(value: &str, package: &str) -> bool {
 }
 
 /// True when `value` depends on default-mta without listing
-/// mail-transport-agent — the condition lintian flags.
+/// mail-transport-agent - the condition lintian flags.
 fn needs_mail_transport_agent(value: &str) -> bool {
     names_package(value, DEFAULT_MTA) && !names_package(value, MAIL_TRANSPORT_AGENT)
 }

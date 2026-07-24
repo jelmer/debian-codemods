@@ -5,7 +5,7 @@ use debian_workspace::{Trigger, Workspace};
 /// Rough indication of a detector's runtime cost.
 ///
 /// Annotated on each detector via `cost:` in [`declare_detector!`]. The
-/// lintian-brush CLI ignores this — it always runs every selected
+/// lintian-brush CLI ignores this - it always runs every selected
 /// detector. LSP hosts use it to schedule work: cheap detectors can run
 /// on every keystroke, expensive ones only on idle/save/explicit
 /// request.
@@ -18,7 +18,7 @@ pub enum DetectorCost {
     Cheap,
     /// Walks the working tree, reads files outside the immediate trigger
     /// (lintian data files, maintscripts, override globs). Local I/O
-    /// only — no network, no subprocess. Fine on a debounced idle tick.
+    /// only - no network, no subprocess. Fine on a debounced idle tick.
     Filesystem,
     /// Forks a subprocess (e.g. `git ls-remote`, `gpg`, `dpkg-parsechangelog`).
     /// Local but slow; avoid on every keystroke.
@@ -33,8 +33,8 @@ pub enum DetectorCost {
 /// anything) needs fixing, together with the [`Action`](crate::diagnostic::Action)s
 /// that would fix it. Detectors do *not* mutate the tree.
 ///
-/// Detectors carry no `basedir`/`package`/`current_version` arguments —
-/// those are reachable through the workspace — so the same detector
+/// Detectors carry no `basedir`/`package`/`current_version` arguments -
+/// those are reachable through the workspace - so the same detector
 /// works in the lintian-brush CLI (with a [`FsWorkspace`]) and in
 /// an LSP host that has no on-disk basedir for the open buffer.
 ///
@@ -51,7 +51,7 @@ pub trait Detector: Send + Sync {
     /// What workspace state this detector reads.
     ///
     /// LSP hosts use this to skip detectors whose inputs haven't changed.
-    /// The default `&[]` means "no declared triggers" — the LSP host
+    /// The default `&[]` means "no declared triggers" - the LSP host
     /// should treat that as "always run" (for the detectors that haven't
     /// been annotated yet) and the CLI ignores it either way.
     fn triggers(&self) -> &'static [Trigger] {
@@ -67,7 +67,7 @@ pub trait Detector: Send + Sync {
     /// Detect issues in `ws` and return one [`Diagnostic`] per issue.
     ///
     /// `Ok(vec![])` means "nothing to fix, no error". `Err(NoChanges)` is
-    /// also legal (and meaningfully equivalent) — detectors that compute
+    /// also legal (and meaningfully equivalent) - detectors that compute
     /// "nothing to do" lazily often find that shape easier.
     fn detect(
         &self,
@@ -353,7 +353,7 @@ macro_rules! declare_detector {
         }
 
         // The cost expression evaluates to either the user-supplied
-        // `$cost` or — when the clause is omitted — `DetectorCost::Cheap`.
+        // `$cost` or - when the clause is omitted — `DetectorCost::Cheap`.
         const __COST: $crate::detector::DetectorCost = {
             #[allow(unused_mut, unused_assignments)]
             let mut c = $crate::detector::DetectorCost::Cheap;

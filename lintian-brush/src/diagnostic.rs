@@ -49,9 +49,9 @@ pub struct Diagnostic {
 impl Diagnostic {
     /// Build a diagnostic with a single default plan.
     ///
-    /// * `description` — human-readable summary of *what's wrong*. Used
+    /// * `description` - human-readable summary of *what's wrong*. Used
     ///   in the per-issue commit-message line and shown to the user.
-    /// * `label` — imperative description of *what the plan would do*.
+    /// * `label` - imperative description of *what the plan would do*.
     ///   Shown in `lintian-brush --interactive` and the LSP code-action
     ///   menu. Should be written from the actor's perspective ("Set
     ///   Priority to optional.", "Trim trailing whitespace.").

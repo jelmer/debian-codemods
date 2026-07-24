@@ -129,7 +129,7 @@ pub fn detect(
             }
             // Diagnostics are emitted in source order (so the
             // Fixed-Lintian-Issues block reads top-down). Actions need
-            // reverse-offset order though — the applier re-reads the file
+            // reverse-offset order though - the applier re-reads the file
             // for each ReplaceText, so applying the latest-offset edit
             // first keeps earlier-offset byte positions stable. Achieve
             // both by attaching all the actions to the first diagnostic.
@@ -172,7 +172,7 @@ pub fn detect(
 
     let rules_rel = PathBuf::from("debian/rules");
     if ws.read_file(&rules_rel)?.is_some() {
-        // For debian/rules, leave tabs alone — they're load-bearing.
+        // For debian/rules, leave tabs alone - they're load-bearing.
         emit_for_file(rules_rel, false, true, false)?;
     }
 

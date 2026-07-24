@@ -54,7 +54,7 @@ fn rewrites(value: &str) -> Vec<(String, String)> {
         };
 
         // Build the rewritten entry by mutating a fresh parse of just this
-        // entry's text — we can't mutate the iterator's `Relation` in place.
+        // entry's text - we can't mutate the iterator's `Relation` in place.
         let entry_text = entry.to_string();
         let Ok(entry_mut) = debian_control::lossless::relations::Entry::from_str(&entry_text)
         else {

@@ -386,7 +386,7 @@ mod tests {
 
         #[test]
         fn test_non_alpha_codename_rejected() {
-            // Contains digits — not a valid codename
+            // Contains digits - not a valid codename
             assert!(parse_annotation("release123").is_err());
         }
 
@@ -519,7 +519,7 @@ mod tests {
 
         #[test]
         fn test_ancient_release_is_true() {
-            // buzz was released in 1996 — always true
+            // buzz was released in 1996 - always true
             assert!(eval_expr(&Expr::ReleasedDebianCodename("buzz".to_string())));
         }
 

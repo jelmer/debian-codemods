@@ -32,7 +32,7 @@ pub fn detect(
     if !content.starts_with("Format:") && !content.starts_with("Format-Specification:") {
         return Ok(Vec::new());
     }
-    let deb822 = match Deb822::from_str(&content) {
+    let deb822 = match Deb822::from_str(content) {
         Ok(d) => d,
         Err(_) => return Ok(Vec::new()),
     };
@@ -47,7 +47,7 @@ pub fn detect(
         };
         let value = entry.value();
         if value.trim().is_empty() {
-            // Empty values are dropped silently — no diagnostic, no
+            // Empty values are dropped silently - no diagnostic, no
             // user-visible message. Match the original behaviour by
             // emitting a remove-only action with no LintianIssue.
             diagnostics.push(crate::diagnostic::Diagnostic::untagged(

@@ -258,7 +258,7 @@ mod tests {
         write_compat(tmp.path(), 10);
         let rules = tmp.path().join("debian/rules");
         // The `--no-parallel` in the wildcard rule signals an explicit
-        // override of the default — don't strip `--parallel` elsewhere.
+        // override of the default - don't strip `--parallel` elsewhere.
         fs::write(
             &rules,
             "%:\n\tdh $@ --no-parallel\n\nbuild:\n\tdh $@ --parallel\n",

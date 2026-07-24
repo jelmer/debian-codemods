@@ -28,7 +28,7 @@ pub fn detect(
     let Ok(content) = std::str::from_utf8(&bytes) else {
         return Ok(Vec::new());
     };
-    let deb822 = Deb822::from_str(&content)
+    let deb822 = Deb822::from_str(content)
         .map_err(|e| FixerError::Other(format!("Failed to parse debian/tests/control: {:?}", e)))?;
 
     let valid_fields: HashSet<&str> = VALID_FIELD_NAMES.iter().copied().collect();

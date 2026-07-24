@@ -41,7 +41,7 @@ pub fn detect(
     let deprecated = read_obsolete_restrictions(preferences.lintian_data_path.as_deref())?;
     let content = std::str::from_utf8(&bytes)
         .map_err(|e| FixerError::Other(format!("debian/tests/control is not UTF-8: {}", e)))?;
-    let parsed = Deb822::parse(&content);
+    let parsed = Deb822::parse(content);
     let deb822 = parsed.tree();
 
     let mut diagnostics = Vec::new();
@@ -109,7 +109,7 @@ pub fn detect(
         };
 
         for restriction in &to_drop {
-            // needs-recommends is borderline — different lintian
+            // needs-recommends is borderline - different lintian
             // versions disagree on it.
             let certainty = if restriction == "needs-recommends" {
                 Certainty::Possible

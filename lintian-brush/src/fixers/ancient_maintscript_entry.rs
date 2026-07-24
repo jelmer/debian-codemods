@@ -119,7 +119,7 @@ where
     };
     let contents = std::str::from_utf8(&bytes)
         .map_err(|e| FixerError::Other(format!("Failed to read maintscript: {}", e)))?;
-    let script = Maintscript::from_str(&contents)
+    let script = Maintscript::from_str(contents)
         .map_err(|e| FixerError::Other(format!("Failed to parse maintscript: {}", e)))?;
     let mut removed = Vec::new();
     for entry in script.entries() {

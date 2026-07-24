@@ -167,7 +167,7 @@ pub fn detect(
         );
 
         // License paragraphs (no Files: field) are addressed by their
-        // License field's full value — that's the synopsis plus any
+        // License field's full value - that's the synopsis plus any
         // continuation lines, which uniquely identifies the paragraph
         // before the rewrite.
         diagnostics.push(Diagnostic::with_actions(

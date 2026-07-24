@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn test_keeps_binary_priority_when_source_non_optional() {
         // Source declares Priority: standard, so the binary's Priority: optional
-        // is a meaningful override — lintian does not emit the tag, and we
+        // is a meaningful override - lintian does not emit the tag, and we
         // must not strip it.
         let temp_dir = TempDir::new().unwrap();
         let base = temp_dir.path();

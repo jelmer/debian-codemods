@@ -18,7 +18,7 @@ pub enum Trigger {
     /// Detector cares about a single deb822 field, named by `field`, in
     /// any paragraph that contains a key matching `paragraph_key`.
     ///
-    /// `paragraph_key` is the name of an *identifying* field — its
+    /// `paragraph_key` is the name of an *identifying* field - its
     /// presence in a paragraph selects that paragraph as the trigger
     /// scope. For `debian/control`:
     /// * `paragraph_key = "Source"` selects the source paragraph.
@@ -29,7 +29,7 @@ pub enum Trigger {
     /// * `paragraph_key = "Files"` selects any Files paragraph.
     /// * `paragraph_key = "License"` selects any standalone License
     ///   paragraph (Files paragraphs also carry `License:`, so a trigger
-    ///   on `License` paragraphs only also matches Files paragraphs —
+    ///   on `License` paragraphs only also matches Files paragraphs -
     ///   pair with a separate `Files` trigger if you want both).
     ///
     /// For `debian/tests/control`:
@@ -86,7 +86,7 @@ pub enum ChangelogAspect {
     Distribution,
     /// The urgency on any entry's header line.
     Urgency,
-    /// The body of any changelog entry — the asterisk-bullet items that
+    /// The body of any changelog entry - the asterisk-bullet items that
     /// describe what changed.
     Body,
     /// The maintainer name/email in any entry's trailer line.
@@ -97,8 +97,8 @@ pub enum ChangelogAspect {
 
 /// What a [`Trigger::Watch`] detector reads from `debian/watch`.
 ///
-/// The aspects are framed in terms of the watch-file model — a list of
-/// upstream-source entries with options — independently of whether
+/// The aspects are framed in terms of the watch-file model - a list of
+/// upstream-source entries with options - independently of whether
 /// they're encoded as line-based v1-4 syntax or v5 deb822 paragraphs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WatchAspect {

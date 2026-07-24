@@ -34,7 +34,7 @@ pub fn detect(
 
         let raw_files = para.as_deb822().get("Files").unwrap_or_default();
 
-        // One diagnostic per dropped glob — granular for LSP and for
+        // One diagnostic per dropped glob - granular for LSP and for
         // override matching.
         for file_pattern in &dropped {
             let issue = LintianIssue {
