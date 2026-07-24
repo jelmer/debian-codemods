@@ -39,6 +39,7 @@ subset of the issues:
 * build-depends-on-python-sphinx-only
 * built-using-for-golang
 * capitalization-error-in-description
+* capitalization-error-in-description-synopsis
 * carriage-return-line-feed
 * chown-with-dot
 * circular-installation-prerequisite
@@ -78,6 +79,7 @@ subset of the issues:
 * debian-rules-missing-recommended-target
 * debian-rules-not-executable
 * debian-rules-parses-dpkg-parsechangelog
+* debian-rules-sets-DEB_BUILD_OPTIONS
 * debian-rules-sets-dpkg-architecture-variable
 * debian-rules-uses-as-needed-linker-flag
 * debian-rules-uses-deb-build-opts
@@ -156,6 +158,7 @@ subset of the issues:
 * missing-build-dependency-for-dh-addon
 * missing-build-dependency-for-dh_-command
 * missing-debian-source-format
+* missing-debian-watch-file-standard
 * missing-prerequisite-for-pyproject-backend
 * missing-static-built-using-field-for-golang-package
 * missing-vcs-browser-field
@@ -221,10 +224,12 @@ subset of the issues:
 * team/pkg-perl/testsuite/no-testsuite-header
 * team/pkg-perl/vcs/no-git
 * team/pkg-perl/vcs/no-team-url
+* testsuite-restrictions-has-deprecated-skip-not-installable
 * trailing-comma-in-maintainer-field
 * trailing-whitespace
 * transitional-package-not-oldlibs-optional
 * typo-in-debhelper-override-target
+* unnecessary-source-date-epoch-assignment
 * unnecessary-team-upload
 * unnecessary-testsuite-autopkgtest-field
 * unused-build-dependency-on-cdbs
