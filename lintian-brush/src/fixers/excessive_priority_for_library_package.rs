@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn test_remove_when_source_default_is_optional() {
         // Source declares Priority: optional. A binary explicitly setting
-        // Priority: required is excessive — and the right fix is to
+        // Priority: required is excessive - and the right fix is to
         // remove the binary's override, not to also write Priority: optional.
         let temp_dir = TempDir::new().unwrap();
         let base_path = temp_dir.path();

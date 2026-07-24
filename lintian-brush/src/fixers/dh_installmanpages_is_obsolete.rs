@@ -13,7 +13,7 @@ const LABEL: &str = "debian/rules: Use dh_installman rather than dh_installmanpa
 /// `dh_installman` instead installs the man pages named in
 /// `debian/manpages` / `debian/<package>.manpages` (or on its command
 /// line). Renaming the call only preserves behaviour when such a list
-/// exists — otherwise the migrated `dh_installman` would have nothing to
+/// exists - otherwise the migrated `dh_installman` would have nothing to
 /// install. The presence of a `.manpages` file is the clearest signal
 /// that the maintainer has set `dh_installman` up.
 fn has_manpages_list(ws: &dyn Workspace) -> bool {
@@ -156,7 +156,7 @@ mod tests {
     fn test_diagnostic_without_plan_when_no_manpages_list() {
         // dh_installmanpages is present but no debian/*.manpages list
         // exists: the issue is still reported, but as a plan-less
-        // diagnostic — no fix is attached.
+        // diagnostic - no fix is attached.
         let tmp = TempDir::new().unwrap();
         let debian = tmp.path().join("debian");
         fs::create_dir_all(&debian).unwrap();

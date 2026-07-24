@@ -71,7 +71,7 @@ pub fn detect(
             .with_certainty(Certainty::Certain),
         );
 
-        // Only handle one file per run — the lintian-overrides semantics
+        // Only handle one file per run - the lintian-overrides semantics
         // work best with one diagnostic per fix.
         break;
     }

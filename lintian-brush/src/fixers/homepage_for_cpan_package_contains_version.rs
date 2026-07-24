@@ -13,7 +13,7 @@ use std::sync::LazyLock;
 /// * `https://metacpan.org/release/HTML-Template-2.9/`
 ///
 /// Captures the URL up to (but not including) the trailing `-VERSION`. We
-/// strip just that suffix and any trailing slashes — the result is a
+/// strip just that suffix and any trailing slashes - the result is a
 /// versionless CPAN page on the same host, which is what lintian wants.
 static CPAN_VERSIONED: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"^(https?://(?:search\.cpan\.org|metacpan\.org)/.+?)-[0-9._]+/*$")

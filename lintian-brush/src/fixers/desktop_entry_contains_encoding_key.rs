@@ -29,7 +29,7 @@ pub fn detect(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        let desktop = Desktop::from_str(&content)
+        let desktop = Desktop::from_str(content)
             .map_err(|e| FixerError::Other(format!("Failed to parse desktop file: {:?}", e)))?;
         let Some(group) = desktop.get_group("Desktop Entry") else {
             continue;

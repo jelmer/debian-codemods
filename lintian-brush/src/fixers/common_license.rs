@@ -231,7 +231,7 @@ struct LicensePlan {
 /// Compute the rewrite plans for a copyright file along with the lintian
 /// issues that motivate them. The detector emits one diagnostic per
 /// (issue, paragraph-affected) pair, all carrying the same final SetField
-/// for that paragraph — so override filtering is per-issue and the
+/// for that paragraph - so override filtering is per-issue and the
 /// applier deduplicates by value-equality.
 pub fn detect(
     ws: &dyn Workspace,
@@ -371,7 +371,7 @@ pub fn detect(
             }
         }
 
-        // 2. No fulltext match — try adding a reference to a recognised blurb.
+        // 2. No fulltext match - try adding a reference to a recognised blurb.
         if let Some(common_license) = find_common_license_from_blurb(&text) {
             if text.contains(COMMON_LICENSES_DIR) {
                 continue;
@@ -469,7 +469,7 @@ pub fn detect(
                 new_license_field: build_license_field(new_name, &text),
             },
         );
-        // No new lintian issues — this is just a downstream rename.
+        // No new lintian issues - this is just a downstream rename.
     }
 
     if plans.is_empty() {

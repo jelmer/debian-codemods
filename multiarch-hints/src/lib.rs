@@ -467,7 +467,7 @@ format: blah
 /// Locate the directory we cache the downloaded multiarch-hints file in.
 ///
 /// Honours `$XDG_CACHE_HOME` and falls back to `$HOME/.cache`. Returns
-/// `None` when neither is set — callers should treat that as "skip the
+/// `None` when neither is set - callers should treat that as "skip the
 /// cache" rather than as an error. The returned path is *not* created;
 /// see [`cache_file_path`] for the canonical filename.
 pub fn cache_dir() -> Option<std::path::PathBuf> {
@@ -482,7 +482,7 @@ pub fn cache_dir() -> Option<std::path::PathBuf> {
 }
 
 /// Path to the cached multiarch-hints file, or `None` when no cache
-/// directory is available. The directory is *not* created here — the
+/// directory is available. The directory is *not* created here - the
 /// sync/async cache wrappers call their respective `create_dir_all`
 /// before writing.
 pub fn cache_file_path() -> Option<std::path::PathBuf> {

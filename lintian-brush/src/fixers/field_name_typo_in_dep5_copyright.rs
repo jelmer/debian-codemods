@@ -65,7 +65,7 @@ pub fn detect(
                 to: rename.new.clone(),
             })];
 
-            // Case-only renames don't carry a lintian tag — they're
+            // Case-only renames don't carry a lintian tag - they're
             // cosmetic. Typos do.
             let issue = if rename.is_case {
                 None

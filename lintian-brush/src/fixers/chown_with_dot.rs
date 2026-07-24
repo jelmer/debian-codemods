@@ -45,7 +45,7 @@ pub fn detect(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        if !chown_regex.is_match(&content) {
+        if !chown_regex.is_match(content) {
             continue;
         }
 
@@ -64,7 +64,7 @@ pub fn detect(
             )
         };
 
-        let new_content = chown_regex.replace_all(&content, "chown $1:$2").to_string();
+        let new_content = chown_regex.replace_all(content, "chown $1:$2").to_string();
 
         diagnostics.push(
             Diagnostic::with_actions(
@@ -243,8 +243,8 @@ mod tests {
 
         run_apply(temp_dir.path()).unwrap();
 
-        // The regex matches `chown user.group` anywhere — including in the
-        // comment — so both occurrences become `chown user:group`.
+        // The regex matches `chown user.group` anywhere - including in the
+        // comment - so both occurrences become `chown user:group`.
         // Unrelated dotted tokens like `file.txt` and `config.old` are left
         // alone because they don't follow `chown`.
         assert_eq!(
