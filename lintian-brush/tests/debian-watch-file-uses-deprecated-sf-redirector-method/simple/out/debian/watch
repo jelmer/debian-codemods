@@ -1,0 +1,2 @@
+version=3
+https://sf.net/foo/ scripts\.([\d.]+)\.tar\.gz debian uupdate
