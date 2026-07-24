@@ -1,0 +1,3 @@
+Mention QA upload in changelog.
+Fixed-Lintian-Issues:
+ source: no-qa-in-changelog [debian/changelog:1]
