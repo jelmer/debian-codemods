@@ -112,7 +112,7 @@ pub fn detect_with_unused_overrides(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        let parsed = LintianOverrides::parse(&content);
+        let parsed = LintianOverrides::parse(content);
         let Ok(overrides) = parsed.ok() else {
             continue;
         };

@@ -148,7 +148,7 @@ fn unwrap_top_level_sequence(content: &str) -> Result<Option<(String, usize)>, F
 enum EmptyDocsOutcome {
     /// No empty documents found.
     NoChange,
-    /// All documents were empty — file should be deleted.
+    /// All documents were empty - file should be deleted.
     DeleteFile,
     /// Rewrite the file to keep only the first non-empty document.
     Rewrite(String),
@@ -220,7 +220,7 @@ fn drop_empty_documents(original: &str) -> Result<EmptyDocsOutcome, FixerError> 
     Ok(EmptyDocsOutcome::Rewrite(final_content))
 }
 
-/// Per-diagnostic action selector — the framework needs each diagnostic
+/// Per-diagnostic action selector - the framework needs each diagnostic
 /// to carry an action plan, but multiple diagnostics here describe the
 /// same single rewrite. We therefore route them all to the same action,
 /// which is just the file write.
@@ -341,7 +341,7 @@ pub fn detect(
     }
 
     if diagnostics.is_empty() {
-        // The change isn't motivated by a specific lintian issue — emit
+        // The change isn't motivated by a specific lintian issue - emit
         // a generic untagged diagnostic so the action still runs.
         diagnostics.push(Diagnostic::untagged(
             "debian/upstream/metadata is invalid.".to_string(),

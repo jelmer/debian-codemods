@@ -9,8 +9,8 @@ const LABEL: &str = "Remove duplicate entries from the Uploaders field.";
 
 /// Extract the contact's e-mail address from a single `Uploaders` entry.
 ///
-/// Uses [`debian_changelog::parseaddr`] — the address parser shared with
-/// the rest of the codebase — and keeps only entries that parse to a
+/// Uses [`debian_changelog::parseaddr`] - the address parser shared with
+/// the rest of the codebase - and keeps only entries that parse to a
 /// plausible `user@host` address. lintian's `duplicate-contact` check
 /// likewise compares uploaders by parsed address and ignores entries it
 /// cannot parse as a valid address.

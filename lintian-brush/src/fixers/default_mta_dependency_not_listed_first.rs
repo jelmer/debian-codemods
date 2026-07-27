@@ -23,7 +23,7 @@ fn unfolded(value: &str) -> String {
 }
 
 /// True when the first relation entry of `value` that names `default-mta`
-/// does not list it as the leading alternative — the condition lintian
+/// does not list it as the leading alternative - the condition lintian
 /// flags.
 ///
 /// Only the first such entry matters: it is the one the

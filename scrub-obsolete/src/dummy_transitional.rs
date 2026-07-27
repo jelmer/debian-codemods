@@ -9,7 +9,7 @@ lazy_static::lazy_static! {
         regex::Regex::new(r".*\((.*, )?(dummy )?transitional (dummy )?package for ([^ ]+)\)").unwrap(),
         regex::Regex::new(r".*\(transitional development files\)").unwrap(),
         regex::Regex::new(r".*\(transitional\)").unwrap(),
-        regex::Regex::new(r".* [-—] transitional( package)?").unwrap(),
+        regex::Regex::new(r".* [--] transitional( package)?").unwrap(),
         regex::Regex::new(r".*\[transitional package\]").unwrap(),
         regex::Regex::new(r".* - transitional (dummy )?package").unwrap(),
         regex::Regex::new(r"transitional package -- safe to remove").unwrap(),

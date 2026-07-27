@@ -976,7 +976,7 @@ fn run_interactive(
                 continue;
             }
             // Header: lintian issue (if any), otherwise detector name, plus certainty (if any).
-            print!("\n");
+            println!();
             if let Some(issue) = &diag.issue {
                 print!("{}", issue);
             } else {

@@ -29,7 +29,7 @@ pub fn detect(
         let ts_text = ts_node.syntax().text().to_string();
 
         // The timestamp's text begins with the day-of-week followed by
-        // ", ". Anything else is unparseable for our purposes — leave it.
+        // ", ". Anything else is unparseable for our purposes - leave it.
         let comma_off = match ts_text.find(", ") {
             Some(off) => off,
             None => continue,
@@ -186,7 +186,7 @@ mod tests {
         let debian_dir = temp_dir.path().join("debian");
         fs::create_dir_all(&debian_dir).unwrap();
 
-        // April 22, 2018 was a Sunday — already correct.
+        // April 22, 2018 was a Sunday - already correct.
         let changelog_content = "foo (1.0) unstable; urgency=medium\n\n  * Initial release.\n\n -- John Doe <john@example.com>  Sun, 22 Apr 2018 00:58:14 +0000\n";
         fs::write(debian_dir.join("changelog"), changelog_content).unwrap();
 

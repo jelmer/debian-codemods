@@ -106,7 +106,7 @@ mod tests {
     fn meta_negative() {
         assert!(!is_meta_package("foo", "regular package", Some("libs")));
         assert!(!is_meta_package("foo", "regular package", None));
-        // section ending in a path that happens to suffix-match — must not
+        // section ending in a path that happens to suffix-match - must not
         // false-positive on something like "subtasks".
         assert!(!is_meta_package("foo", "regular", Some("subtasks")));
     }

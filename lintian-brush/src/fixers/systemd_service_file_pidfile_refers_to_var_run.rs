@@ -28,7 +28,7 @@ pub fn detect(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        let unit = systemd_unit_edit::SystemdUnit::from_str(&content).map_err(|e| {
+        let unit = systemd_unit_edit::SystemdUnit::from_str(content).map_err(|e| {
             FixerError::Other(format!("Failed to parse {}: {:?}", rel.display(), e))
         })?;
         let Some(service_section) = unit.get_section("Service") else {

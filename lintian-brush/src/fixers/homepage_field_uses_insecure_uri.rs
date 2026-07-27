@@ -65,7 +65,7 @@ fn fix_homepage_url(http_url: &str, net_access_allowed: bool) -> Option<String> 
     }
 
     // Otherwise we'd need to verify by fetching both URLs. The detector
-    // never blocks on the network — `apply()` consumers may but this code
+    // never blocks on the network - `apply()` consumers may but this code
     // path is shared by an LSP host that must respond synchronously, so we
     // bail unless the caller explicitly opted in.
     if !net_access_allowed {
@@ -100,7 +100,7 @@ fn check_urls_equivalent(
 
     let https_response = client.get(https_url).send()?;
     if !https_response.url().as_str().starts_with("https://") {
-        // HTTPS redirected back to HTTP — don't treat as a valid replacement.
+        // HTTPS redirected back to HTTP - don't treat as a valid replacement.
         return Ok(false);
     }
     let https_contents = https_response.bytes()?;

@@ -45,11 +45,11 @@ const BINARY_FIELDS: &[(&str, bool)] = &[
 fn makes_redundant(x: &Entry, y: &Entry, negative: bool) -> bool {
     if negative {
         // Disjunctive field: `x` is redundant when it is narrower than
-        // `y` — i.e. `x` implies `y`, so `y` already covers it.
+        // `y` - i.e. `x` implies `y`, so `y` already covers it.
         y.is_implied_by(x)
     } else {
         // Conjunctive field: `x` is redundant when it is weaker than
-        // `y` — i.e. `y` implies `x`, so `y` already guarantees it.
+        // `y` - i.e. `y` implies `x`, so `y` already guarantees it.
         x.is_implied_by(y)
     }
 }

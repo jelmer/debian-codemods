@@ -128,7 +128,7 @@ pub fn detect(
     let desired_order = reorder(&files_info);
 
     // The single ReorderParagraphs action is shared across all
-    // diagnostics — they each describe a contributing issue but the
+    // diagnostics - they each describe a contributing issue but the
     // applied edit is one structural rearrangement.
     let action = Action::Deb822(Deb822Action::ReorderParagraphs {
         file: copyright_rel,

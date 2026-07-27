@@ -45,7 +45,7 @@ pub fn detect(
         if name.starts_with("README") {
             continue;
         }
-        // Skip directories (and any other non-readable entries) — only
+        // Skip directories (and any other non-readable entries) - only
         // proper patch files are candidates for removal.
         let rel = PathBuf::from("debian/patches").join(&name);
         if !matches!(ws.read_file(&rel), Ok(Some(_))) {
@@ -63,7 +63,7 @@ pub fn detect(
             Visibility::Warning,
             vec![format!("[debian/patches/{}]", name)],
         );
-        // Removing the file is destructive — in plenty of packages the
+        // Removing the file is destructive - in plenty of packages the
         // unreferenced patch is intentional (kept around for reference).
         // Only fire under --opinionated.
         diagnostics.push(Diagnostic::with_plans(

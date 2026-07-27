@@ -47,7 +47,7 @@ fn compute_insertion(content: &[u8]) -> Option<(usize, String)> {
     let Some(i) = found else { return None };
 
     // Insertion point: absolute byte offset of `lines[i]`. (Note: that's
-    // one element behind the matched line — the original code's slice
+    // one element behind the matched line - the original code's slice
     // boundary is `lines[1..i]` for prefix, `lines[i..]` for suffix.)
     let insert_at: usize = lines[..i].iter().map(|l| l.len()).sum();
 

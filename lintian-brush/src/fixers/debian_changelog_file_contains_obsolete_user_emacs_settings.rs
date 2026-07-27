@@ -22,7 +22,7 @@ pub fn detect(
 
     // Collect matches in reverse order so byte offsets remain stable as
     // earlier ReplaceText actions are applied.
-    let matches: Vec<_> = re.find_iter(&content).collect();
+    let matches: Vec<_> = re.find_iter(content).collect();
     if matches.is_empty() {
         return Ok(Vec::new());
     }

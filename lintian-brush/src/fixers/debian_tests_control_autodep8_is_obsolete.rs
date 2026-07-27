@@ -84,7 +84,7 @@ pub fn detect(
             format!("Merge {} into {}.", OLD_REL, NEW_REL),
             actions,
         ),
-        // The obsolete diagnostic carries no actions of its own — the
+        // The obsolete diagnostic carries no actions of its own - the
         // merge above already removed the file. Emitting it as a separate
         // diagnostic ensures the lintian issue is still reported.
         Diagnostic::with_actions(

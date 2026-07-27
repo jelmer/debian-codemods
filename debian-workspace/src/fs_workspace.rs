@@ -30,9 +30,9 @@ pub struct FsWorkspace {
 impl FsWorkspace {
     /// Create a new tree-backed workspace.
     ///
-    /// * `base_path` — absolute filesystem path of the package root (the
+    /// * `base_path` - absolute filesystem path of the package root (the
     ///   directory containing `debian/`).
-    /// * `package`, `version` — taken from `debian/changelog` by the caller.
+    /// * `package`, `version` - taken from `debian/changelog` by the caller.
     ///   Pass `None` when the caller hasn't read the changelog (e.g. tests, or
     ///   tools that don't surface package metadata to their detectors).
     pub fn new(
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     fn tree_workspace_missing_control_is_not_found() {
         let tmp = TempDir::new().unwrap();
-        // Don't make_pkg — no debian/ at all.
+        // Don't make_pkg - no debian/ at all.
         let ws = FsWorkspace::new(
             tmp.path(),
             Some("foo".into()),

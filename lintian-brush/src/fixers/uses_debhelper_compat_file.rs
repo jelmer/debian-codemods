@@ -67,7 +67,7 @@ pub fn detect(
 
     // Per field: drop debhelper if its constraint is implied by
     // `debhelper (>= compat_version)`. Always add debhelper-compat to
-    // Build-Depends and remove the debian/compat file — those are the
+    // Build-Depends and remove the debian/compat file - those are the
     // primary fix; the DropRelation actions only fire when a debhelper
     // entry is redundant given the new debhelper-compat dependency.
     let mut actions: Vec<Action> = Vec::new();

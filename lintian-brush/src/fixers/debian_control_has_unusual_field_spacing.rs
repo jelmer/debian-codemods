@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 /// Collect diagnostics for unusual field spacing in `parsed_path` and emit
 /// actions targeting `file_for_actions`. Issues are only emitted when
-/// `tagged` is true — the second pass over a generated control's rendered
+/// `tagged` is true - the second pass over a generated control's rendered
 /// file shares the same lintian issue and re-emitting it would
 /// double-count.
 fn collect_diagnostics(
