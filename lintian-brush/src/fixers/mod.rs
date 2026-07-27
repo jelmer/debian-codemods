@@ -12,6 +12,7 @@ mod bugs_field_does_not_refer_to_debian_infrastructure;
 mod build_depends_on_1_revision;
 mod build_depends_on_build_essential;
 mod build_depends_on_obsolete_package;
+mod build_depends_on_python_dev_with_no_arch_any;
 mod build_depends_on_python_sphinx_only;
 mod built_using_for_golang;
 mod capitalization_error_in_description;
