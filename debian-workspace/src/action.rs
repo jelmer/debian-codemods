@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 pub struct ActionPlan {
     /// Imperative description of what this plan would do, shown to the
     /// user (LSP code-action menu, `lintian-brush --interactive`). Every
-    /// plan must have one — a diagnostic with multiple plans needs each
+    /// plan must have one - a diagnostic with multiple plans needs each
     /// titled distinctly so the user can pick.
     pub label: String,
     /// If true, this plan only applies when the user has opted into
@@ -235,7 +235,7 @@ pub enum Deb822Action {
     },
     /// Like [`SetField`](Self::SetField), but with an explicit
     /// continuation-line indent pattern. Used for fields whose
-    /// formatting convention diverges from the deb822 default — most
+    /// formatting convention diverges from the deb822 default - most
     /// notably binary-package `Description:` (single-space indent per
     /// DEP-5) and debian/copyright bodies.
     SetFieldWithIndent {
@@ -490,7 +490,7 @@ pub enum Deb822Action {
     /// Drop the commented-out lines embedded in a field's value.
     ///
     /// A deb822 field's value can be followed by `#`-prefixed lines that
-    /// the parser keeps attached to that field — e.g. the commented-out
+    /// the parser keeps attached to that field - e.g. the commented-out
     /// `Vcs-*` lines old `dh_make` versions append after `Homepage`.
     /// This rewrites the field to its comment-free value, dropping those
     /// lines. A no-op if the field carries no embedded comment lines.
@@ -511,7 +511,7 @@ pub enum Deb822Action {
 /// targets one entry within it.
 ///
 /// Multi-valued fields (e.g. `Alias=`, `After=`) are handled by
-/// [`Add`](Self::Add) / [`RemoveValue`](Self::RemoveValue) — these append a
+/// [`Add`](Self::Add) / [`RemoveValue`](Self::RemoveValue) - these append a
 /// new value or remove a specific one without touching siblings.
 /// [`SetField`](Self::SetField) replaces every occurrence of the key with a
 /// single value, which is the right thing for scalar fields like `PIDFile=`
@@ -726,7 +726,7 @@ pub enum YamlPathComponent {
 /// Edits to a `debian/changelog`.
 ///
 /// Operations target entries by their version, which is stable across
-/// minor edits. Change-line content is supplied verbatim — the applier
+/// minor edits. Change-line content is supplied verbatim - the applier
 /// preserves the changelog's existing indentation rules when re-rendering.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
@@ -746,7 +746,7 @@ pub enum ChangelogAction {
     /// Set the trailer datetime of the entry with the given version.
     ///
     /// The datetime is stored as an RFC 2822 string (`"Sun, 22 Apr 2018
-    /// 00:58:14 +0000"`) — what `chrono::DateTime::to_rfc2822` produces
+    /// 00:58:14 +0000"`) - what `chrono::DateTime::to_rfc2822` produces
     /// and what changelog trailers use natively.
     SetEntryDate {
         /// File to edit, relative to the package root.
@@ -785,7 +785,7 @@ pub enum ChangelogAction {
     },
     /// Replace the body lines of a bullet, identified the same way as in
     /// [`RemoveBullet`](Self::RemoveBullet). `new_lines` are stored
-    /// without their `  *`/`    ` continuation prefix — the applier
+    /// without their `  *`/`    ` continuation prefix - the applier
     /// passes them straight to `Bullet::replace_with`, which re-adds the
     /// proper indentation.
     ReplaceBullet {
@@ -991,7 +991,7 @@ pub enum MakefileAction {
         to_target: String,
     },
     /// Append a new rule with `target` and the given (possibly empty)
-    /// prerequisites. The applier does not check for an existing rule —
+    /// prerequisites. The applier does not check for an existing rule -
     /// detectors must guard against duplicates themselves.
     AddRule {
         /// File to edit, relative to the package root.
@@ -1127,7 +1127,7 @@ pub enum LintianOverridesAction {
         info: Option<String>,
     },
     /// Drop the first override line that matches `selector`. Each
-    /// DropLine action consumes one line — to remove N copies of the
+    /// DropLine action consumes one line - to remove N copies of the
     /// same line, emit N actions. If the file becomes empty (no
     /// override lines remain), it is removed entirely.
     DropLine {
@@ -1148,7 +1148,7 @@ pub enum LintianOverridesAction {
         to_tag: String,
     },
     /// Rewrite the info text on the first line that matches `selector`.
-    /// Only the info portion changes — the package spec, tag, and
+    /// Only the info portion changes - the package spec, tag, and
     /// surrounding whitespace are preserved.
     SetLineInfo {
         /// File to edit, relative to the package root.
@@ -1171,7 +1171,7 @@ pub enum MaintscriptAction {
     /// Drop the first entry whose trimmed line text equals `entry`.
     /// Comments immediately preceding the dropped line are also removed.
     /// If the file ends up empty (no entries remain), it is removed
-    /// entirely. Each `DropEntry` consumes one matching line — to remove
+    /// entirely. Each `DropEntry` consumes one matching line - to remove
     /// N copies of the same entry, emit N actions.
     DropEntry {
         /// File to edit, relative to the package root.
@@ -1186,7 +1186,7 @@ pub enum MaintscriptAction {
 ///
 /// Debcargo manages its own control file; we manipulate scalar fields under
 /// the `[source]` table directly. Only a small set of operations is needed
-/// in practice — the equivalent of typed setters on the generated control
+/// in practice - the equivalent of typed setters on the generated control
 /// fields (Vcs-Git, Vcs-Browser, Standards-Version, Section).
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
@@ -1266,7 +1266,7 @@ pub enum FilesystemAction {
         to: PathBuf,
     },
     /// Remove a directory if it is empty. A no-op if the directory has
-    /// any remaining entries — useful as a follow-up to a `Delete` that
+    /// any remaining entries - useful as a follow-up to a `Delete` that
     /// might have been the last file in its parent directory.
     RemoveDirIfEmpty {
         /// Directory to remove, relative to the package root. The
@@ -1304,8 +1304,8 @@ pub enum FilesystemAction {
     /// applier reads the current file, performs the conversion, and
     /// writes back. Modelling this as its own variant (rather than as a
     /// `Write` carrying the converted bytes) keeps the diagnostic stream
-    /// declarative — anyone reading it sees the *intent* and not a byte
-    /// blob — and lets an LSP host emit a structural `TextEdit` derived
+    /// declarative - anyone reading it sees the *intent* and not a byte
+    /// blob - and lets an LSP host emit a structural `TextEdit` derived
     /// from the open buffer rather than from a possibly-stale snapshot.
     NormalizeLineEndings {
         /// File to convert, relative to the package root.

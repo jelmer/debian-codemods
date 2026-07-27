@@ -136,8 +136,8 @@ pub fn detect(
     };
     let deb822 = copyright.as_deb822();
 
-    let defined = collect_defined_licenses(&deb822);
-    let used = collect_used_licenses(&deb822, &defined);
+    let defined = collect_defined_licenses(deb822);
+    let used = collect_used_licenses(deb822, &defined);
     let extra_defined = calculate_extra_defined(&defined, &used);
     let extra_used = calculate_extra_used(&defined, &used);
 
@@ -145,7 +145,7 @@ pub fn detect(
         return Ok(Vec::new());
     }
 
-    let certainty = check_license_references(&deb822, &extra_defined);
+    let certainty = check_license_references(deb822, &extra_defined);
 
     let mut diagnostics = Vec::new();
     for (idx, paragraph) in deb822.paragraphs().enumerate() {
@@ -281,7 +281,7 @@ mod tests {
         );
         assert_eq!(result.certainty, Some(Certainty::Certain));
 
-        // The removed BSL-1 paragraph leaves a trailing blank line —
+        // The removed BSL-1 paragraph leaves a trailing blank line -
         // the lossless deb822 representation tracks the blank-line
         // separator as part of the file rather than the paragraph.
         assert_eq!(

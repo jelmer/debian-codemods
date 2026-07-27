@@ -20,7 +20,7 @@ pub fn detect(
         let Ok(content) = std::str::from_utf8(&bytes) else {
             continue;
         };
-        let parsed = LintianOverrides::parse(&content);
+        let parsed = LintianOverrides::parse(content);
         if !parsed.errors().is_empty() {
             continue;
         }

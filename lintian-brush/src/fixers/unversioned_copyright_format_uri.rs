@@ -23,7 +23,7 @@ pub fn detect(
     let Ok(content) = std::str::from_utf8(&bytes) else {
         return Ok(Vec::new());
     };
-    let deb822 = match deb822_lossless::Deb822::from_str(&content) {
+    let deb822 = match deb822_lossless::Deb822::from_str(content) {
         Ok(d) => d,
         Err(_) => return Ok(Vec::new()),
     };

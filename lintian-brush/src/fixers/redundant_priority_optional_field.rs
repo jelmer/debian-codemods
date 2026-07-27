@@ -3,11 +3,32 @@ use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphS
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
 use debian_workspace::Workspace;
 use std::path::PathBuf;
+use std::str::FromStr;
+
+/// dpkg release in which Priority: optional became the implicit default.
+const DPKG_DEFAULT_PRIORITY_OPTIONAL: &str = "1.22.13";
 
 pub fn detect(
     ws: &dyn Workspace,
-    _preferences: &FixerPreferences,
+    preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
+    // Priority: optional is only redundant once the targeted release ships a
+    // dpkg that defaults to it; before that, dropping the field changes the
+    // package's priority.
+    let compat_release = preferences.compat_release.as_deref().unwrap_or("sid");
+    let default_priority_is_optional = match debian_analyzer::release_info::dpkg_versions
+        .get(compat_release)
+    {
+        Some(oldest_dpkg) => {
+            *oldest_dpkg >= debversion::Version::from_str(DPKG_DEFAULT_PRIORITY_OPTIONAL).unwrap()
+        }
+        // Unknown release: assume current dpkg behaviour.
+        None => true,
+    };
+    if !default_priority_is_optional {
+        return Ok(Vec::new());
+    }
+
     let control = match ws.parsed_control() {
         Ok(c) => c,
         Err(debian_workspace::Error::NotFound) => return Ok(Vec::new()),
@@ -154,6 +175,16 @@ mod tests {
         detect(&ws, &FixerPreferences::default())
     }
 
+    fn run_apply_for(base: &Path, compat_release: &str) -> Result<crate::FixerResult, FixerError> {
+        let version: Version = "1.0".parse().unwrap();
+        let preferences = FixerPreferences {
+            compat_release: Some(compat_release.to_string()),
+            ..Default::default()
+        };
+        let ws = FsWorkspace::new(base, Some("test".into()), Some(version));
+        DetectorImpl.apply(&ws, &preferences)
+    }
+
     fn write_control(base: &Path, content: &str) {
         let debian = base.join("debian");
         fs::create_dir_all(&debian).unwrap();
@@ -223,7 +254,7 @@ mod tests {
     #[test]
     fn test_keeps_binary_priority_when_source_non_optional() {
         // Source declares Priority: standard, so the binary's Priority: optional
-        // is a meaningful override — lintian does not emit the tag, and we
+        // is a meaningful override - lintian does not emit the tag, and we
         // must not strip it.
         let temp_dir = TempDir::new().unwrap();
         let base = temp_dir.path();
@@ -237,6 +268,46 @@ mod tests {
             content
         );
         assert!(detect_in(base).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_keeps_priority_on_older_compat_release() {
+        // Priority: optional only became the implicit default in dpkg 1.22.13
+        // (trixie). Targeting bookworm, the field is still required.
+        let temp_dir = TempDir::new().unwrap();
+        let base = temp_dir.path();
+        let content =
+            "Source: foo\nPriority: optional\n\nPackage: foo\nPriority: optional\nDescription: Foo\n bar\n";
+        write_control(base, content);
+
+        assert!(matches!(
+            run_apply_for(base, "bookworm"),
+            Err(FixerError::NoChanges)
+        ));
+        assert_eq!(
+            fs::read_to_string(base.join("debian/control")).unwrap(),
+            content
+        );
+    }
+
+    #[test]
+    fn test_removes_priority_on_newer_compat_release() {
+        let temp_dir = TempDir::new().unwrap();
+        let base = temp_dir.path();
+        write_control(
+            base,
+            "Source: foo\nPriority: optional\n\nPackage: foo\nDescription: Foo\n bar\n",
+        );
+
+        let result = run_apply_for(base, "trixie").unwrap();
+        assert_eq!(
+            result.description,
+            "Remove redundant Priority: optional from source stanza."
+        );
+        assert_eq!(
+            fs::read_to_string(base.join("debian/control")).unwrap(),
+            "Source: foo\n\nPackage: foo\nDescription: Foo\n bar\n",
+        );
     }
 
     #[test]

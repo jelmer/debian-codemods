@@ -179,7 +179,7 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    let allow_reformatting = allow_reformatting.unwrap_or(false);
+    let _allow_reformatting = allow_reformatting.unwrap_or(false);
 
     let debian_path = if debian_analyzer::control_files_in_root(&wt, &subpath) {
         subpath.to_path_buf()

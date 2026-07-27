@@ -10,11 +10,11 @@
 //!
 //! Two implementations are intended:
 //!
-//! * [`FsWorkspace`] — pure-`std` shim that operates on a base
+//! * [`FsWorkspace`] - pure-`std` shim that operates on a base
 //!   directory on disk. Used by the lintian-brush CLI; preserves the
 //!   existing semantics where the harness writes the tree to disk, the
 //!   fixer mutates files there, and the harness diffs the result.
-//! * `LspWorkspace` (lives in debian-lsp) — wraps a salsa-backed
+//! * `LspWorkspace` (lives in debian-lsp) - wraps a salsa-backed
 //!   in-memory workspace. Mutations are accumulated as a single
 //!   `WorkspaceEdit` rather than being written back to disk.
 //!
@@ -41,7 +41,7 @@ use crate::{Error, Version};
 /// The parsed value is reachable via `Deref`/`DerefMut`; mutate it as you
 /// would the bare type. Changes are persisted by calling
 /// [`commit`](Self::commit). Dropping an editor without committing discards
-/// the changes (and emits a warning) — explicit commit is required so that
+/// the changes (and emits a warning) - explicit commit is required so that
 /// serialisation failures can be reported.
 ///
 /// `T` is the parsed representation (e.g.
@@ -75,7 +75,7 @@ pub trait Workspace {
 
     /// Read `debian/control` and return a parsed value.
     ///
-    /// Returns `Err(Error::NotFound)` if the file is missing —
+    /// Returns `Err(Error::NotFound)` if the file is missing -
     /// detectors typically want that exact response.
     ///
     /// Parsing is relaxed: syntax errors are tolerated and the resulting
@@ -85,7 +85,7 @@ pub trait Workspace {
     /// exists) rather than expecting `Err`.
     ///
     /// Implementations may cache the parse; the returned value is owned
-    /// (`Control` is cheap to clone — its rowan green nodes are shared
+    /// (`Control` is cheap to clone - its rowan green nodes are shared
     /// internally).
     fn parsed_control(&self) -> Result<Control, Error>;
 
@@ -164,7 +164,7 @@ pub trait Workspace {
     /// Returns `Ok(None)` when the file does not exist. On success the
     /// tuple's first element is the patch's DEP-3 header, or `None` when
     /// the patch carries no header (a bare diff) or its header does not
-    /// parse — the header is optional metadata. The second element is
+    /// parse - the header is optional metadata. The second element is
     /// the lossless parse of the diff body; that parser is
     /// error-recovering, so a [`Patch`] is produced even for a malformed
     /// diff.
@@ -193,7 +193,7 @@ pub trait Workspace {
     /// Read the trimmed contents of `debian/source/format`.
     ///
     /// Returns `Ok(None)` if the file is missing. The default format
-    /// (`1.0`) is *not* substituted — callers see exactly what is on
+    /// (`1.0`) is *not* substituted - callers see exactly what is on
     /// disk so they can distinguish "no file" from "explicit 1.0".
     fn source_format(&self) -> Result<Option<String>, Error>;
 
@@ -204,7 +204,7 @@ pub trait Workspace {
     /// that need to record edits on the workspace itself should use interior
     /// mutability.
     ///
-    /// Detectors don't need this — they emit `Action`s for the appliers to
+    /// Detectors don't need this - they emit `Action`s for the appliers to
     /// run. Use [`parsed_control`](Self::parsed_control) instead.
     fn control(&self) -> Result<Box<dyn Editor<Control> + '_>, Error>;
 
@@ -258,7 +258,7 @@ pub trait Workspace {
     /// Returns the file (and subdirectory) names within `rel`, without any
     /// path prefix. Returns `Ok(None)` if the directory does not exist.
     ///
-    /// The order of returned entries is unspecified — a non-`Tree` host
+    /// The order of returned entries is unspecified - a non-`Tree` host
     /// (an LSP) may not have a meaningful directory ordering.
     fn list_dir(&self, rel: &Path) -> Result<Option<Vec<String>>, Error>;
 
@@ -306,7 +306,7 @@ pub trait Workspace {
     /// where the package has been materialised to disk. Returns `None`
     /// for in-memory hosts (an LSP serving open buffers); detectors that
     /// genuinely need to walk the source tree (e.g. an upstream-metadata
-    /// guesser, a license scanner) should treat `None` as "skip — we
+    /// guesser, a license scanner) should treat `None` as "skip - we
     /// can't help here".
     ///
     /// Prefer the typed accessors ([`read_file`](Self::read_file),
@@ -324,8 +324,8 @@ pub trait Workspace {
 /// field or a `debhelper-compat` build dependency in `debian/control`.
 /// Returns `Ok(None)` when neither source is present or parseable.
 pub fn compat_level(ws: &dyn Workspace) -> Result<Option<u8>, Error> {
-    if let Some(bytes) = ws.read_file(Path::new("debian/compat"))? {
-        if let Ok(text) = std::str::from_utf8(&bytes) {
+    if let Some(bytes) = ws.read_file(Path::new("debian/compat"))?
+        && let Ok(text) = std::str::from_utf8(&bytes) {
             let trimmed = text
                 .split_once('#')
                 .map_or(text, |(before, _)| before)
@@ -334,7 +334,6 @@ pub fn compat_level(ws: &dyn Workspace) -> Result<Option<u8>, Error> {
                 return Ok(Some(level));
             }
         }
-    }
 
     let control = match ws.parsed_control() {
         Ok(c) => c,

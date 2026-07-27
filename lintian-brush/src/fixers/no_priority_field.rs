@@ -100,8 +100,8 @@ pub fn detect(
         // If we added it implicitly to all missing ones, it's as if they were explicit
         // if we are going to write it to source anyway.
         // But wait! If none had it explicitly, we only write to source if we actually needed to add it (i.e. !default_priority_is_optional).
-        if any_explicit || !default_priority_is_optional {
-            if common_priority != "optional" || !default_priority_is_optional {
+        if (any_explicit || !default_priority_is_optional)
+            && (common_priority != "optional" || !default_priority_is_optional) {
                 let mut actions = vec![Action::Deb822(Deb822Action::SetField {
                     file: control_rel.clone(),
                     paragraph: ParagraphSelector::Source,
@@ -154,7 +154,6 @@ pub fn detect(
                     patch_name: None,
                 });
             }
-        }
     }
 
     if diagnostics.is_empty() && !default_priority_is_optional {

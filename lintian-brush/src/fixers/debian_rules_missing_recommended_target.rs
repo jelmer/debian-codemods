@@ -39,7 +39,7 @@ pub fn detect(
     let Ok(content) = std::str::from_utf8(&rules_bytes) else {
         return Ok(Vec::new());
     };
-    let parsed = Parse::<Makefile>::parse_makefile(&content);
+    let parsed = Parse::<Makefile>::parse_makefile(content);
     if !parsed.ok() {
         tracing::warn!(
             "debian/rules has parse errors, skipping: {}",

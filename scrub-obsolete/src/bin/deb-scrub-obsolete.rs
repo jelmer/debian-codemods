@@ -371,7 +371,7 @@ fn scrub_obsolete(
     result.set_specific_files(specific_files.clone());
 
     let mut lines = vec![];
-    for (release, _entries) in summary.iter() {
+    for release in summary.keys() {
         let rev_aliases = debian_analyzer::release_info::release_aliases(release, None);
         let mut line = format!("Remove constraints unnecessary since {}", release);
         for alias in rev_aliases {

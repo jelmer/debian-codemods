@@ -29,7 +29,7 @@ pub fn detect(
             continue;
         }
         let url = entry.url();
-        // Probe by attempting the conversion on a clone — the result
+        // Probe by attempting the conversion on a clone - the result
         // tells us which template (if any) matches. We then emit an
         // action that re-runs the conversion at apply time.
         let Some(template) = entry.try_convert_to_template() else {

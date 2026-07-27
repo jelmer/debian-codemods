@@ -2,12 +2,12 @@
 //!
 //! This module owns:
 //!
-//! * [`apply_diagnostics`] / [`apply_diagnostics_with`] — the shared
+//! * [`apply_diagnostics`] / [`apply_diagnostics_with`] - the shared
 //!   pipeline that filters diagnostics by lintian overrides and
 //!   `preferences.minimum_certainty`, then drives
 //!   [`crate::appliers::apply_actions`].
-//! * [`default_describe`] — the default commit message generator.
-//! * [`get_builtin_fixers`] — collects every registered
+//! * [`default_describe`] - the default commit message generator.
+//! * [`get_builtin_fixers`] - collects every registered
 //!   [`Detector`](crate::detector::Detector) and sorts the result by
 //!   `after`/`before` declarations.
 

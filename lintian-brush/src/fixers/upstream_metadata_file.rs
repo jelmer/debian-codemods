@@ -32,8 +32,8 @@ pub fn detect(
     ws: &dyn Workspace,
     preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    // Most of this fixer's work — guess_upstream_metadata_items, the
-    // copyright walker — runs over the package tree on disk. Fall
+    // Most of this fixer's work - guess_upstream_metadata_items, the
+    // copyright walker - runs over the package tree on disk. Fall
     // back to the filesystem escape hatch.
     let Some(base_path) = ws.base_path() else {
         return Ok(Vec::new());
@@ -619,7 +619,7 @@ pub fn detect(
 
     // Attach the actions to whichever diagnostic gates whether any
     // change can happen. When the file doesn't exist yet, all outputs
-    // depend on creating the file — so we anchor the actions on the
+    // depend on creating the file - so we anchor the actions on the
     // missing-file issue. If the user overrides that issue, the actions
     // drop out and the other diagnostics (Repository / Bug-Tracking)
     // survive only as informational entries with no action.

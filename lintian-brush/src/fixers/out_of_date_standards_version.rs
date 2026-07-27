@@ -550,13 +550,13 @@ pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
 ) -> Result<Vec<Diagnostic>, FixerError> {
-    // Debcargo packages manage their own control file — skip.
+    // Debcargo packages manage their own control file - skip.
     if ws.read_file(Path::new("debian/debcargo.toml"))?.is_some() {
         return Ok(Vec::new());
     }
 
     // check_copyright_files_not_directories does is_dir() probes against
-    // arbitrary glob targets — only resolvable on a real on-disk base.
+    // arbitrary glob targets - only resolvable on a real on-disk base.
     // LSP hosts won't supply one and skip the standards-version bump.
     let Some(base_path) = ws.base_path() else {
         return Ok(Vec::new());

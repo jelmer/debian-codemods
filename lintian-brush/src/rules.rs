@@ -71,7 +71,7 @@ fn find_option_argument(line: &str, key: &str) -> Option<(usize, usize)> {
             // --key=value form: find end of value
             let value_start = after_key + 1;
             let value_end = line[value_start..]
-                .find(|c: char| c == ' ' || c == '\t')
+                .find([' ', '\t'])
                 .map_or(line.len(), |i| value_start + i);
             return Some((pos, value_end));
         } else if after_key < line.len() && (bytes[after_key] == b' ' || bytes[after_key] == b'\t')
@@ -79,7 +79,7 @@ fn find_option_argument(line: &str, key: &str) -> Option<(usize, usize)> {
             // --key value form: find end of value
             let value_start = after_key + 1;
             let value_end = line[value_start..]
-                .find(|c: char| c == ' ' || c == '\t')
+                .find([' ', '\t'])
                 .map_or(line.len(), |i| value_start + i);
             return Some((pos, value_end));
         }
