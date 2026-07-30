@@ -325,15 +325,16 @@ pub trait Workspace {
 /// Returns `Ok(None)` when neither source is present or parseable.
 pub fn compat_level(ws: &dyn Workspace) -> Result<Option<u8>, Error> {
     if let Some(bytes) = ws.read_file(Path::new("debian/compat"))?
-        && let Ok(text) = std::str::from_utf8(&bytes) {
-            let trimmed = text
-                .split_once('#')
-                .map_or(text, |(before, _)| before)
-                .trim();
-            if let Ok(level) = trimmed.parse::<u8>() {
-                return Ok(Some(level));
-            }
+        && let Ok(text) = std::str::from_utf8(&bytes)
+    {
+        let trimmed = text
+            .split_once('#')
+            .map_or(text, |(before, _)| before)
+            .trim();
+        if let Ok(level) = trimmed.parse::<u8>() {
+            return Ok(Some(level));
         }
+    }
 
     let control = match ws.parsed_control() {
         Ok(c) => c,

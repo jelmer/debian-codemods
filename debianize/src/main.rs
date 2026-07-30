@@ -641,7 +641,8 @@ fn main() -> Result<(), i32> {
                 false,
                 Some(Box::new(breezyshim::commit::ReportCommitToLog::new())),
             );
-            let fixers = ognibuild::debian::fixers::default_fixers(&context, &apt);
+            let fixers = ognibuild::debian::fixers::default_fixers(&context, &apt)
+                .map_err(IterateBuildError::Other)?;
             ognibuild::debian::fix_build::build_incrementally(
                 wt,
                 None,
