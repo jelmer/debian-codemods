@@ -533,19 +533,21 @@ fn apply_copyright_deb822_group(
                     if let Some(mut files_para) = copyright
                         .iter_files()
                         .find(|p| p.as_deb822().get("Files").as_deref() == Some(glob.as_str()))
-                        && files_para.as_deb822().get(field).is_some() {
-                            files_para.remove_field(field);
-                            any_change = true;
-                        }
+                        && files_para.as_deb822().get(field).is_some()
+                    {
+                        files_para.remove_field(field);
+                        any_change = true;
+                    }
                 }
                 ParagraphSelector::CopyrightLicense { name } => {
                     if let Some(mut license_para) = copyright
                         .iter_licenses()
                         .find(|p| p.name().as_deref() == Some(name.as_str()))
-                        && license_para.as_deb822().get(field).is_some() {
-                            license_para.remove_field(field);
-                            any_change = true;
-                        }
+                        && license_para.as_deb822().get(field).is_some()
+                    {
+                        license_para.remove_field(field);
+                        any_change = true;
+                    }
                 }
                 other => {
                     return Err(FixerError::Other(format!(
@@ -678,9 +680,10 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if let Some(mut entry) = p.get_entry(field)
-                    && entry.normalize_field_spacing() {
-                        any_change = true;
-                    }
+                    && entry.normalize_field_spacing()
+                {
+                    any_change = true;
+                }
             }
             Deb822Action::DropRelation {
                 paragraph,
@@ -2322,9 +2325,10 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
                 };
                 if let Some(existing) = mapping.get(key.as_str())
                     && let yaml_edit::YamlNode::Scalar(scalar) = existing
-                        && scalar.as_string() == *value {
-                            continue;
-                        }
+                    && scalar.as_string() == *value
+                {
+                    continue;
+                }
                 mapping.set(key.as_str(), value.as_str());
                 any_change = true;
             }
@@ -2344,9 +2348,10 @@ fn apply_yaml_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, 
                 };
                 if let Some(existing) = mapping.get(key.as_str())
                     && let yaml_edit::YamlNode::Scalar(scalar) = existing
-                        && scalar.as_string() == *value {
-                            continue;
-                        }
+                    && scalar.as_string() == *value
+                {
+                    continue;
+                }
                 mapping.set_with_field_order(
                     key.as_str(),
                     value.as_str(),
@@ -2693,9 +2698,10 @@ fn apply_watch_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool,
                     }
                     // Templates are a v5 (deb822) feature only.
                     if let debian_watch::parse::ParsedEntry::Deb822(e) = &mut entry
-                        && e.try_convert_to_template().is_some() {
-                            any_change = true;
-                        }
+                        && e.try_convert_to_template().is_some()
+                    {
+                        any_change = true;
+                    }
                     break;
                 }
             }
@@ -2789,19 +2795,21 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 if let Some(mut var) = makefile
                     .variable_definitions()
                     .find(|v| v.name().as_deref() == Some(name.as_str()))
-                    && var.raw_value().as_deref().map(str::trim) != Some(value.as_str()) {
-                        var.set_value(value);
-                        any_change = true;
-                    }
+                    && var.raw_value().as_deref().map(str::trim) != Some(value.as_str())
+                {
+                    var.set_value(value);
+                    any_change = true;
+                }
             }
             MakefileAction::SetVariableOperator { name, operator, .. } => {
                 if let Some(mut var) = makefile
                     .variable_definitions()
                     .find(|v| v.name().as_deref() == Some(name.as_str()))
-                    && var.assignment_operator().as_deref() != Some(operator.as_str()) {
-                        var.set_assignment_operator(operator);
-                        any_change = true;
-                    }
+                    && var.assignment_operator().as_deref() != Some(operator.as_str())
+                {
+                    var.set_assignment_operator(operator);
+                    any_change = true;
+                }
             }
             MakefileAction::RemoveVariable { name, .. } => {
                 if let Some(mut var) = makefile
@@ -2950,14 +2958,15 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 let mut found = false;
                 for mut item in items {
                     if let makefile_lossless::MakefileItem::Variable(var) = &item
-                        && var.name().as_deref() == Some(name.as_str()) {
-                            item.replace(makefile_lossless::MakefileItem::Include(include.clone()))
-                                .map_err(|e| {
-                                    FixerError::Other(format!("Failed to replace variable: {}", e))
-                                })?;
-                            found = true;
-                            break;
-                        }
+                        && var.name().as_deref() == Some(name.as_str())
+                    {
+                        item.replace(makefile_lossless::MakefileItem::Include(include.clone()))
+                            .map_err(|e| {
+                                FixerError::Other(format!("Failed to replace variable: {}", e))
+                            })?;
+                        found = true;
+                        break;
+                    }
                 }
                 if found {
                     rules = makefile.rules().collect();
@@ -2984,16 +2993,17 @@ fn apply_makefile_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 let mut inserted = false;
                 for mut item in items {
                     if let makefile_lossless::MakefileItem::Variable(var) = &item
-                        && var.name().as_deref() == Some(before_variable.as_str()) {
-                            item.insert_before(makefile_lossless::MakefileItem::Include(
-                                include.clone(),
-                            ))
-                            .map_err(|e| {
-                                FixerError::Other(format!("Failed to insert include: {}", e))
-                            })?;
-                            inserted = true;
-                            break;
-                        }
+                        && var.name().as_deref() == Some(before_variable.as_str())
+                    {
+                        item.insert_before(makefile_lossless::MakefileItem::Include(
+                            include.clone(),
+                        ))
+                        .map_err(|e| {
+                            FixerError::Other(format!("Failed to insert include: {}", e))
+                        })?;
+                        inserted = true;
+                        break;
+                    }
                 }
                 if inserted {
                     rules = makefile.rules().collect();

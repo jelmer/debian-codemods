@@ -101,59 +101,59 @@ pub fn detect(
         // if we are going to write it to source anyway.
         // But wait! If none had it explicitly, we only write to source if we actually needed to add it (i.e. !default_priority_is_optional).
         if (any_explicit || !default_priority_is_optional)
-            && (common_priority != "optional" || !default_priority_is_optional) {
-                let mut actions = vec![Action::Deb822(Deb822Action::SetField {
-                    file: control_rel.clone(),
-                    paragraph: ParagraphSelector::Source,
-                    field: "Priority".to_string(),
-                    value: common_priority.clone(),
-                })];
+            && (common_priority != "optional" || !default_priority_is_optional)
+        {
+            let mut actions = vec![Action::Deb822(Deb822Action::SetField {
+                file: control_rel.clone(),
+                paragraph: ParagraphSelector::Source,
+                field: "Priority".to_string(),
+                value: common_priority.clone(),
+            })];
 
-                for binary in &binaries {
-                    let package_name = binary
-                        .as_deb822()
-                        .get("Package")
-                        .unwrap_or_default()
-                        .to_string();
-                    if binary.as_deb822().get("Priority").is_some() {
-                        actions.push(Action::Deb822(Deb822Action::RemoveField {
-                            file: control_rel.clone(),
-                            paragraph: ParagraphSelector::Binary {
-                                package: package_name,
-                            },
-                            field: "Priority".to_string(),
-                        }));
-                    }
+            for binary in &binaries {
+                let package_name = binary
+                    .as_deb822()
+                    .get("Package")
+                    .unwrap_or_default()
+                    .to_string();
+                if binary.as_deb822().get("Priority").is_some() {
+                    actions.push(Action::Deb822(Deb822Action::RemoveField {
+                        file: control_rel.clone(),
+                        paragraph: ParagraphSelector::Binary {
+                            package: package_name,
+                        },
+                        field: "Priority".to_string(),
+                    }));
                 }
-
-                let issue = if !missing_priorities.is_empty() {
-                    Some(LintianIssue::source_with_info(
-                        "recommended-field",
-                        Visibility::Warning,
-                        vec![format!("debian/control Priority")],
-                    ))
-                } else {
-                    None
-                };
-
-                let plans = vec![ActionPlan {
-                    label: "Set priority in source stanza, since it is the same for all packages."
-                        .to_string(),
-                    opinionated: false,
-                    certainty: None,
-                    actions,
-                }];
-
-                diagnostics.push(Diagnostic {
-                    issue,
-                    message:
-                        "Set priority in source stanza, since it is the same for all packages."
-                            .to_string(),
-                    plans,
-                    certainty: Some(crate::Certainty::Confident),
-                    patch_name: None,
-                });
             }
+
+            let issue = if !missing_priorities.is_empty() {
+                Some(LintianIssue::source_with_info(
+                    "recommended-field",
+                    Visibility::Warning,
+                    vec![format!("debian/control Priority")],
+                ))
+            } else {
+                None
+            };
+
+            let plans = vec![ActionPlan {
+                label: "Set priority in source stanza, since it is the same for all packages."
+                    .to_string(),
+                opinionated: false,
+                certainty: None,
+                actions,
+            }];
+
+            diagnostics.push(Diagnostic {
+                issue,
+                message: "Set priority in source stanza, since it is the same for all packages."
+                    .to_string(),
+                plans,
+                certainty: Some(crate::Certainty::Confident),
+                patch_name: None,
+            });
+        }
     }
 
     if diagnostics.is_empty() && !default_priority_is_optional {

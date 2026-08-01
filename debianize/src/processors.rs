@@ -904,8 +904,8 @@ fn process_cargo(context: &mut ProcessorContext) -> Result<(), Error> {
             ))
         }
     };
-    let mut source = control
-        .add_source(&upstream_package_to_debian_source_name("rust", upstream_name).unwrap());
+    let mut source =
+        control.add_source(&upstream_package_to_debian_source_name("rust", upstream_name).unwrap());
 
     context.bootstrap_debhelper(
         &mut source,
