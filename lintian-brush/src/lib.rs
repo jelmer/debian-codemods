@@ -262,7 +262,7 @@ impl LintianIssue {
     pub fn should_fix(&self, base_path: &std::path::Path) -> bool {
         use crate::lintian_overrides::{self, OverrideLineMatch};
 
-        for line in lintian_overrides::iter_overrides(base_path) {
+        for line in lintian_overrides::try_iter_overrides(base_path).unwrap() {
             if line.matches_issue(self) {
                 return false;
             }

@@ -345,6 +345,9 @@ name = "bit-vec"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b71798fca2c1fe1086445a7258a4bc81e6e49dcd24c8d0dd9a1e57395b603f51"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitflags"
@@ -3421,9 +3424,9 @@ dependencies = [
 
 [[package]]
 name = "ognibuild"
-version = "0.2.15"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40da2bd26fbf03b69b0fd1ed6554a564c8649957a0ac228d2838feede4acf3f3"
+checksum = "203a26be2960b73852c2fc2de9fa06f370bbec4e25403d506cf14aa3882150db"
 dependencies = [
  "apt-sources",
  "axum",
@@ -3464,7 +3467,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shlex 2.0.1",
- "tar",
  "tempfile",
  "tokio",
  "toml 1.1.2+spec-1.1.0",
@@ -4104,9 +4106,9 @@ checksum = "478e0585659a122aa407eb7e3c0e1fa51b1d8a870038bd29f0cf4a8551eea972"
 
 [[package]]
 name = "r-description"
-version = "0.3.9"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e0253e7a98ba03449cfc08caba2e654883056de24f256793e0d4f0c012a159"
+checksum = "7b53aafcdfcc401939c3a77b3f781c1cc9a594757f7f21f78706942469a347d6"
 dependencies = [
  "deb822-derive",
  "deb822-fast",
@@ -4753,6 +4755,19 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_norway"
+version = "0.9.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e408f29489b5fd500fab51ff1484fc859bb655f32c671f307dcd733b72e8168c"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml-norway",
 ]
 
 [[package]]
@@ -5928,6 +5943,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
+name = "unsafe-libyaml-norway"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b39abd59bf32521c7f2301b52d05a6a2c975b6003521cbd0c6dc1582f0a22104"
+
+[[package]]
 name = "unscanny"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5941,14 +5962,14 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "upstream-ontologist"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ff42f639261b064f09bad6e7d7920a7c8fcf4eb80fdfdc005559bd578f77fb"
+checksum = "a643e2457e981504f425faf6d581e6fa321ec63baf6fe0165c78a2da044a5415"
 dependencies = [
  "async-trait",
  "base64",
- "bit-set 0.8.0",
- "bit-vec 0.8.0",
+ "bit-set 0.9.1",
+ "bit-vec 0.9.1",
  "breezyshim",
  "cargo_toml",
  "chrono",
@@ -5985,7 +6006,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_norway",
  "shlex 2.0.1",
  "tendril 0.5.0",
  "textwrap",
