@@ -651,8 +651,8 @@ fn main() -> Result<(), i32> {
                 &build_command.clone(),
                 fixers
                     .iter()
-                    .map(|f| f.as_ref())
-                    .collect::<Vec<_>>()
+                    .map(|f| &**f)
+                    .collect::<Vec<&dyn ognibuild::debian::fix_build::DebianBuildFixer>>()
                     .as_slice(),
                 None,
                 Some(args.max_build_iterations),
