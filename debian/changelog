@@ -5,6 +5,8 @@ debian-codemods (0.184) UNRELEASED; urgency=medium
   * Add fixer for build-depends-on-python-dev-with-no-arch-any
   * redundant-priority-optional-field: Don't drop Priority: optional
     for older dpkg releases. Closes: #1142673
+  * Fix FTBFS with rustc 1.95 by explicitly dereferencing boxed fixers
+    when passing them to build_incrementally. Closes: #1143751
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 23 Jul 2026 00:14:34 +0100
 
