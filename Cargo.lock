@@ -960,7 +960,7 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 
 [[package]]
 name = "deb-transition-apply"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "debian-workspace"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -1160,7 +1160,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.163.0"
+version = "0.184.0"
 dependencies = [
  "breezyshim",
  "buildlog-consultant",
@@ -2507,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "import-uncommitted"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -2933,7 +2933,7 @@ dependencies = [
 
 [[package]]
 name = "lintian-brush"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -3247,7 +3247,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -4586,7 +4586,7 @@ dependencies = [
 
 [[package]]
 name = "scrub-obsolete"
-version = "0.182.0"
+version = "0.184.0"
 dependencies = [
  "async-trait",
  "breezyshim",

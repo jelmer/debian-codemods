@@ -10,7 +10,6 @@ homepage = "https://salsa.debian.org/jelmer/lintian-brush"
 documentation = "https://docs.rs/lintian-brush"
 default-run = "lintian-brush"
 include = [
-	"spdx.json",
 	"/src",
 	"/tests",
 	"build.rs",
@@ -18,6 +17,7 @@ include = [
 	"examples/*.rs",
 	"spdx.json",
 	"renamed-tags.json",
+	"known-tags.json",
 	"!*~",
 ]
 
