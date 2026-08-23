@@ -3,6 +3,9 @@ name = "scrub-obsolete"
 edition = "2021"
 version.workspace = true
 license = "GPL-3.0+"
+description = "Remove obsolete entries from Debian packaging files"
+repository = "https://salsa.debian.org/jelmer/debian-codemods.git"
+homepage = "https://salsa.debian.org/jelmer/debian-codemods"
 
 [dependencies]
 breezyshim = { workspace = true, features = ["debian"], optional = true }

@@ -2,6 +2,10 @@
 name = "import-uncommitted"
 edition = "2021"
 version.workspace = true
+license = "GPL-2.0+"
+description = "Import previously uncommitted Debian uploads into a Git repository"
+repository = "https://salsa.debian.org/jelmer/debian-codemods.git"
+homepage = "https://salsa.debian.org/jelmer/debian-codemods"
 
 [dependencies]
 breezyshim = { workspace = true, features = ["debian", "sqlx"] }
