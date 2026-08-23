@@ -1,6 +1,6 @@
 [package]
 name = "debianize"
-version = "0.163.0"
+version.workspace = true
 authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 license = "GPL-2.0+"
