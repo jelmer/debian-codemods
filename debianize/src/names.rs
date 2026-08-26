@@ -82,16 +82,14 @@ pub fn upstream_package_to_debian_binary_name(family: &str, name: &str) -> Strin
 }
 
 pub fn go_base_name(package: &str) -> String {
-    let (mut hostname, path) = package.split_once('/').unwrap_or((package, ""));
-    if hostname == "github.com" {
-        hostname = "github";
-    }
-    if hostname == "gopkg.in" {
-        hostname = "gopkg";
-    }
-    if hostname == "golang.org" {
-        hostname = "golang";
-    }
+    let (hostname, path) = package.split_once('/').unwrap_or((package, ""));
+    let hostname = match hostname {
+        "github.com" => "github",
+        "gopkg.in" => "gopkg",
+        "golang.org" => "golang",
+        "salsa.debian.org" => "debian",
+        _ => hostname, // returning the hostname as it is if not implemented
+    };
     let path = path.trim_end_matches('/').replace(['/', '_'], "-");
     let path = path.strip_suffix(".git").unwrap_or(&path);
     if path.is_empty() {
@@ -309,5 +307,10 @@ mod tests {
         );
         assert_eq!(go_base_name("example.com"), "example.com");
         assert_eq!(go_base_name("github.com/"), "github");
+        assert_eq!(
+            go_base_name("salsa.debian.org/mdosch/xmppsrv.git"),
+            "debian-mdosch-xmppsrv"
+        );
+        assert_eq!(go_base_name("salsa.debian.org/"), "debian")
     }
 }
