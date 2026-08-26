@@ -1,6 +1,7 @@
 debian-codemods (0.185) UNRELEASED; urgency=medium
 
-  * Bump sqlx to 0.9.
+  [ Simon Quigley ]
+  * Bump sqlx to 0.9. Closes: #1145431
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 25 Aug 2026 10:24:21 +0100
 
