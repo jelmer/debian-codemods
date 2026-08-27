@@ -11,19 +11,12 @@ const MARKER_OUTOFORDER: char = 'O';
 /// A representative path that the given Files pattern matches.
 ///
 /// Trailing `/*` or `/` is stripped so that a shallower pattern's glob, which
-/// typically ends in `/*`, can be tested against it. Returns `None` when the
-/// pattern contains a backslash escape, which `GlobPattern` would need to
-/// interpret and could reject; in that case we conservatively decline to
-/// reason about overlap.
-fn representative_path(pattern: &str) -> Option<&str> {
-    if pattern.contains('\\') {
-        return None;
-    }
-    let trimmed = pattern
+/// typically ends in `/*`, can be tested against it.
+fn representative_path(pattern: &str) -> &str {
+    pattern
         .strip_suffix("/*")
         .or_else(|| pattern.strip_suffix('/'))
-        .unwrap_or(pattern);
-    Some(trimmed)
+        .unwrap_or(pattern)
 }
 
 /// Whether `shallower` would match files covered by `deeper`.
@@ -31,15 +24,11 @@ fn representative_path(pattern: &str) -> Option<&str> {
 /// This mirrors lintian's own check, which only flags two patterns as out of
 /// order when the later, less specific pattern actually overrides files
 /// matched by the earlier, more specific one. Patterns in disjoint subtrees
-/// never overlap and must keep their relative order.
+/// never overlap and must keep their relative order. Patterns that fail to
+/// compile (invalid backslash escapes) are conservatively treated as
+/// non-overlapping.
 fn overlaps(deeper: &str, shallower: &str) -> bool {
-    if shallower.contains('\\') {
-        return false;
-    }
-    let Some(repr) = representative_path(deeper) else {
-        return false;
-    };
-    GlobPattern::new(shallower).is_match(repr)
+    GlobPattern::try_new(shallower).is_ok_and(|p| p.is_match(representative_path(deeper)))
 }
 
 pub fn detect(
