@@ -200,8 +200,18 @@ struct Args {
     output: OutputArgs,
 }
 
+/// Whether ANSI color output should be emitted.
+///
+/// Honors the [NO_COLOR](https://no-color.org/) convention: any non-empty value
+/// disables colored output.
+fn color_enabled() -> bool {
+    std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
+}
+
 fn main() -> Result<(), i32> {
     let args = Args::parse();
+
+    let color = color_enabled();
 
     // Create MultiProgress for coordinating progress bars with logging
     let multi_progress = indicatif::MultiProgress::new();
@@ -234,7 +244,9 @@ fn main() -> Result<(), i32> {
     }
 
     // Custom format that shows fixer name in brackets
-    struct FixerFormat;
+    struct FixerFormat {
+        color: bool,
+    }
 
     impl<S, N> tracing_subscriber::fmt::FormatEvent<S, N> for FixerFormat
     where
@@ -253,9 +265,12 @@ fn main() -> Result<(), i32> {
                     if span.name() == "fixer" {
                         let extensions = span.extensions();
                         if let Some(data) = extensions.get::<FixerSpanData>() {
-                            // Use dim style for subtle visual distinction
-                            use nu_ansi_term::Style;
-                            write!(writer, "{}: ", Style::new().dimmed().paint(&data.name))?;
+                            if self.color {
+                                use nu_ansi_term::Style;
+                                write!(writer, "{}: ", Style::new().dimmed().paint(&data.name))?;
+                            } else {
+                                write!(writer, "{}: ", data.name)?;
+                            }
                         }
                         break;
                     }
@@ -321,10 +336,11 @@ fn main() -> Result<(), i32> {
         .with(FixerLayer)
         .with(
             tracing_subscriber::fmt::layer()
+                .with_ansi(color)
                 .with_writer(move || ProgressSuspendingWriter {
                     multi_progress: mp_for_writer.clone(),
                 })
-                .event_format(FixerFormat),
+                .event_format(FixerFormat { color }),
         )
         .with(tracing_subscriber::filter::LevelFilter::from_level(
             filter_level,
