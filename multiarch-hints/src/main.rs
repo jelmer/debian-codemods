@@ -103,6 +103,18 @@ fn note_changelog_policy(policy: bool, msg: &str) {
     }
 }
 
+fn no_committer_hint(tree: &GenericWorkingTree) -> String {
+    match tree.branch().vcs_type() {
+        breezyshim::foreign::VcsType::Git => "No committer identity configured; run \
+            `git config --global user.name \"Your Name\"` and \
+            `git config --global user.email you@example.com`."
+            .to_string(),
+        _ => "No committer identity configured; \
+            run `brz whoami \"Your Name <you@example.com>\"`."
+            .to_string(),
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
@@ -362,12 +374,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(OverallError::NoWhoami) => {
             drop(write_lock);
-            svp.report_fatal(
-                "no-whoami",
-                "Unable to determine committer identity",
-                None,
-                None,
-            );
+            svp.report_fatal("no-whoami", &no_committer_hint(&wt), None, None);
         }
         Err(OverallError::GeneratedFile(p)) => {
             drop(write_lock);
