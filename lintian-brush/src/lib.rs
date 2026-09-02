@@ -12,6 +12,7 @@ use breezyshim::dirty_tracker::DirtyTreeTracker;
 use breezyshim::error::Error;
 use breezyshim::tree::{TreeChange, WorkingTree};
 use breezyshim::workspace::{check_clean_tree, reset_tree_with_dirty_tracker};
+use breezyshim::Branch;
 use breezyshim::RevisionId;
 use debian_analyzer::detect_gbp_dch::{guess_update_changelog, ChangelogBehaviour};
 use debian_analyzer::{
@@ -989,6 +990,20 @@ pub fn render_lintian_trailers(issues: &[LintianIssue]) -> String {
     out
 }
 
+/// Build a human-readable hint for how to configure a committer identity,
+/// tailored to the VCS backing `tree`.
+pub fn no_committer_hint(tree: &breezyshim::workingtree::GenericWorkingTree) -> String {
+    match tree.branch().vcs_type() {
+        breezyshim::foreign::VcsType::Git => "No committer identity configured; run \
+            `git config --global user.name \"Your Name\"` and \
+            `git config --global user.email you@example.com`."
+            .to_string(),
+        _ => "No committer identity configured; \
+            run `brz whoami \"Your Name <you@example.com>\"`."
+            .to_string(),
+    }
+}
+
 /// Run a lintian detector on a tree.
 ///
 /// # Arguments
@@ -1221,7 +1236,7 @@ pub fn run_lintian_fixer(
 
     let revid = builder.commit().map_err(|e| match e {
         Error::PointlessCommit => FixerError::NoChanges,
-        Error::NoWhoami => FixerError::Other("No committer specified".to_string()),
+        Error::NoWhoami => FixerError::Other(no_committer_hint(local_tree)),
         e => FixerError::Other(e.to_string()),
     })?;
     result.revision_id = Some(revid);
@@ -3018,6 +3033,29 @@ Arch: all
                 .get_revision(&tree.branch().last_revision())
                 .unwrap();
             assert_eq!(rev.committer, "Jane Example <jane@example.com>");
+        }
+
+        #[test]
+        fn test_no_committer_hint_git() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path(), "git");
+            assert_eq!(
+                no_committer_hint(&tree),
+                "No committer identity configured; run \
+                 `git config --global user.name \"Your Name\"` and \
+                 `git config --global user.email you@example.com`."
+            );
+        }
+
+        #[test]
+        fn test_no_committer_hint_bzr() {
+            let td = tempfile::tempdir().unwrap();
+            let tree = make_package_tree(td.path(), "bzr");
+            assert_eq!(
+                no_committer_hint(&tree),
+                "No committer identity configured; \
+                 run `brz whoami \"Your Name <you@example.com>\"`."
+            );
         }
     }
 
