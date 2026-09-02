@@ -1,4 +1,4 @@
-debian-codemods (0.185) UNRELEASED; urgency=medium
+debian-codemods (0.185) unstable; urgency=medium
 
   [ Simon Quigley ]
   * Bump sqlx to 0.9. Closes: #1145431
