@@ -25,6 +25,7 @@
     "copyright-should-refer-to-common-license-file-for-gfdl": "copyright-not-using-common-license-for-gfdl",
     "copyright-should-refer-to-common-license-file-for-gpl": "copyright-not-using-common-license-for-gpl",
     "copyright-should-refer-to-common-license-file-for-lgpl": "copyright-not-using-common-license-for-lgpl",
+    "debhelper-compat-file-is-missing": "debhelper-base-compat-level-is-missing",
     "debian-changelog-file-contains-invalid-email-address": "bogus-mail-host-in-debian-changelog",
     "debian-changelog-file-missing": "no-changelog",
     "debian-changelog-file-uses-obsolete-national-encoding": "national-encoding",
