@@ -36,6 +36,7 @@ subset of the issues:
 * build-depends-on-1-revision
 * build-depends-on-build-essential
 * build-depends-on-obsolete-package
+* build-depends-on-python-dev-with-no-arch-any
 * build-depends-on-python-sphinx-only
 * built-using-for-golang
 * capitalization-error-in-description
@@ -95,6 +96,7 @@ subset of the issues:
 * debian-watch-file-pubkey-file-is-missing
 * debian-watch-file-should-mangle-version
 * debian-watch-file-uses-deprecated-githubredir
+* debian-watch-file-uses-deprecated-sf-redirector-method
 * debian-watch-file-uses-github-releases
 * debian-watch-file-uses-old-github-pattern
 * debian-watch-lacks-sourceforge-redirector
@@ -169,6 +171,7 @@ subset of the issues:
 * no-copyright-file
 * no-homepage-field
 * no-newline-at-end
+* no-qa-in-changelog
 * no-versioned-debhelper-prerequisite
 * obsolete-debian-watch-file-standard
 * obsolete-field-in-dep5-copyright
