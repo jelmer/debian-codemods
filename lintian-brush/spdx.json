@@ -74,6 +74,7 @@
         "SHL-2.0",
         "SHL-2.1",
         "Simple-Library-Usage-exception",
+        "Spelling-Provider-LGPL-exception",
         "sqlitestudio-OpenSSL-exception",
         "stunnel-exception",
         "SWI-exception",
@@ -270,6 +271,9 @@
         "BSD-2-Clause-pkgconf-disclaimer": {
             "name": "BSD 2-Clause pkgconf disclaimer variant"
         },
+        "BSD-2-Clause-pos-unchanged": {
+            "name": "BSD 2-Clause - position unchanged variant"
+        },
         "BSD-3-Clause": {
             "name": "BSD 3-Clause \"New\" or \"Revised\" License"
         },
@@ -302,6 +306,9 @@
         },
         "BSD-3-Clause-Open-MPI": {
             "name": "BSD 3-Clause Open MPI variant"
+        },
+        "BSD-3-Clause-OpenWebUI": {
+            "name": "BSD 3-Clause - OpenWebUI variant"
         },
         "BSD-3-Clause-Sun": {
             "name": "BSD 3-Clause Sun Microsystems"
@@ -348,6 +355,12 @@
         "BSD-Source-Code": {
             "name": "BSD Source Code Attribution"
         },
+        "BSD-Source-Code-no-disclaimer": {
+            "name": "BSD Source Code Attribution - no disclaimer"
+        },
+        "BSD-Source-alt-GPL": {
+            "name": "BSD Source Code Attribution - GPL alternative"
+        },
         "BSD-Source-beginning-file": {
             "name": "BSD Source Code Attribution - beginning of file variant"
         },
@@ -356,6 +369,9 @@
         },
         "BSD-Systemics-W3Works": {
             "name": "Systemics W3Works BSD variant license"
+        },
+        "BSD-ask-to-endorse": {
+            "name": "BSD - ask to endorse"
         },
         "BSL-1.0": {
             "name": "Boost Software License 1.0"
@@ -410,6 +426,9 @@
         },
         "Buddy": {
             "name": "Buddy License"
+        },
+        "Bugroff": {
+            "name": "Bugroff License"
         },
         "C-UDA-1.0": {
             "name": "Computational Use of Data Agreement v1.0"
@@ -476,6 +495,9 @@
         },
         "CC-BY-NC-3.0-DE": {
             "name": "Creative Commons Attribution Non Commercial 3.0 Germany"
+        },
+        "CC-BY-NC-3.0-IGO": {
+            "name": "Creative Commons Attribution Non Commercial 3.0 IGO"
         },
         "CC-BY-NC-4.0": {
             "name": "Creative Commons Attribution Non Commercial 4.0 International"
@@ -813,6 +835,9 @@
         "FDK-AAC": {
             "name": "Fraunhofer FDK AAC Codec Library"
         },
+        "FDK-MPEG-H": {
+            "name": "Fraunhofer FDK MPEG-H Software"
+        },
         "FSFAP": {
             "name": "FSF All Permissive License"
         },
@@ -1107,6 +1132,9 @@
         "Hippocratic-2.1": {
             "name": "Hippocratic License 2.1"
         },
+        "Hippocratic-3.0-core": {
+            "name": "Hippocratic License 3.0"
+        },
         "IBM-pibs": {
             "name": "IBM PowerPC Initialization and Boot Software"
         },
@@ -1145,6 +1173,9 @@
         },
         "Info-ZIP": {
             "name": "Info-ZIP License"
+        },
+        "Informatica": {
+            "name": "Informatica License"
         },
         "Inner-Net-2.0": {
             "name": "Inner Net License v2.0"
@@ -2093,6 +2124,9 @@
         },
         "any-OSI-perl-modules": {
             "name": "Any OSI License - Perl Modules"
+        },
+        "atc-game": {
+            "name": "atc Game License"
         },
         "bcrypt-Solar-Designer": {
             "name": "bcrypt Solar Designer License"
