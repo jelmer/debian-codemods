@@ -396,7 +396,8 @@
     Replace obsolete Java build dependency (e.g. libtools-ant-java)
     with its modern replacement in Build-Depends.
 - tag: build-depends-on-build-essential-package-without-using-version
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove unversioned build-essential member (e.g. gcc, make) from

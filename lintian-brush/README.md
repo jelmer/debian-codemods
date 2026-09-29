@@ -35,6 +35,7 @@ subset of the issues:
 * bugs-field-does-not-refer-to-debian-infrastructure
 * build-depends-on-1-revision
 * build-depends-on-build-essential
+* build-depends-on-build-essential-package-without-using-version
 * build-depends-on-obsolete-package
 * build-depends-on-python-dev-with-no-arch-any
 * build-depends-on-python-sphinx-only
