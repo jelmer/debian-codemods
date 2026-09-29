@@ -159,6 +159,7 @@ mod package_uses_deprecated_debhelper_compat_version;
 mod package_uses_deprecated_dpatch_patch_system;
 mod package_uses_deprecated_source_override_location;
 mod patch_file_present_but_not_mentioned_in_series;
+mod pear_package_without_pkg_php_tools_builddep;
 mod pkg_js_tools_test_is_missing;
 mod pkg_perl_testsuite;
 mod pkg_perl_vcs;
