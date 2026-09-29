@@ -627,10 +627,11 @@ fn apply_generic_deb822_group(
                         paragraph
                     )));
                 };
-                if p.get(field).as_deref() == Some(value.as_str()) {
+                if p.get_with_indent(field, &indent.to_deb822()).as_deref() == Some(value.as_str())
+                {
                     continue;
                 }
-                p.set_with_indent_pattern(field, value, Some(&indent.to_deb822()), None);
+                p.set_with_forced_indent(field, value, &indent.to_deb822(), None);
                 any_change = true;
             }
             Deb822Action::RemoveField {
@@ -987,6 +988,25 @@ fn pick_generic_paragraph(
     }
 }
 
+/// Return whether `field` in `p` already holds `value` under `indent`.
+///
+/// When `indent` is `None`, we only care that the VALUE tokens match.
+/// When `indent` is `Some`, we require that the effective content under
+/// that indent pattern matches too, so a value that reads correctly but
+/// is written with the wrong continuation-line indent (e.g. two spaces
+/// where DEP-5 mandates one) still triggers a rewrite.
+fn field_matches(
+    p: &deb822_lossless::Paragraph,
+    field: &str,
+    value: &str,
+    indent: Option<&crate::action::IndentPattern>,
+) -> bool {
+    match indent {
+        None => p.get(field).as_deref() == Some(value),
+        Some(pattern) => p.get_with_indent(field, &pattern.to_deb822()).as_deref() == Some(value),
+    }
+}
+
 fn set_deb822_field(
     editor: &TemplatedControlEditor,
     paragraph: &ParagraphSelector,
@@ -997,10 +1017,11 @@ fn set_deb822_field(
     // When `indent` is None we use Source::set / Binary::set on the typed
     // editor, which applies the canonical debian/control field ordering
     // (e.g. Priority lands after Section, before Description). When it's
-    // Some we fall through to set_with_indent_pattern on the underlying
+    // Some we fall through to set_with_forced_indent on the underlying
     // deb822 paragraph, which preserves position but skips the typed
     // editor's reordering - that's acceptable for fields like
-    // Description that are already in canonical position when set.
+    // Description that are already in canonical position when set. The
+    // forced indent overrides any existing continuation-line indentation.
     match paragraph {
         ParagraphSelector::Source => {
             let Some(mut source) = editor.source() else {
@@ -1008,14 +1029,14 @@ fn set_deb822_field(
                     "deb822 SetField on Source: no source paragraph".into(),
                 ));
             };
-            if source.as_deb822().get(field).as_deref() == Some(value) {
+            if field_matches(source.as_deb822(), field, value, indent) {
                 return Ok(false);
             }
             if let Some(pattern) = indent {
-                source.as_mut_deb822().set_with_indent_pattern(
+                source.as_mut_deb822().set_with_forced_indent(
                     field,
                     value,
-                    Some(&pattern.to_deb822()),
+                    &pattern.to_deb822(),
                     None,
                 );
             } else {
@@ -1031,14 +1052,14 @@ fn set_deb822_field(
                     continue;
                 }
                 found = true;
-                if binary.as_deb822().get(field).as_deref() == Some(value) {
+                if field_matches(binary.as_deb822(), field, value, indent) {
                     break;
                 }
                 if let Some(pattern) = indent {
-                    binary.as_mut_deb822().set_with_indent_pattern(
+                    binary.as_mut_deb822().set_with_forced_indent(
                         field,
                         value,
-                        Some(&pattern.to_deb822()),
+                        &pattern.to_deb822(),
                         None,
                     );
                 } else {

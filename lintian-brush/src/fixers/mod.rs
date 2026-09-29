@@ -86,6 +86,7 @@ mod depends_on_old_emacs;
 mod depends_on_python_minimal;
 mod description_contains_homepage;
 mod description_contains_tabs;
+mod description_starts_with_leading_spaces;
 mod description_starts_with_package_name;
 mod description_synopsis_starts_with_article;
 mod desktop_entry_contains_deprecated_key;
