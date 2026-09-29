@@ -125,6 +125,7 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             | Deb822Action::MoveRelation { file, .. }
             | Deb822Action::MakeAlternativePrimary { file, .. }
             | Deb822Action::AddAlternative { file, .. }
+            | Deb822Action::DropAlternative { file, .. }
             | Deb822Action::ReorderParagraphs { file, .. }
             | Deb822Action::DropFieldComments { file, .. } => file,
         },
@@ -469,6 +470,23 @@ pub enum Deb822Action {
         package: String,
         /// Literal relation to add as a trailing alternative.
         alternative: String,
+    },
+    /// Drop the alternative in `field` that names `package`, from within
+    /// its entry. Only the matching alternative is removed; sibling
+    /// alternatives stay in place. If dropping it leaves the entry empty,
+    /// the whole entry is removed; if the field then becomes empty, the
+    /// field is removed. A no-op if `package` isn't named in `field`, or
+    /// if it's the only alternative in an entry that names no other
+    /// packages (use [`DropRelation`](Self::DropRelation) for that case).
+    DropAlternative {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which paragraph to edit.
+        paragraph: ParagraphSelector,
+        /// Relations field name (e.g. `Depends`).
+        field: String,
+        /// Package name whose alternative should be dropped.
+        package: String,
     },
     /// Reorder a subset of paragraphs in a deb822 file. Paragraphs that
     /// have `key_field` are pulled out and re-inserted in the order
