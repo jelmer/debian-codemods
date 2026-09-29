@@ -122,6 +122,7 @@ subset of the issues:
 * dh-quilt-addon-but-quilt-source-format
 * dh_installmanpages-is-obsolete
 * dm-upload-allowed-is-obsolete
+* documentation-package-not-architecture-independent
 * dpatch-build-dep-but-no-patch-list
 * duplicate-contact
 * duplicate-override-context

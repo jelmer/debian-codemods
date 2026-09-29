@@ -1720,7 +1720,8 @@
     Remove or weaken the dependency from the -doc package on the main
     package in debian/control. Usually change Depends to Suggests.
 - tag: documentation-package-not-architecture-independent
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Change Architecture from "any" to "all" for -doc packages in

@@ -1,0 +1,12 @@
+Source: foo
+Section: doc
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: foo-doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: Documentation for foo
+ This package contains documentation for foo.
