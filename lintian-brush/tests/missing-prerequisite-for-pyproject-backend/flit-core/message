@@ -1,0 +1,5 @@
+Add missing build-dependency on python3-flit.
+
+This is necessary for build-backend flit_core.buildapi in pyproject.toml
+Fixed-Lintian-Issues:
+ foo source: missing-prerequisite-for-pyproject-backend flit_core.buildapi (does not satisfy python3-flit)
