@@ -1211,7 +1211,8 @@
     Replace ${misc:Pre-Depends} with ${misc:Depends} in Depends
     field, or move it to Pre-Depends where it belongs.
 - tag: depends-on-obsolete-package
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace obsolete package name in Depends with its modern
@@ -3919,7 +3920,8 @@
     Remove obsolete alternative from Build-Depends OR relation,
     keeping the non-obsolete alternative.
 - tag: ored-depends-on-obsolete-package
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove obsolete alternative from Depends OR relation, keeping
