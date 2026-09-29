@@ -3260,6 +3260,48 @@ fn apply_lintian_overrides_group(
                     Some((package, package_type, tag, info))
                 });
             }
+            LintianOverridesAction::SetJustification {
+                selector,
+                new_bodies,
+                ..
+            } => {
+                let text = overrides.text();
+                let target = overrides
+                    .lines()
+                    .find(|line| override_line_matches(line, selector));
+                let Some(target) = target else {
+                    continue;
+                };
+                let comments = target.preceding_comments();
+                if comments.is_empty() {
+                    continue;
+                }
+                // Build the new file text by splicing each body range from
+                // last to first so earlier offsets stay valid. Each body
+                // range excludes the `#` and its optional single space,
+                // which are preserved verbatim.
+                let mut new_text = text.clone();
+                let mut edits: Vec<(usize, usize, &str)> = comments
+                    .iter()
+                    .zip(new_bodies.iter())
+                    .map(|(c, body)| {
+                        let range = c.body_range();
+                        (range.start().into(), range.end().into(), body.as_str())
+                    })
+                    .collect();
+                edits.sort_by_key(|&(start, _, _)| start);
+                for (start, end, body) in edits.into_iter().rev() {
+                    new_text.replace_range(start..end, body);
+                }
+                let parsed = lintian_overrides::LintianOverrides::parse(&new_text);
+                overrides = parsed.ok().map_err(|errs| {
+                    FixerError::Other(format!(
+                        "Failed to re-parse {} after SetJustification: {}",
+                        rel.display(),
+                        errs.join(", ")
+                    ))
+                })?;
+            }
         }
     }
 
@@ -6124,5 +6166,98 @@ mod tests {
             order: vec!["gamma".into(), "alpha".into()],
         });
         assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn lintian_overrides_set_justification_rewrites_body() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian/source");
+        fs::create_dir_all(&debian).unwrap();
+        let overrides = debian.join("lintian-overrides");
+        fs::write(&overrides, "# Runs on linux only.\nsome-tag\n").unwrap();
+
+        let action = Action::LintianOverrides(LintianOverridesAction::SetJustification {
+            file: PathBuf::from("debian/source/lintian-overrides"),
+            selector: OverrideLineSelector {
+                tag: "some-tag".into(),
+                info: None,
+                package: None,
+            },
+            new_bodies: vec!["Runs on Linux only.".into()],
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(
+            fs::read_to_string(&overrides).unwrap(),
+            "# Runs on Linux only.\nsome-tag\n",
+        );
+    }
+
+    #[test]
+    fn lintian_overrides_set_justification_preserves_hash_and_space() {
+        // The `#` marker and its optional single trailing space belong to
+        // the comment's structure, not its body; SetJustification must
+        // preserve them verbatim.
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian/source");
+        fs::create_dir_all(&debian).unwrap();
+        let overrides = debian.join("lintian-overrides");
+        fs::write(&overrides, "#no-space\n# with-space\nsome-tag\n").unwrap();
+
+        let action = Action::LintianOverrides(LintianOverridesAction::SetJustification {
+            file: PathBuf::from("debian/source/lintian-overrides"),
+            selector: OverrideLineSelector {
+                tag: "some-tag".into(),
+                info: None,
+                package: None,
+            },
+            new_bodies: vec!["also-no-space".into(), "also-with-space".into()],
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(
+            fs::read_to_string(&overrides).unwrap(),
+            "#also-no-space\n# also-with-space\nsome-tag\n",
+        );
+    }
+
+    #[test]
+    fn lintian_overrides_set_justification_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian/source");
+        fs::create_dir_all(&debian).unwrap();
+        let overrides = debian.join("lintian-overrides");
+        fs::write(&overrides, "# Runs on Linux only.\nsome-tag\n").unwrap();
+
+        let action = Action::LintianOverrides(LintianOverridesAction::SetJustification {
+            file: PathBuf::from("debian/source/lintian-overrides"),
+            selector: OverrideLineSelector {
+                tag: "some-tag".into(),
+                info: None,
+                package: None,
+            },
+            new_bodies: vec!["Runs on Linux only.".into()],
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+    }
+
+    #[test]
+    fn lintian_overrides_set_justification_no_match_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian/source");
+        fs::create_dir_all(&debian).unwrap();
+        let overrides = debian.join("lintian-overrides");
+        let original = "# Runs on linux only.\nsome-tag\n";
+        fs::write(&overrides, original).unwrap();
+
+        let action = Action::LintianOverrides(LintianOverridesAction::SetJustification {
+            file: PathBuf::from("debian/source/lintian-overrides"),
+            selector: OverrideLineSelector {
+                tag: "other-tag".into(),
+                info: None,
+                package: None,
+            },
+            new_bodies: vec!["ignored".into()],
+        });
+        assert!(!apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(fs::read_to_string(&overrides).unwrap(), original);
     }
 }

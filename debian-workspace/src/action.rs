@@ -187,7 +187,8 @@ pub(crate) fn action_file(action: &Action) -> &Path {
             LintianOverridesAction::AddLine { file, .. }
             | LintianOverridesAction::DropLine { file, .. }
             | LintianOverridesAction::RenameTag { file, .. }
-            | LintianOverridesAction::SetLineInfo { file, .. } => file,
+            | LintianOverridesAction::SetLineInfo { file, .. }
+            | LintianOverridesAction::SetJustification { file, .. } => file,
         },
         Action::Maintscript(a) => match a {
             MaintscriptAction::DropEntry { file, .. } => file,
@@ -1157,6 +1158,23 @@ pub enum LintianOverridesAction {
         selector: OverrideLineSelector,
         /// New info text. Empty string removes the info entirely.
         new_info: String,
+    },
+    /// Rewrite the bodies of the `# ...` comment lines that form the
+    /// justification (the contiguous comments immediately preceding) of
+    /// the first override line matching `selector`. Comments are
+    /// addressed by their position in that block: `new_bodies[i]`
+    /// replaces the body of the `i`-th comment from the top of the
+    /// justification, and any entries past the number of comments
+    /// present are ignored. The leading `#` and its optional single
+    /// trailing space are preserved verbatim.
+    SetJustification {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// Which override line's justification to rewrite.
+        selector: OverrideLineSelector,
+        /// New body text for each comment in the justification, in
+        /// source order.
+        new_bodies: Vec<String>,
     },
 }
 
