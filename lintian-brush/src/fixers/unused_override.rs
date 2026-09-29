@@ -41,7 +41,7 @@ async fn get_unused_overrides(
         conditions.join(" OR ")
     );
 
-    let mut query_builder = sqlx::query(&query);
+    let mut query_builder = sqlx::query(sqlx::AssertSqlSafe(query));
     for (name, pkg_type) in packages {
         query_builder = query_builder.bind(name).bind(pkg_type);
     }
