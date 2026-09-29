@@ -53,6 +53,7 @@ mod debian_rules_missing_recommended_target;
 mod debian_rules_not_executable;
 mod debian_rules_parses_dpkg_parsechangelog;
 mod debian_rules_sets_deb_build_options;
+mod debian_rules_sets_dh_compat;
 mod debian_rules_sets_dpkg_architecture_variable;
 mod debian_rules_should_not_use_pwd;
 mod debian_rules_uses_as_needed_linker_flag;

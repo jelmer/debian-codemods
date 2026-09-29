@@ -1,0 +1,6 @@
+#!/usr/bin/make -f
+
+export DH_COMPAT=13
+
+%:
+	dh $@
