@@ -1,0 +1,6 @@
+Source: test-package
+Vcs-Git: https://salsa.debian.org/team/test.git -b main
+
+Package: test-package
+Description: Test package
+ Test description
