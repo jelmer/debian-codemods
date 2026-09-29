@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 const PREREQUISITE_MAP: &[(&str, &str)] = &[
     ("poetry.core.masonry.api", "python3-poetry-core"),
-    ("flit_core.buildapi", "flit"),
+    ("flit_core.buildapi", "python3-flit"),
     ("setuptools.build_meta", "python3-setuptools"),
 ];
 
@@ -207,6 +207,31 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_flit_core_backend() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir(&debian).unwrap();
+
+        fs::write(
+            tmp.path().join("pyproject.toml"),
+            "[build-system]\nrequires = [\"flit_core>=3.2\"]\nbuild-backend = \"flit_core.buildapi\"\n",
+        )
+        .unwrap();
+        let control = debian.join("control");
+        fs::write(&control, "Source: foo\nBuild-Depends: python3\n").unwrap();
+
+        let result = run_apply(tmp.path()).unwrap();
+        assert_eq!(
+            result.description,
+            "Add missing build-dependency on python3-flit.\n\nThis is necessary for build-backend flit_core.buildapi in pyproject.toml",
+        );
+        assert_eq!(
+            fs::read_to_string(&control).unwrap(),
+            "Source: foo\nBuild-Depends: python3, python3-flit\n",
+        );
     }
 
     #[test]
