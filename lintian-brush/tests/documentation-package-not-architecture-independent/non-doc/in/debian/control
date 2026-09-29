@@ -1,0 +1,13 @@
+Source: foo
+Section: devel
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: foo-dev
+Architecture: any
+Depends: ${misc:Depends}
+Description: Development files for foo
+ This package contains development files. Its name does not end in
+ -doc or -docs, so the fixer must leave it alone.
