@@ -1,0 +1,4 @@
+Strip leading spaces from Description.
+Certainty: certain
+Fixed-Lintian-Issues:
+ blah binary: description-starts-with-leading-spaces line 1
