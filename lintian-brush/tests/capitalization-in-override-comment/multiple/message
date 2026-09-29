@@ -1,0 +1,6 @@
+Fix capitalization errors in lintian override comments.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: capitalization-in-override-comment tag-a linux Linux
+ source: capitalization-in-override-comment tag-a gnome GNOME
+ source: capitalization-in-override-comment tag-b linux Linux

@@ -1,0 +1,5 @@
+# Built for Linux with GNOME support.
+tag-a
+
+# Only relevant for x86-64 Linux.
+tag-b
