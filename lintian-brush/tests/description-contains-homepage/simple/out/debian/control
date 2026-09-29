@@ -1,0 +1,12 @@
+Source: foo
+Section: misc
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://example.com/foo
+
+Package: foo
+Architecture: all
+Description: Example package
+ A longer description of foo.
