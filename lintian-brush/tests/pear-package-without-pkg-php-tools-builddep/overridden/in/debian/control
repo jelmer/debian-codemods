@@ -1,0 +1,12 @@
+Source: mypearpackage
+Section: php
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Build-Depends: debhelper (>= 13)
+Standards-Version: 4.6.2
+
+Package: mypearpackage
+Architecture: all
+Depends: ${misc:Depends}
+Description: Test PEAR package
+ A test PEAR package.
