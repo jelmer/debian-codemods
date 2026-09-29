@@ -963,11 +963,9 @@
   difficulty: easy
   status: implemented
 - tag: debian-rules-sets-DH_COMPAT
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove DH_COMPAT export from debian/rules and use debhelper-compat
-    Build-Depends instead.
+  status: implemented
 - tag: debian-rules-should-not-set-CFLAGS-from-noopt
   detector: false
   difficulty: easy
