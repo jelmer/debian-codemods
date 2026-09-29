@@ -1,0 +1,1 @@
+build-depends-on-build-essential-package-without-using-version gcc [Build-Depends: gcc]

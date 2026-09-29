@@ -1,6 +1,8 @@
 debian-codemods (0.186) UNRELEASED; urgency=medium
 
   * Add fixer for debhelper-compat-file-contains-multiple-levels
+  * Add fixer for build-depends-on-build-essential-package-without-
+    using-version
   * Add fixer for description-contains-homepage
   * Add fixer for pear-package-without-pkg-php-tools-builddep
   * Add fixer for vcs-field-has-unexpected-spaces
