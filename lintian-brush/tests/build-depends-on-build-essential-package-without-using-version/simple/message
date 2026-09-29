@@ -1,0 +1,4 @@
+Drop unversioned build dependency on build-essential member gcc.
+Fixed-Lintian-Issues:
+ source: build-depends-on-build-essential-package-without-using-version gcc [Build-Depends: gcc]
+Certainty: certain

@@ -396,7 +396,8 @@
     Replace obsolete Java build dependency (e.g. libtools-ant-java)
     with its modern replacement in Build-Depends.
 - tag: build-depends-on-build-essential-package-without-using-version
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove unversioned build-essential member (e.g. gcc, make) from
@@ -1257,7 +1258,8 @@
     Remove dh-make-perl boilerplate from Description in debian/control.
     Pattern-match known template text.
 - tag: description-contains-homepage
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Extract URL from Description and move it to the Homepage field
@@ -1718,7 +1720,8 @@
     Remove or weaken the dependency from the -doc package on the main
     package in debian/control. Usually change Depends to Suggests.
 - tag: documentation-package-not-architecture-independent
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Change Architecture from "any" to "all" for -doc packages in
