@@ -1,0 +1,3 @@
+Set Architecture: all on package foo-doc.
+Fixed-Lintian-Issues:
+ foo-doc binary: documentation-package-not-architecture-independent

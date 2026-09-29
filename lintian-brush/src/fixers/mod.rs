@@ -96,6 +96,7 @@ mod dh_install_instead_of_dh_installmodules;
 mod dh_installmanpages_is_obsolete;
 mod dh_quilt_addon_but_quilt_source_format;
 mod dm_upload_allowed;
+mod documentation_package_not_arch_all;
 mod dpatch_build_dep_but_no_patch_list;
 mod duplicate_contact;
 mod duplicate_override_context;

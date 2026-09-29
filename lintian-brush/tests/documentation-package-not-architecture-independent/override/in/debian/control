@@ -1,0 +1,14 @@
+Source: foo
+Section: doc
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: foo-doc
+Architecture: any
+Depends: ${misc:Depends}
+Description: Documentation for foo
+ The maintainer has decided this documentation is genuinely
+ architecture-dependent and has added a lintian override to that
+ effect, so the fixer must not change the Architecture field.

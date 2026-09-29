@@ -1,0 +1,24 @@
+Source: foo
+Section: devel
+Priority: optional
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: foo
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: The foo program
+ The foo program, which is genuinely architecture-dependent.
+
+Package: foo-doc
+Architecture: any
+Depends: ${misc:Depends}
+Description: Documentation for foo
+ Docs for foo.
+
+Package: foo-docs
+Architecture: amd64
+Depends: ${misc:Depends}
+Description: More docs for foo
+ More docs.
