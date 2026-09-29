@@ -34,6 +34,7 @@ mod copyright_refers_to_symlink_license;
 mod crlf_line_endings;
 mod debcargo_collapse_features;
 mod debhelper_but_no_misc_depends;
+mod debhelper_compat_file_contains_multiple_levels;
 mod debhelper_compat_wrong_field;
 mod debhelper_tools_from_autotools_dev_are_deprecated;
 mod debian_changelog_file_contains_obsolete_user_emacs_settings;

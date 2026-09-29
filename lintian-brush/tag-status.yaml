@@ -776,7 +776,8 @@
     Remove manually inserted debhelper autoscript fragments from
     maintainer scripts and let debhelper generate them. needs-shell-parser
 - tag: debhelper-compat-file-contains-multiple-levels
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Fix debian/compat to contain only a single debhelper compat level.
