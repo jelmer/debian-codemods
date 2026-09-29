@@ -1,8 +1,9 @@
 debian-codemods (0.186) UNRELEASED; urgency=medium
 
   * Add fixer for debhelper-compat-file-contains-multiple-levels
+  * Add fixer for vcs-field-has-unexpected-spaces
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 29 Sep 2026 14:54:54 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 29 Sep 2026 15:13:50 +0100
 
 debian-codemods (0.185) unstable; urgency=medium
 
