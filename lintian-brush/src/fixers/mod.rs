@@ -223,6 +223,7 @@ mod uses_dh_addons;
 mod vcs_broken_uri;
 mod vcs_field_bitrotted;
 mod vcs_field_for_maintainer;
+mod vcs_field_has_unexpected_spaces;
 mod vcs_field_invalid_branch;
 mod vcs_field_mismatch;
 #[cfg(feature = "upstream")]

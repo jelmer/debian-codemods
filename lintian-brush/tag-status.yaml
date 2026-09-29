@@ -5840,11 +5840,9 @@
     Fix the Vcs-Browser URL to point to a non-empty view. Requires
     knowing the correct URL.
 - tag: vcs-field-has-unexpected-spaces
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove unexpected spaces from Vcs-* fields in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: vcs-field-uses-unknown-uri-format
   detector: false
   difficulty: medium
