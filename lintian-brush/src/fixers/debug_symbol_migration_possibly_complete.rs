@@ -77,7 +77,7 @@ async fn package_exists_udd(
     }
 
     if let Some((_op, ref version)) = version_info {
-        let row: Option<(bool,)> = sqlx::query_as(&query)
+        let row: Option<(bool,)> = sqlx::query_as(sqlx::AssertSqlSafe(query))
             .bind(release)
             .bind(package)
             .bind(version)
@@ -85,7 +85,7 @@ async fn package_exists_udd(
             .await?;
         Ok(row.is_some())
     } else {
-        let row: Option<(bool,)> = sqlx::query_as(&query)
+        let row: Option<(bool,)> = sqlx::query_as(sqlx::AssertSqlSafe(query))
             .bind(release)
             .bind(package)
             .fetch_optional(&pool)
