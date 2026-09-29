@@ -1,0 +1,3 @@
+Add pkg-php-tools to Build-Depends.
+Fixed-Lintian-Issues:
+ source: pear-package-without-pkg-php-tools-builddep
