@@ -1,0 +1,4 @@
+Move Homepage pseudo-field from description of foo to Source paragraph.
+Fixed-Lintian-Issues:
+ foo binary: description-contains-homepage line 3
+Certainty: certain
