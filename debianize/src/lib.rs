@@ -38,8 +38,11 @@ use upstream_ontologist::{get_upstream_info, ProviderError, UpstreamMetadata};
 pub mod fixer;
 pub mod names;
 pub mod processors;
+mod reset_on_failure;
 pub mod simple_apt_repo;
 pub mod vcs;
+
+use reset_on_failure::ResetOnFailure;
 
 pub fn default_debianize_cache_dir() -> std::io::Result<std::path::PathBuf> {
     xdg::BaseDirectories::with_prefix("debianize")?.create_cache_directory("")
@@ -1655,58 +1658,6 @@ pub struct DebianizeResult {
     pub upstream_version: Option<String>,
     pub tag_names: HashMap<String, RevisionId>,
     pub upstream_branch_name: Option<String>,
-}
-
-/// Guard that resets the working tree to its pre-debianize state unless
-/// disarmed. Disarm on success; any other exit (error return or panic)
-/// rolls back the tree.
-pub(crate) struct ResetOnFailure<'a> {
-    wt: &'a dyn PyWorkingTree,
-    subpath: PathBuf,
-    disarmed: bool,
-}
-
-impl<'a> ResetOnFailure<'a> {
-    pub fn new(wt: &'a dyn PyWorkingTree, subpath: &Path) -> Result<Self, BrzError> {
-        // Try to check if tree is clean, but handle dirstate errors gracefully
-        match wt.basis_tree() {
-            Ok(basis_tree) => {
-                match breezyshim::workspace::check_clean_tree(wt, &basis_tree, subpath) {
-                    Ok(_) => {}
-                    Err(BrzError::Other(ref py_err))
-                        if py_err.to_string().contains("IndexError") =>
-                    {
-                        // Ignore IndexError from dirstate issues in test environments
-                        log::warn!("Ignoring dirstate IndexError during clean tree check");
-                    }
-                    Err(e) => return Err(e),
-                }
-            }
-            Err(e) => {
-                log::warn!("Could not get basis tree: {:?}", e);
-            }
-        }
-        Ok(Self {
-            wt,
-            subpath: subpath.to_path_buf(),
-            disarmed: false,
-        })
-    }
-
-    pub fn disarm(&mut self) {
-        self.disarmed = true;
-    }
-}
-
-impl<'a> Drop for ResetOnFailure<'a> {
-    fn drop(&mut self) {
-        if !self.disarmed {
-            match breezyshim::workspace::reset_tree(self.wt, None, Some(&self.subpath)) {
-                Ok(_) => log::info!("Reset tree after failure"),
-                Err(e) => log::error!("Failed to reset tree: {:?}", e),
-            }
-        }
-    }
 }
 
 /// Run lintian fixers on the debianized package
