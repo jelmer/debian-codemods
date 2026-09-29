@@ -1,0 +1,4 @@
+Reduce debian/compat to a single compatibility level.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: debhelper-compat-file-contains-multiple-levels [debian/compat:2]
