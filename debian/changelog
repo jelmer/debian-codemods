@@ -2,6 +2,7 @@ debian-codemods (0.186) UNRELEASED; urgency=medium
 
   * Add fixer for debhelper-compat-file-contains-multiple-levels
   * Add fixer for description-contains-homepage
+  * Add fixer for pear-package-without-pkg-php-tools-builddep
   * Add fixer for vcs-field-has-unexpected-spaces
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 29 Sep 2026 15:13:50 +0100
