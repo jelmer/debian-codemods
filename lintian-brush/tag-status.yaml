@@ -1257,7 +1257,8 @@
     Remove dh-make-perl boilerplate from Description in debian/control.
     Pattern-match known template text.
 - tag: description-contains-homepage
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Extract URL from Description and move it to the Homepage field
