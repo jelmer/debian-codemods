@@ -4364,11 +4364,9 @@
     Replace hardcoded PEAR dependency with ${phppear:Debian-Depends} substvar
     in debian/control. Uses TemplatedControlEditor.
 - tag: pear-package-without-pkg-php-tools-builddep
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Add pkg-php-tools to Build-Depends in debian/control. Uses
-    TemplatedControlEditor and Relations API.
 - tag: pecl-package-requires-build-dependency
   detector: false
   difficulty: easy
