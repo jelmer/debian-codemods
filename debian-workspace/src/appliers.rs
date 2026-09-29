@@ -162,6 +162,7 @@ fn first_selector<'a>(group: &'a [&'a Action]) -> Option<&'a ParagraphSelector> 
             | Deb822Action::MoveRelation { paragraph, .. }
             | Deb822Action::MakeAlternativePrimary { paragraph, .. }
             | Deb822Action::AddAlternative { paragraph, .. }
+            | Deb822Action::DropAlternative { paragraph, .. }
             | Deb822Action::DropFieldComments { paragraph, .. } => Some(paragraph),
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => None,
         };
@@ -358,6 +359,16 @@ fn apply_control_deb822_group(
                     any_change = true;
                 }
             }
+            Deb822Action::DropAlternative {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                if drop_deb822_alternative(&editor, paragraph, field, package)? {
+                    any_change = true;
+                }
+            }
             Deb822Action::DropFieldComments {
                 paragraph, field, ..
             } => {
@@ -430,6 +441,7 @@ fn apply_copyright_deb822_group(
             | Deb822Action::MoveRelation { paragraph, .. }
             | Deb822Action::MakeAlternativePrimary { paragraph, .. }
             | Deb822Action::AddAlternative { paragraph, .. }
+            | Deb822Action::DropAlternative { paragraph, .. }
             | Deb822Action::DropFieldComments { paragraph, .. } => paragraph,
             Deb822Action::AppendParagraph { .. } | Deb822Action::ReorderParagraphs { .. } => {
                 return false;
@@ -817,6 +829,19 @@ fn apply_generic_deb822_group(
                     continue;
                 };
                 if add_alternative_in_paragraph(&mut p, field, package, alternative) {
+                    any_change = true;
+                }
+            }
+            Deb822Action::DropAlternative {
+                paragraph,
+                field,
+                package,
+                ..
+            } => {
+                let Some(mut p) = pick_generic_paragraph(&deb822, paragraph)? else {
+                    continue;
+                };
+                if drop_alternative_in_paragraph(&mut p, field, package) {
                     any_change = true;
                 }
             }
@@ -1341,6 +1366,109 @@ fn make_alternative_primary_in_paragraph(
     relations.replace(idx, new_entry);
     p.set(field, &relations.to_string());
     true
+}
+
+fn drop_alternative_in_paragraph(
+    p: &mut deb822_lossless::Paragraph,
+    field: &str,
+    package: &str,
+) -> bool {
+    use debian_control::lossless::relations::{Entry, Relations};
+    use std::str::FromStr;
+
+    let Some(value) = p.get(field) else {
+        return false;
+    };
+    let (mut relations, _errors) = Relations::parse_relaxed(&value, true);
+
+    // Find the first entry that names `package` in any alternative.
+    let mut target_idx = None;
+    for (idx, entry) in relations.entries().enumerate() {
+        if entry
+            .relations()
+            .any(|r| r.try_name().as_deref() == Some(package))
+        {
+            target_idx = Some(idx);
+            break;
+        }
+    }
+    let Some(idx) = target_idx else {
+        return false;
+    };
+    let entry = relations.entries().nth(idx).expect("index valid");
+
+    // Verbatim texts and names for each alternative in the entry.
+    let alternatives: Vec<(Option<String>, String)> = entry
+        .relations()
+        .map(|r| (r.try_name(), r.to_string().trim().to_string()))
+        .collect();
+
+    // Keep alternatives whose name isn't `package`. If none matched
+    // (defensive: the entry-level check found the package, but we don't
+    // know which alternative it was in), bail out to avoid touching the
+    // field.
+    let kept: Vec<String> = alternatives
+        .iter()
+        .filter(|(name, _)| name.as_deref() != Some(package))
+        .map(|(_, text)| text.clone())
+        .collect();
+    if kept.len() == alternatives.len() {
+        return false;
+    }
+
+    if kept.is_empty() {
+        // The whole entry only named `package`. Fall back to
+        // remove_entry so the field / entry semantics stay consistent
+        // with DropRelation.
+        relations.remove_entry(idx);
+    } else {
+        let Ok(new_entry) = Entry::from_str(&kept.join(" | ")) else {
+            return false;
+        };
+        relations.replace(idx, new_entry);
+    }
+
+    let new_value = relations.to_string();
+    if new_value.trim().is_empty() || relations.is_empty() {
+        p.remove(field);
+    } else {
+        p.set(field, &new_value);
+    }
+    true
+}
+
+fn drop_deb822_alternative(
+    editor: &TemplatedControlEditor,
+    paragraph: &ParagraphSelector,
+    field: &str,
+    package: &str,
+) -> Result<bool, FixerError> {
+    match paragraph {
+        ParagraphSelector::Source => {
+            let Some(mut source) = editor.source() else {
+                return Ok(false);
+            };
+            Ok(drop_alternative_in_paragraph(
+                source.as_mut_deb822(),
+                field,
+                package,
+            ))
+        }
+        ParagraphSelector::Binary { package: pkg } => {
+            for mut binary in editor.binaries() {
+                let p = binary.as_mut_deb822();
+                if p.get("Package").as_deref() != Some(pkg.as_str()) {
+                    continue;
+                }
+                return Ok(drop_alternative_in_paragraph(p, field, package));
+            }
+            Ok(false)
+        }
+        other => Err(FixerError::Other(format!(
+            "deb822 DropAlternative does not support paragraph selector {:?}",
+            other
+        ))),
+    }
 }
 
 fn add_alternative_in_paragraph(

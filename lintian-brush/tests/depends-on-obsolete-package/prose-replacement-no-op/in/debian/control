@@ -1,0 +1,11 @@
+Source: foo
+Section: devel
+Priority: optional
+Maintainer: Foo Maintainer <foo@example.org>
+Build-Depends: debhelper (>= 12)
+
+Package: foo
+Architecture: any
+Depends: hardening-wrapper, libc6, ${misc:Depends}
+Description: example package
+ Long description.
