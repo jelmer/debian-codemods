@@ -1,0 +1,3 @@
+Remove global DH_COMPAT assignment from debian/rules.
+Fixed-Lintian-Issues:
+ source: debian-rules-sets-DH_COMPAT [debian/rules:3]
