@@ -1,0 +1,4 @@
+Remove superfluous markup from Homepage field.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: superfluous-clutter-in-homepage <URI:https://example.com/baz>
