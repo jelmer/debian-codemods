@@ -1,8 +1,9 @@
 debian-codemods (0.187) UNRELEASED; urgency=medium
 
   * Add fixer for synopsis-is-a-sentence
+  * Add fixer for dh-exec-script-without-dh-exec-features
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Sep 2026 15:50:10 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Sep 2026 13:16:13 +0100
 
 debian-codemods (0.186) unstable; urgency=medium
 
