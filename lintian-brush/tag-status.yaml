@@ -5314,11 +5314,13 @@
   detector: false
   status: build-stage
 - tag: synopsis-is-a-sentence
-  detector: false
+  detector: true
+  status: implemented
   difficulty: medium
   comment: |
     Remove the trailing period from the Description synopsis in debian/control.
-    Uses TemplatedControlEditor. May need more sophisticated sentence detection.
+    Only rewrites when the synopsis is a single sentence terminated by a full
+    stop; backs off when removing the period would drop text.
 - tag: synopsis-too-long
   detector: false
   difficulty: hard
