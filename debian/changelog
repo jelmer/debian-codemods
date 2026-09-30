@@ -1,4 +1,4 @@
-debian-codemods (0.186) UNRELEASED; urgency=medium
+debian-codemods (0.186) unstable; urgency=medium
 
   * Add fixer for debhelper-compat-file-contains-multiple-levels
   * Add fixer for build-depends-on-build-essential-package-without-
