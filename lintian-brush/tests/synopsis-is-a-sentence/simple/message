@@ -1,0 +1,4 @@
+Remove trailing full stop from Description synopsis.
+Certainty: certain
+Fixed-Lintian-Issues:
+ blah binary: synopsis-is-a-sentence "A simple tool."

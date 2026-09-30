@@ -199,6 +199,7 @@ mod source_format;
 mod space_in_std_shortname_in_dep5_copyright;
 mod spelling_error_in_rules_requires_root;
 mod superfluous_clutter_in_homepage;
+mod synopsis_is_a_sentence;
 mod systemd_service_alias_without_extension;
 mod systemd_service_file_pidfile_refers_to_var_run;
 mod systemd_service_file_refers_to_obsolete_bindto;
