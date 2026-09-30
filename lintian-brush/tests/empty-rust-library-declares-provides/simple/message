@@ -1,0 +1,4 @@
+Set collapse_features = true in debian/debcargo.toml.
+Certainty: possible
+Fixed-Lintian-Issues:
+ source: empty-rust-library-declares-provides

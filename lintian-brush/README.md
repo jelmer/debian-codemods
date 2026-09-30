@@ -127,6 +127,7 @@ subset of the issues:
 * duplicate-contact
 * duplicate-override-context
 * empty-debian-tests-control
+* empty-rust-library-declares-provides
 * essential-no-not-needed
 * excessive-priority-for-library-package
 * executable-desktop-file

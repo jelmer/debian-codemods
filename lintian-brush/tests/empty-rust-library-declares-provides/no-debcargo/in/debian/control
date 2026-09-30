@@ -1,0 +1,13 @@
+Source: rust-example
+Section: rust
+Priority: optional
+Maintainer: Alice <alice@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+
+Package: librust-example-dev
+Architecture: any
+Depends: ${misc:Depends}
+Provides: librust-example-0-dev
+Description: Traditional debhelper-managed rust library
+ This package has no debcargo.toml, so the fixer must not touch it.

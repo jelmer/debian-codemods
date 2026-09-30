@@ -1,0 +1,3 @@
+overlay = "."
+uploaders = [ "Alice <alice@example.com>" ]
+collapse_features = true
