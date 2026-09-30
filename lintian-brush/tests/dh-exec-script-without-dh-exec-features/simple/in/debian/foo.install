@@ -1,0 +1,3 @@
+#!/usr/bin/dh-exec
+usr/bin/foo
+usr/share/foo/*
