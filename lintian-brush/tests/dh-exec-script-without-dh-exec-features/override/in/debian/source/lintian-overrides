@@ -1,0 +1,1 @@
+dh-exec-script-without-dh-exec-features [debian/foo.install]
