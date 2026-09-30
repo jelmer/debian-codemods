@@ -1,0 +1,11 @@
+Source: foo
+Section: mail
+Priority: optional
+Maintainer: Foo Maintainer <foo@example.org>
+Build-Depends: debhelper (>= 12)
+
+Package: foo
+Architecture: any
+Depends: mail-transport-agent, ${misc:Depends}
+Description: example package
+ Long description.
