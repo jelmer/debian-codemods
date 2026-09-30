@@ -45,6 +45,23 @@ cargo-fmt:
       - .cargo/git
       - target/
 
+# Verify the workspace version in Cargo.toml matches debian/changelog.
+# Cargo uses semver (0.186.0) while debian/changelog uses a two-part upstream
+# version (0.186), so a trailing ".0" on the Cargo side is treated as equal.
+check-versions:
+  stage: lint
+  image: debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends dpkg-dev python3
+    - CARGO_VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('Cargo.toml','rb'))['workspace']['package']['version'])")
+    - CHANGELOG_VERSION=$(dpkg-parsechangelog -SVersion | sed 's/-[^-]*$//')
+    - |
+      if [ "$CARGO_VERSION" != "$CHANGELOG_VERSION" ] && [ "$CARGO_VERSION" != "$CHANGELOG_VERSION.0" ]; then
+          echo "Cargo.toml workspace version ($CARGO_VERSION) does not match debian/changelog version ($CHANGELOG_VERSION)" >&2
+          exit 1
+      fi
+
 # Publish the library crates to crates.io.
 #
 # Runs automatically on every tag pipeline: tag a commit whose master pipeline
