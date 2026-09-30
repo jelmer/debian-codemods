@@ -106,6 +106,7 @@ mod duplicate_override_context;
 mod empty_debian_patches_series;
 mod empty_debian_source_options;
 mod empty_debian_tests_control;
+mod empty_rust_library_declares_provides;
 mod essential_no_not_needed;
 mod excessive_priority_for_library_package;
 mod executable_desktop_file;

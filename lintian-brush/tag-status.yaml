@@ -6522,11 +6522,8 @@
   comment: |
     Fix the version= line in debian/watch to use a known standard version.
 - tag: empty-rust-library-declares-provides
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove empty Provides field from Rust library package in debian/control.
-    Uses TemplatedControlEditor.
 - tag: duplicate-override-context
   detector: true
   difficulty: easy
