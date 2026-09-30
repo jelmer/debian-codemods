@@ -1,0 +1,2 @@
+overlay = "."
+uploaders = [ "Alice <alice@example.com>" ]

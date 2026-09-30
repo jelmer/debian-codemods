@@ -1211,7 +1211,8 @@
     Replace ${misc:Pre-Depends} with ${misc:Depends} in Depends
     field, or move it to Pre-Depends where it belongs.
 - tag: depends-on-obsolete-package
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace obsolete package name in Depends with its modern
@@ -1305,10 +1306,9 @@
     Extract URL from Description and move to Homepage field.
     Same approach as description-contains-homepage.
 - tag: description-starts-with-leading-spaces
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Strip leading spaces from the Description field in debian/control.
+  status: implemented
 - tag: description-starts-with-package-name
   detector: true
   status: implemented
@@ -1443,7 +1443,8 @@
   detector: false
   status: build-stage
 - tag: dh-exec-script-without-dh-exec-features
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove unnecessary dh-exec shebang from debhelper config file
@@ -3919,7 +3920,8 @@
     Remove obsolete alternative from Build-Depends OR relation,
     keeping the non-obsolete alternative.
 - tag: ored-depends-on-obsolete-package
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove obsolete alternative from Depends OR relation, keeping
@@ -5248,11 +5250,12 @@
     Replace deprecated ${Source-Version} with ${binary:Version} or
     ${source:Version} in debian/control. Uses TemplatedControlEditor.
 - tag: superfluous-clutter-in-homepage
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
-    Remove superfluous text like "<insert the upstream URL, if relevant>"
-    from the Homepage field in debian/control. Uses TemplatedControlEditor.
+    Strip surrounding angle brackets (and optional URL:/URI: prefix) from
+    the Homepage field in debian/control.
 - tag: surplus-shared-library-symbols
   detector: false
   status: build-stage
@@ -5311,11 +5314,13 @@
   detector: false
   status: build-stage
 - tag: synopsis-is-a-sentence
-  detector: false
+  detector: true
+  status: implemented
   difficulty: medium
   comment: |
     Remove the trailing period from the Description synopsis in debian/control.
-    Uses TemplatedControlEditor. May need more sophisticated sentence detection.
+    Only rewrites when the synopsis is a single sentence terminated by a full
+    stop; backs off when removing the period would drop text.
 - tag: synopsis-too-long
   detector: false
   difficulty: hard
@@ -6515,11 +6520,8 @@
   comment: |
     Fix the version= line in debian/watch to use a known standard version.
 - tag: empty-rust-library-declares-provides
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove empty Provides field from Rust library package in debian/control.
-    Uses TemplatedControlEditor.
 - tag: duplicate-override-context
   detector: true
   difficulty: easy
@@ -6595,7 +6597,8 @@
     Improve superficial autopkgtests to be more thorough. Add Restrictions:
     superficial to acknowledge, or improve the test.
 - tag: superfluous-file-pattern
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove superfluous file patterns from debian/copyright or lintian

@@ -1,0 +1,6 @@
+Source: blah
+
+Package: blah
+Description: A normal synopsis
+   First extended line with too much indent.
+ Second extended line.

@@ -127,6 +127,7 @@ subset of the issues:
 * duplicate-contact
 * duplicate-override-context
 * empty-debian-tests-control
+* empty-rust-library-declares-provides
 * essential-no-not-needed
 * excessive-priority-for-library-package
 * executable-desktop-file
@@ -219,6 +220,7 @@ subset of the issues:
 * skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * spelling-error-in-rules-requires-root
+* superfluous-file-pattern
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
 * systemd-service-file-refers-to-obsolete-target
