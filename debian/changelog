@@ -11,6 +11,10 @@ debian-codemods (0.186) UNRELEASED; urgency=medium
   * Add fixer for description-starts-with-leading-spaces
   * Add fixer for superfluous-clutter-in-homepage
   * Add fixer for depends-on-obsolete-package
+  * missing-prerequisite-for-pyproject-backend: Suggest python3-flit
+    rather than flit for the flit_core backend. Closes: #1148879
+  * Bump decopy dependency to >= 0.3.4, fixing FTBFS in the
+    no-copyright-file fixer test. Closes: #1149450
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 29 Sep 2026 15:13:50 +0100
 
