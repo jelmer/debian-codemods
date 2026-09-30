@@ -3,6 +3,7 @@ debian-codemods (0.187) UNRELEASED; urgency=medium
   * Add fixer for synopsis-is-a-sentence
   * Add fixer for dh-exec-script-without-dh-exec-features
   * Add fixer for empty-rust-library-declares-provides
+  * Add fixer for superfluous-file-pattern
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Sep 2026 16:21:08 +0100
 
