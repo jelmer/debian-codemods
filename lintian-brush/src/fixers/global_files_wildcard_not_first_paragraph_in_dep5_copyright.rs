@@ -220,6 +220,28 @@ mod tests {
     }
 
     #[test]
+    fn test_overlaps() {
+        assert!(overlaps("src/foo/*", "src/*"));
+        assert!(!overlaps("src/foo/*", "docs/*"));
+        // An escaped wildcard is a literal `*`, so it doesn't cover a
+        // normally-named directory.
+        assert!(!overlaps("src/foo/*", r"\*/*"));
+    }
+
+    #[test]
+    fn test_overlaps_declines_invalid_escape() {
+        assert!(!overlaps("src/foo/*", r"src\x/*"));
+        assert!(!overlaps("src/foo/*", "src/*\\"));
+    }
+
+    #[test]
+    fn test_overlaps_declines_escaped_deeper_pattern() {
+        // A backslash in the deeper pattern would have to be decoded to
+        // yield a real path, so we decline to reason about it.
+        assert!(!overlaps(r"\*/foo/*", "src/*"));
+    }
+
+    #[test]
     fn test_wildcard_not_first() {
         let tmp = TempDir::new().unwrap();
         let debian = tmp.path().join("debian");
