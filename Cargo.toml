@@ -12,7 +12,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.185.0"
+version = "0.187.0"
 
 [workspace.dependencies]
 breezyshim = { version = "0.7.8", features = ["dirty-tracker"] }
