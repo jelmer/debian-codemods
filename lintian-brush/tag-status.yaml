@@ -6024,11 +6024,9 @@
   detector: false
   status: build-stage
 - tag: capitalization-in-override-comment
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Fix capitalization in lintian override comment. Parse and edit
-    debian/source/lintian-overrides.
 - tag: carriage-return-line-feed
   detector: true
   status: implemented

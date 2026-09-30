@@ -1,0 +1,4 @@
+Fix capitalization errors in lintian override comments.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: capitalization-in-override-comment some-tag linux Linux
