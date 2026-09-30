@@ -5249,11 +5249,12 @@
     Replace deprecated ${Source-Version} with ${binary:Version} or
     ${source:Version} in debian/control. Uses TemplatedControlEditor.
 - tag: superfluous-clutter-in-homepage
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
-    Remove superfluous text like "<insert the upstream URL, if relevant>"
-    from the Homepage field in debian/control. Uses TemplatedControlEditor.
+    Strip surrounding angle brackets (and optional URL:/URI: prefix) from
+    the Homepage field in debian/control.
 - tag: surplus-shared-library-symbols
   detector: false
   status: build-stage
