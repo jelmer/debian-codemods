@@ -22,7 +22,14 @@ execute_before_dh_auto_configure:
 override_dh_auto_build:
 	cargo build $(CARGO_BASE_ARGS)
 
+WORKSPACE_VERSION = $(shell python3 -c "import tomllib; print(tomllib.load(open('Cargo.toml','rb'))['workspace']['package']['version'])")
+CHANGELOG_VERSION = $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$//')
+
 override_dh_auto_test:
+	@if [ "$(WORKSPACE_VERSION)" != "$(CHANGELOG_VERSION)" ] && [ "$(WORKSPACE_VERSION)" != "$(CHANGELOG_VERSION).0" ]; then \
+	    echo "Cargo.toml version ($(WORKSPACE_VERSION)) does not match debian/changelog version ($(CHANGELOG_VERSION))" >&2; \
+	    exit 1; \
+	fi
 	make testsuite
 
 CRATE_VERSION = $(shell cargo metadata --manifest-path lintian-brush/Cargo.toml --no-deps --format-version 1 | python3 -c "import json,sys; pkgs=json.load(sys.stdin)['packages']; print(next(p['version'] for p in pkgs if p['name']=='lintian-brush'))")
