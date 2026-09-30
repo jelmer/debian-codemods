@@ -1,0 +1,3 @@
+Replace or drop obsolete package exim.
+Fixed-Lintian-Issues:
+ foo binary: depends-on-obsolete-package Depends: exim => exim4
