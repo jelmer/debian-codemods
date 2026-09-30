@@ -19,6 +19,9 @@ fn main() {
     // Generate obsolete sites list
     generate_obsolete_sites(&out_dir);
 
+    // Generate obsolete packages list
+    generate_obsolete_packages(&out_dir);
+
     // Generate the picky capitalization corrections list
     generate_spelling_corrections_case(&out_dir);
 
@@ -89,6 +92,7 @@ fn main() {
     println!("cargo:rerun-if-changed=renamed-tags.json");
     println!("cargo:rerun-if-changed=known-tags.json");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/obsolete-sites/obsolete-sites");
+    println!("cargo:rerun-if-changed=/usr/share/lintian/data/fields/obsolete-packages");
     println!("cargo:rerun-if-changed=/usr/share/lintian/data/spelling/corrections-case");
     println!("cargo:rerun-if-changed=spdx.json");
 }
@@ -322,6 +326,65 @@ fn generate_obsolete_sites(out_dir: &std::ffi::OsStr) {
     code.push_str("    OBSOLETE_SITES.iter().any(|&site| {\n");
     code.push_str("        hostname == site || hostname.ends_with(&format!(\".{}\", site))\n");
     code.push_str("    })\n");
+    code.push_str("}\n");
+
+    fs::write(&dest_path, code).unwrap();
+}
+
+fn generate_obsolete_packages(out_dir: &std::ffi::OsStr) {
+    let dest_path = Path::new(out_dir).join("obsolete_packages.rs");
+
+    let content = fs::read_to_string("/usr/share/lintian/data/fields/obsolete-packages")
+        .expect("Could not find obsolete-packages data file");
+
+    let mut entries: Vec<(String, Option<String>)> = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if let Some((old, new)) = trimmed.split_once("=>") {
+            entries.push((old.trim().to_string(), Some(new.trim().to_string())));
+        } else {
+            entries.push((trimmed.to_string(), None));
+        }
+    }
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let mut code = String::new();
+    code.push_str(
+        "/// Obsolete Debian packages known to lintian, mirroring\n\
+         /// `data/fields/obsolete-packages`. `Some(replacement)` means the\n\
+         /// package has a suggested replacement (which may itself be a package\n\
+         /// or a general string like `nothing` or `debhelper (>= 9.20160709)`);\n\
+         /// `None` means no replacement.\n",
+    );
+    code.push_str("pub static OBSOLETE_PACKAGES: &[(&str, Option<&str>)] = &[\n");
+    for (old, new) in &entries {
+        match new {
+            Some(n) => code.push_str(&format!(
+                "    ({:?}, Some({:?})),\n",
+                old.as_str(),
+                n.as_str()
+            )),
+            None => code.push_str(&format!("    ({:?}, None),\n", old.as_str())),
+        }
+    }
+    code.push_str("];\n\n");
+
+    code.push_str("/// Look up the replacement suggestion for an obsolete package.\n");
+    code.push_str(
+        "/// Returns `Some(None)` if the package is obsolete without a replacement,\n\
+         /// `Some(Some(replacement))` if there is a replacement, and `None` if the\n\
+         /// package isn't recognised as obsolete.\n",
+    );
+    code.push_str(
+        "pub fn obsolete_package_replacement(name: &str) -> Option<Option<&'static str>> {\n",
+    );
+    code.push_str("    OBSOLETE_PACKAGES\n");
+    code.push_str("        .binary_search_by_key(&name, |&(n, _)| n)\n");
+    code.push_str("        .ok()\n");
+    code.push_str("        .map(|i| OBSOLETE_PACKAGES[i].1)\n");
     code.push_str("}\n");
 
     fs::write(&dest_path, code).unwrap();
