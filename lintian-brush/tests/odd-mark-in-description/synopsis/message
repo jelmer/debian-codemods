@@ -1,0 +1,4 @@
+Add missing whitespace after comma in Description.
+Certainty: possible
+Fixed-Lintian-Issues:
+ blah binary: odd-mark-in-description comma not followed by whitespace (synopsis)
