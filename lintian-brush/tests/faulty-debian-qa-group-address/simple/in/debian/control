@@ -1,0 +1,6 @@
+Source: test-package
+Maintainer: Debian QA Group <debian-qa@lists.debian.org>
+
+Package: test-package
+Description: Test
+ Test package.
