@@ -10,6 +10,7 @@ debian-codemods (0.187) UNRELEASED; urgency=medium
   * Add fixer for invalid-dep3-format-patch-wrong-bug-debian-url
   * Add fixer for copyright-with-old-dh-make-debian-copyright
   * Add fixer for faulty-debian-qa-group-address
+  * Add fixer for debian-rules-should-not-use-sanitize-all-buildflag
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Sep 2026 16:21:08 +0100
 

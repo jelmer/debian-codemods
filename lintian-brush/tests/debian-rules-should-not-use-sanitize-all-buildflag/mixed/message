@@ -1,0 +1,3 @@
+Drop sanitize=+all from DEB_BUILD_MAINT_OPTIONS in debian/rules.
+Fixed-Lintian-Issues:
+ source: debian-rules-should-not-use-sanitize-all-buildflag [debian/rules:3]
