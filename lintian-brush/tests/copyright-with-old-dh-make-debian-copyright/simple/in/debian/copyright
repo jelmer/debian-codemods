@@ -1,0 +1,9 @@
+This package was debianized by Russ Allbery <rra@debian.org> on
+Mon, 29 Dec 2008 17:33:59 -0800.
+
+It was downloaded from http://example.com/
+
+Upstream Author: Someone <someone@example.com>
+
+The Debian packaging is (C) 2008, Russ Allbery <rra@debian.org> and
+is licensed under the GPL, see `/usr/share/common-licenses/GPL'.
