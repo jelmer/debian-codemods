@@ -987,7 +987,8 @@
     Remove custom compression settings (e.g. dh_builddeb -- -Zxz)
     from debian/rules. The default is already optimal.
 - tag: debian-rules-should-not-use-sanitize-all-buildflag
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove sanitize-all from DEB_BUILD_MAINT_OPTIONS in debian/rules.

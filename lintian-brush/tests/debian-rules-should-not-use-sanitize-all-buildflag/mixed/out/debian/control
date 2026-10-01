@@ -1,0 +1,10 @@
+Source: blah
+Section: net
+Priority: optional
+Maintainer: Jane Developer <jane@example.com>
+Build-Depends: debhelper-compat (= 13)
+
+Package: blah
+Architecture: any
+Description: a useful tool
+ Some long description.
