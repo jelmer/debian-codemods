@@ -155,6 +155,7 @@ mod obsolete_field_in_dep5_copyright;
 mod obsolete_runtime_tests_restriction;
 mod obsolete_url_in_packaging;
 mod obsolete_vim_addon_manager;
+mod odd_mark_in_description;
 mod old_fsf_address_in_copyright_file;
 mod old_override_info_format;
 mod orphaned_package_should_not_have_uploaders;

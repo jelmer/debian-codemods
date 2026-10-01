@@ -6126,11 +6126,9 @@
   detector: false
   status: build-stage
 - tag: odd-mark-in-description
-  detector: false
-  difficulty: medium
-  comment: |
-    Fix odd marks (e.g., smart quotes, non-ASCII punctuation) in package
-    description in debian/control. Uses TemplatedControlEditor.
+  detector: true
+  difficulty: easy
+  status: implemented
 - tag: odd-place-for-manual-page
   detector: false
   status: build-stage
