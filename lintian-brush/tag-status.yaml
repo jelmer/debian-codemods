@@ -6050,11 +6050,8 @@
   detector: false
   status: build-stage
 - tag: faulty-debian-qa-group-address
-  detector: false
-  difficulty: easy
-  comment: |
-    Fix the QA group address in Maintainer field. Similar to existing
-    wrong-debian-qa-group-name fixer.
+  detector: true
+  status: implemented
 - tag: faulty-debian-qa-group-phrase
   detector: true
   status: implemented

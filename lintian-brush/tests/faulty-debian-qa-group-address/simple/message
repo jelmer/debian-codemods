@@ -1,0 +1,3 @@
+Fix Debian QA group address.
+Fixed-Lintian-Issues:
+ source: faulty-debian-qa-group-address Maintainer debian-qa@lists.debian.org -> packages@qa.debian.org
