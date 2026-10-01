@@ -8,6 +8,7 @@ debian-codemods (0.187) UNRELEASED; urgency=medium
     version at build time.
   * Add fixer for odd-mark-in-description
   * Add fixer for invalid-dep3-format-patch-wrong-bug-debian-url
+  * Add fixer for description-possibly-contains-homepage
   * Add fixer for copyright-with-old-dh-make-debian-copyright
   * Add fixer for faulty-debian-qa-group-address
 

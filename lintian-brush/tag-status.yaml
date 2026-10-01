@@ -1301,11 +1301,13 @@
     Would need to remove mentions of planned/future features from
     Description. Hard to identify which text to remove automatically.
 - tag: description-possibly-contains-homepage
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Extract URL from Description and move to Homepage field.
-    Same approach as description-contains-homepage.
+    Report-only detector: the URL in the description may or may not be the
+    project homepage, so promoting it to Homepage or rewriting the
+    description needs maintainer judgement.
 - tag: description-starts-with-leading-spaces
   detector: true
   difficulty: easy
