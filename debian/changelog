@@ -7,6 +7,7 @@ debian-codemods (0.187) UNRELEASED; urgency=medium
   * Verify Cargo.toml workspace version matches debian/changelog
     version at build time.
   * Add fixer for odd-mark-in-description
+  * Add fixer for invalid-dep3-format-patch-wrong-bug-debian-url
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Sep 2026 16:21:08 +0100
 

@@ -1,0 +1,4 @@
+Rewrite Bug-Debian to a bugs.debian.org URL.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: invalid-dep3-format-patch-wrong-bug-debian-url [debian/patches/fix-typo.patch]

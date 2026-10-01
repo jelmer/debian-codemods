@@ -6959,8 +6959,9 @@
     Replace the default Origin field value in DEP-3 patch header with the
     actual origin information.
 - tag: invalid-dep3-format-patch-wrong-bug-debian-url
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Fix the Bug-Debian URL in DEP-3 patch header to use the correct
     https://bugs.debian.org/ format.
