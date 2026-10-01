@@ -1,0 +1,6 @@
+Source: test-package
+Maintainer: Jane Doe <jane@example.com>
+
+Package: test-package
+Description: Test
+ Test package.
