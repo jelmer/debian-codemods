@@ -1,0 +1,6 @@
+Source: test-package
+Maintainer: Debian QA Team <team@example.com>
+
+Package: test-package
+Description: Test
+ Test package.
