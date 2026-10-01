@@ -112,6 +112,7 @@ subset of the issues:
 * depends-on-old-emacs
 * depends-on-python-minimal
 * description-contains-tabs
+* description-possibly-contains-homepage
 * description-starts-with-package-name
 * description-synopsis-starts-with-article
 * desktop-entry-contains-deprecated-key
