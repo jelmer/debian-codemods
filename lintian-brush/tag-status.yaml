@@ -711,7 +711,8 @@
     references in debian/copyright to /usr/share/common-licenses
     (Policy 12.5).
 - tag: copyright-with-old-dh-make-debian-copyright
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Replace old dh_make copyright boilerplate in debian/copyright

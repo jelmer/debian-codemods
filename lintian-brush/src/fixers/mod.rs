@@ -33,6 +33,7 @@ mod copyright_refers_to_compressed_license;
 mod copyright_refers_to_deprecated_bsd_license_file;
 mod copyright_refers_to_old_directory;
 mod copyright_refers_to_symlink_license;
+mod copyright_with_old_dh_make_debian_copyright;
 mod crlf_line_endings;
 mod debcargo_collapse_features;
 mod debhelper_but_no_misc_depends;

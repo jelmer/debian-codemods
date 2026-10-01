@@ -1,0 +1,4 @@
+Replace bare "(C)" in dh_make copyright boilerplate with "Copyright (C)".
+Fixed-Lintian-Issues:
+ source: copyright-with-old-dh-make-debian-copyright
+Certainty: certain
