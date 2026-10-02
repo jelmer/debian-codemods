@@ -300,6 +300,9 @@ pub trait Workspace {
     /// executable) treat that the same as "not present" and skip.
     fn file_mode(&self, rel: &Path) -> Result<Option<u32>, Error>;
 
+    /// Whether `rel` is a directory. Returns `Ok(false)` if it is missing.
+    fn is_dir(&self, rel: &Path) -> Result<bool, Error>;
+
     /// On-disk root for hosts that have one.
     ///
     /// Returns `Some` for the lintian-brush CLI ([`FsWorkspace`])
@@ -480,6 +483,9 @@ mod tests {
         fn file_mode(&self, _rel: &Path) -> Result<Option<u32>, Error> {
             Ok(None)
         }
+        fn is_dir(&self, rel: &Path) -> Result<bool, Error> {
+            Ok(self.files.keys().any(|f| f != rel && f.starts_with(rel)))
+        }
     }
 
     fn make_pkg_with_control(dir: &Path, control: &str) {
@@ -581,6 +587,9 @@ mod tests {
         }
         fn file_mode(&self, _rel: &Path) -> Result<Option<u32>, Error> {
             Ok(None)
+        }
+        fn is_dir(&self, rel: &Path) -> Result<bool, Error> {
+            Ok(rel == Path::new("empty"))
         }
     }
 

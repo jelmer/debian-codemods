@@ -181,6 +181,11 @@ pub fn detect(
             continue;
         }
         let rel = debian.join(&name);
+        // e.g. debian/examples/ is a directory of example files, not a
+        // debhelper config file.
+        if ws.is_dir(&rel)? {
+            continue;
+        }
 
         let mode = match ws.file_mode(&rel)? {
             Some(m) => m,
@@ -510,6 +515,15 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         write_pkg(tmp.path(), "#!/bin/sh\necho usr/bin/foo\n", 0o755, Some(13));
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
+    }
+
+    #[test]
+    fn test_ignores_directory_with_config_name() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("debian/examples")).unwrap();
+        fs::write(tmp.path().join("debian/compat"), "13\n").unwrap();
+        let result = run_apply(tmp.path());
+        assert!(matches!(result, Err(FixerError::NoChanges)), "{:?}", result);
     }
 
     #[test]
