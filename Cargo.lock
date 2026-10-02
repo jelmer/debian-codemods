@@ -497,9 +497,9 @@ checksum = "36f64beae40a84da1b4b26ff2761a5b895c12adc41dc25aaee1c4f2bbfe97a6e"
 
 [[package]]
 name = "breezyshim"
-version = "0.7.28"
+version = "0.7.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0106080e7efa048d17f20c7f3b90f1f024fd5f2cc29703cd479ea20487cc8a42"
+checksum = "09f988ece7592a148c6b72cfd8393bed342b34d96daa5af936eeb32c0c41d56f"
 dependencies = [
  "bazaar",
  "chrono",
@@ -1042,7 +1042,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "deb-transition-apply"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "breezyshim",
  "clap",
@@ -1214,7 +1214,7 @@ dependencies = [
 
 [[package]]
 name = "debian-workspace"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "chrono",
  "deb822-lossless",
@@ -1242,7 +1242,7 @@ dependencies = [
 
 [[package]]
 name = "debianize"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "breezyshim",
  "buildlog-consultant",
@@ -2670,7 +2670,7 @@ dependencies = [
 
 [[package]]
 name = "import-uncommitted"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -3053,9 +3053,9 @@ dependencies = [
 
 [[package]]
 name = "lazy_static"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "libbz2-rs-sys"
@@ -3126,7 +3126,7 @@ checksum = "7e57c38c1e860fd37c604281cdfb1dd2216977fd76a50f85ba2f388ef3219616"
 
 [[package]]
 name = "lintian-brush"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -3458,7 +3458,7 @@ dependencies = [
 
 [[package]]
 name = "multiarch-hints"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "breezyshim",
  "chrono",
@@ -4078,9 +4078,9 @@ dependencies = [
 
 [[package]]
 name = "prodash"
-version = "31.0.0"
+version = "31.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "962200e2d7d551451297d9fdce85138374019ada198e30ea9ede38034e27604c"
+checksum = "cf52d87428247c5aa3760ac8e7d8b13ec7b3579b955a8c3f311668b6860acba5"
 dependencies = [
  "parking_lot",
 ]
@@ -4717,7 +4717,7 @@ dependencies = [
 
 [[package]]
 name = "scrub-obsolete"
-version = "0.187.0"
+version = "0.188.0"
 dependencies = [
  "async-trait",
  "breezyshim",
