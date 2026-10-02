@@ -315,6 +315,14 @@ impl Workspace for FsWorkspace {
         }
     }
 
+    fn is_dir(&self, rel: &Path) -> Result<bool, Error> {
+        match fs::metadata(self.full_path(rel)) {
+            Ok(m) => Ok(m.is_dir()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+            Err(e) => Err(Error::Io(e)),
+        }
+    }
+
     fn base_path(&self) -> Option<&Path> {
         Some(&self.base_path)
     }
@@ -570,5 +578,15 @@ mod tests {
             .unwrap();
         assert!(header.is_none());
         assert_eq!(patch.patch_files().count(), 1);
+    }
+
+    #[test]
+    fn is_dir() {
+        let tmp = TempDir::new().unwrap();
+        make_pkg(tmp.path());
+        let ws = FsWorkspace::new(tmp.path(), None, None);
+        assert!(ws.is_dir(Path::new("debian")).unwrap());
+        assert!(!ws.is_dir(Path::new("debian/control")).unwrap());
+        assert!(!ws.is_dir(Path::new("debian/missing")).unwrap());
     }
 }
