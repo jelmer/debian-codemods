@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+for py in $(py3versions -s 2>/dev/null); do
+    $py -m unittest discover -v tests
+done

@@ -1,0 +1,11 @@
+Source: python-blah
+Section: python
+Priority: optional
+Maintainer: Jane Developer <jane@example.com>
+Build-Depends: debhelper-compat (= 13), dh-sequence-python3, python3-all
+
+Package: python3-blah
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}
+Description: a useful module
+ Some long description.

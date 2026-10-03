@@ -6814,10 +6814,12 @@
     Fix conflicting fields in debian/tests/control (e.g., both Tests and
     Test-Command specified). Remove one of the conflicting fields.
 - tag: declare-python-versions-for-test
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Add python version declaration to debian/tests/control test entry.
+    Replace py3versions --requested with --supported in autopkgtest
+    scripts when debian/control has no X-Python3-Version.
 - tag: drop-python-version-declaration
   detector: false
   difficulty: easy
