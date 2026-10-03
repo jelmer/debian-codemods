@@ -1,1 +1,1 @@
-build-depends-on-obsolete-package Build-Depends: dh-systemd
+build-depends-on-obsolete-package Build-Depends: dh-systemd (>= 1.5) => use debhelper (>= 9.20160709)

@@ -1,0 +1,5 @@
+Drop obsolete alternative libncurses5-dev from Build-Depends.
+Drop obsolete alternative tetex-bin from Build-Depends-Indep.
+Fixed-Lintian-Issues:
+ source: ored-build-depends-on-obsolete-package Build-Depends: libncurses5-dev (>= 5.0) => libncurses-dev
+ source: ored-build-depends-on-obsolete-package Build-Depends-Indep: tetex-bin
