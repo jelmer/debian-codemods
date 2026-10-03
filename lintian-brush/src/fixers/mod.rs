@@ -80,6 +80,7 @@ mod debian_watch_not_mangling_version;
 mod debian_watch_use_templates;
 mod debian_watch_uses_insecure_uri;
 mod debug_symbol_migration_possibly_complete;
+mod declare_python_versions_for_test;
 mod declares_possibly_conflicting_debhelper_compat_versions;
 mod default_mta_dependency_does_not_specify_mail_transport_agent;
 mod default_mta_dependency_not_listed_first;

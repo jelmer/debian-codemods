@@ -1,0 +1,4 @@
+Query supported rather than requested Python versions in debian/tests/unittests.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: declare-python-versions-for-test py3versions -r [debian/tests/unittests:4]
