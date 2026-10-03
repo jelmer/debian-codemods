@@ -1,0 +1,1 @@
+ored-build-depends-on-obsolete-package Build-Depends: libncurses5-dev (>= 5.0) => libncurses-dev

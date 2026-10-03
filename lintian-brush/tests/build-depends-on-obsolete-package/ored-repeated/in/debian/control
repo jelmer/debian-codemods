@@ -1,0 +1,9 @@
+Source: blah
+Maintainer: Joe Maintainer <joe@example.com>
+Build-Depends: debhelper-compat (= 13), genisoimage | mkisofs, xorriso | mkisofs
+
+Package: blah
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: test package
+ This is a test package.
