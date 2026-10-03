@@ -1,3 +1,7 @@
+use crate::debhelper::{
+    extract_subst_vars, has_dh_exec_filter, has_dh_exec_rename, is_native_subst_var,
+    read_dh_exec_script,
+};
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, FilesystemAction};
 use crate::{Certainty, FixerError, FixerPreferences, LintianIssue, Visibility};
@@ -33,31 +37,6 @@ enum DhExecFeature {
     Subst,
 }
 
-/// Variable names that debhelper >= 13 substitutes natively, so a `${VAR}`
-/// referring to one of them is not itself a reason to keep dh-exec.
-fn is_native_subst_var(var: &str) -> bool {
-    // DEB_BUILD_*, DEB_HOST_* and DEB_TARGET_* with the well-known suffixes.
-    let Some(rest) = var
-        .strip_prefix("DEB_BUILD_")
-        .or_else(|| var.strip_prefix("DEB_HOST_"))
-        .or_else(|| var.strip_prefix("DEB_TARGET_"))
-    else {
-        return false;
-    };
-    matches!(
-        rest,
-        "ARCH"
-            | "ARCH_OS"
-            | "ARCH_CPU"
-            | "ARCH_BITS"
-            | "ARCH_ENDIAN"
-            | "GNU_CPU"
-            | "GNU_SYSTEM"
-            | "GNU_TYPE"
-            | "MULTIARCH"
-    )
-}
-
 /// Scan a debhelper config file body for dh-exec features.
 ///
 /// `debhelper_level` is the package's debhelper compat level, or `None` when
@@ -73,10 +52,10 @@ fn features_used(content: &str, debhelper_level: Option<u8>) -> Vec<DhExecFeatur
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if has_install_rename(line) && !found.contains(&DhExecFeature::Install) {
+        if has_dh_exec_rename(line) && !found.contains(&DhExecFeature::Install) {
             found.push(DhExecFeature::Install);
         }
-        if has_bracket_filter(line) && !found.contains(&DhExecFeature::Filter) {
+        if has_dh_exec_filter(line) && !found.contains(&DhExecFeature::Filter) {
             found.push(DhExecFeature::Filter);
         }
         for var in extract_subst_vars(line) {
@@ -93,64 +72,6 @@ fn features_used(content: &str, debhelper_level: Option<u8>) -> Vec<DhExecFeatur
         }
     }
     found
-}
-
-/// A `src => dest` rename form. Matches lintian's `[ \t]=>[ \t]` pattern:
-/// one whitespace character on each side of `=>`.
-fn has_install_rename(line: &str) -> bool {
-    if let Some(idx) = line.find("=>") {
-        let before = line[..idx].chars().last();
-        let after = line[idx + 2..].chars().next();
-        matches!(before, Some(' ' | '\t')) && matches!(after, Some(' ' | '\t'))
-    } else {
-        false
-    }
-}
-
-fn has_bracket_filter(line: &str) -> bool {
-    contains_balanced(line, '[', ']') || contains_balanced(line, '<', '>')
-}
-
-fn contains_balanced(line: &str, open: char, close: char) -> bool {
-    let mut it = line.chars();
-    while let Some(c) = it.next() {
-        if c == open {
-            let rest: String = it.clone().collect();
-            if let Some(close_idx) = rest.find(close) {
-                if close_idx > 0 {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
-fn extract_subst_vars(line: &str) -> Vec<String> {
-    let mut vars = Vec::new();
-    let bytes = line.as_bytes();
-    let mut i = 0;
-    while i + 1 < bytes.len() {
-        if bytes[i] == b'$' && bytes[i + 1] == b'{' {
-            if let Some(end) = line[i + 2..].find('}') {
-                vars.push(line[i + 2..i + 2 + end].to_string());
-                i = i + 2 + end + 1;
-                continue;
-            }
-        }
-        i += 1;
-    }
-    vars
-}
-
-/// A dh-exec hashbang line, matching lintian's `hashbang =~ /dh-exec/` test.
-fn is_dh_exec_shebang(line: &str) -> bool {
-    let Some(rest) = line.strip_prefix("#!") else {
-        return false;
-    };
-    // Match lintian: any hashbang that mentions "dh-exec". This covers both
-    // `#!/usr/bin/dh-exec` and `#!/usr/bin/env dh-exec`.
-    rest.contains("dh-exec")
 }
 
 /// Basenames the fixer should consider. Returns the category (the part after
@@ -181,50 +102,17 @@ pub fn detect(
             continue;
         }
         let rel = debian.join(&name);
-        // e.g. debian/examples/ is a directory of example files, not a
-        // debhelper config file.
-        if ws.is_dir(&rel)? {
+        let Some((mode, body)) = read_dh_exec_script(ws, &rel)? else {
             continue;
-        }
+        };
 
-        let mode = match ws.file_mode(&rel)? {
-            Some(m) => m,
-            None => continue,
-        };
-        if mode & 0o111 == 0 {
-            // Not executable -> debhelper won't treat it as a script.
-            continue;
-        }
-
-        let bytes = match ws.read_file(&rel)? {
-            Some(b) => b,
-            None => continue,
-        };
-        let Ok(content) = std::str::from_utf8(&bytes) else {
-            continue;
-        };
-        let Some(first_line) = content.lines().next() else {
-            continue;
-        };
-        if !is_dh_exec_shebang(first_line) {
-            continue;
-        }
-
-        let features = features_used(content, debhelper_level);
+        let features = features_used(&body, debhelper_level);
         if !features.is_empty() {
             // Something is actually using dh-exec; leave it alone.
             continue;
         }
 
-        // Build the fix: drop the shebang line, then clear the executable
-        // bits. Preserve the trailing content byte-for-byte.
-        let after = &content[first_line.len()..];
-        let after = after
-            .strip_prefix("\r\n")
-            .or_else(|| after.strip_prefix('\n'))
-            .unwrap_or(after);
-        let new_content = after.as_bytes().to_vec();
-
+        // The fix: drop the shebang line, then clear the executable bits.
         let info = format!("[{}]", rel.display());
         let issue = LintianIssue::source_with_info(
             "dh-exec-script-without-dh-exec-features",
@@ -242,7 +130,7 @@ pub fn detect(
                 vec![
                     Action::Filesystem(FilesystemAction::Write {
                         file: rel.clone(),
-                        content: new_content,
+                        content: body.into_bytes(),
                     }),
                     Action::Filesystem(FilesystemAction::SetMode {
                         file: rel,
@@ -376,14 +264,6 @@ mod tests {
     #[test]
     fn test_features_used_ignores_comments() {
         assert!(features_used("# foo => bar\n# [amd64]\nusr/bin/foo\n", Some(13)).is_empty());
-    }
-
-    #[test]
-    fn test_is_dh_exec_shebang() {
-        assert!(is_dh_exec_shebang("#!/usr/bin/dh-exec"));
-        assert!(is_dh_exec_shebang("#!/usr/bin/env dh-exec"));
-        assert!(!is_dh_exec_shebang("#!/bin/sh"));
-        assert!(!is_dh_exec_shebang("not a shebang"));
     }
 
     #[test]
