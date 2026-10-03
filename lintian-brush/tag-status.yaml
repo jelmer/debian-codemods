@@ -3920,7 +3920,8 @@
   detector: false
   status: build-stage
 - tag: ored-build-depends-on-obsolete-package
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
     Remove obsolete alternative from Build-Depends OR relation,

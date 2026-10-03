@@ -1,11 +1,10 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, ActionPlan, Deb822Action, Diagnostic, ParagraphSelector};
+use crate::obsolete_packages::obsolete_package_replacement;
 use crate::{FixerError, FixerPreferences, LintianIssue, PackageType, Visibility};
 use debian_control::lossless::relations::Relations;
 use debian_workspace::Workspace;
 use std::path::PathBuf;
-
-include!(concat!(env!("OUT_DIR"), "/obsolete_packages.rs"));
 
 /// Binary dependency fields lintian's per-installable check treats as
 /// dependency fields (matches its `is_dep_field`).
@@ -333,21 +332,6 @@ mod tests {
     #[test]
     fn test_parse_replacement_package_rejects_alternatives() {
         assert_eq!(parse_replacement_package("foo | bar"), None);
-    }
-
-    #[test]
-    fn test_data_contains_known_entries() {
-        // Sanity check that the generated table actually holds entries
-        // from data/fields/obsolete-packages.
-        assert_eq!(obsolete_package_replacement("exim"), Some(Some("exim4")));
-        assert_eq!(
-            obsolete_package_replacement("mysql-client"),
-            Some(Some("default-mysql-client"))
-        );
-        // Present but no replacement listed.
-        assert!(obsolete_package_replacement("cdrecord").is_some());
-        // Not obsolete at all.
-        assert_eq!(obsolete_package_replacement("libc6"), None);
     }
 
     #[test]
