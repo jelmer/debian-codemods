@@ -1,0 +1,2 @@
+#!/usr/bin/dh-exec
+usr/lib/${FOO_PLUGIN_DIR}/plugin.so

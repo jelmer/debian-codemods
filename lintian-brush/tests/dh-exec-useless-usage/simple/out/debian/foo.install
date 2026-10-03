@@ -1,0 +1,3 @@
+# Shared library
+usr/lib/*/libfoo.so.*
+usr/bin/foo

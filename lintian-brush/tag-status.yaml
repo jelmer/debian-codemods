@@ -1460,11 +1460,13 @@
     Fix unknown variable in dh-exec substitution. Requires knowing
     the correct variable name.
 - tag: dh-exec-useless-usage
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Remove dh-exec shebang and expand dh-exec expressions inline
-    since the functionality is available natively in debhelper.
+    Remove dh-exec shebang, replacing ${DEB_HOST_MULTIARCH}-style path
+    components with wildcards where debhelper can't substitute them
+    itself.
 - tag: dh-make-template-in-source
   detector: false
   difficulty: easy

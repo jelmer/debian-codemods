@@ -1,0 +1,11 @@
+Source: test-package
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Build-Depends: debhelper-compat (= 13), dh-exec
+Standards-Version: 4.6.0
+
+Package: test-package
+Architecture: any
+Description: Test package for dh-exec-useless-usage fixer
+ This is a test package.

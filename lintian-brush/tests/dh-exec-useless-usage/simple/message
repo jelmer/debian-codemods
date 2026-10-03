@@ -1,0 +1,4 @@
+Use wildcards rather than dh-exec substitutions in debian/foo.install.
+Fixed-Lintian-Issues:
+ source: dh-exec-useless-usage [debian/foo.install]
+Certainty: likely
