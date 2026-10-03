@@ -1,0 +1,4 @@
+Remove unnecessary dh-exec usage from debian/foo.install.
+Fixed-Lintian-Issues:
+ source: dh-exec-useless-usage [debian/foo.install]
+Certainty: certain

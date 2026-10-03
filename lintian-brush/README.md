@@ -42,6 +42,7 @@ subset of the issues:
 * built-using-for-golang
 * capitalization-error-in-description
 * capitalization-error-in-description-synopsis
+* capitalization-in-override-comment
 * carriage-return-line-feed
 * chown-with-dot
 * circular-installation-prerequisite
@@ -61,9 +62,11 @@ subset of the issues:
 * copyright-refers-to-old-directory
 * copyright-refers-to-symlink-license
 * copyright-refers-to-versionless-license-file
+* copyright-with-old-dh-make-debian-copyright
 * custom-compression-in-debian-source-options
 * cute-field
 * debhelper-but-no-misc-depends
+* debhelper-compat-file-contains-multiple-levels
 * debhelper-tools-from-autotools-dev-are-deprecated
 * debian-changelog-file-contains-obsolete-user-emacs-settings
 * debian-changelog-has-wrong-day-of-week
@@ -82,7 +85,9 @@ subset of the issues:
 * debian-rules-not-executable
 * debian-rules-parses-dpkg-parsechangelog
 * debian-rules-sets-DEB_BUILD_OPTIONS
+* debian-rules-sets-DH_COMPAT
 * debian-rules-sets-dpkg-architecture-variable
+* debian-rules-should-not-use-sanitize-all-buildflag
 * debian-rules-uses-as-needed-linker-flag
 * debian-rules-uses-deb-build-opts
 * debian-rules-uses-deprecated-systemd-override
@@ -109,16 +114,20 @@ subset of the issues:
 * default-mta-dependency-not-listed-first
 * dep3-format-patch-author-or-from-is-better
 * dep5-file-paragraph-references-header-paragraph
+* depends-on-obsolete-package
 * depends-on-old-emacs
 * depends-on-python-minimal
+* description-contains-homepage
 * description-contains-tabs
 * description-possibly-contains-homepage
+* description-starts-with-leading-spaces
 * description-starts-with-package-name
 * description-synopsis-starts-with-article
 * desktop-entry-contains-deprecated-key
 * desktop-entry-contains-encoding-key
 * desktop-entry-file-has-crs
 * dh-clean-k-is-deprecated
+* dh-exec-script-without-dh-exec-features
 * dh-install-instead-of-dh-installmodules
 * dh-quilt-addon-but-quilt-source-format
 * dh_installmanpages-is-obsolete
@@ -134,6 +143,7 @@ subset of the issues:
 * executable-desktop-file
 * extended-description-contains-empty-paragraph
 * extended-description-is-empty
+* faulty-debian-qa-group-address
 * faulty-debian-qa-group-phrase
 * field-name-typo-in-dep5-copyright
 * field-name-typo-in-tests-control
@@ -149,6 +159,7 @@ subset of the issues:
 * initial-upload-closes-no-bugs
 * insecure-copyright-format-uri
 * installable-field-mirrors-source
+* invalid-dep3-format-patch-wrong-bug-debian-url
 * invalid-dep3-format-patch-wrong-last-update
 * invalid-short-name-in-dep5-copyright
 * invalid-standards-version
@@ -182,6 +193,7 @@ subset of the issues:
 * obsolete-runtime-tests-restriction
 * obsolete-url-in-packaging
 * obsolete-vim-addon-manager
+* odd-mark-in-description
 * old-dpmt-vcs
 * old-fsf-address-in-copyright-file
 * old-papt-vcs
@@ -189,6 +201,7 @@ subset of the issues:
 * old-source-override-location
 * older-debian-watch-file-standard
 * older-source-format
+* ored-depends-on-obsolete-package
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
 * package-contains-linda-override
@@ -197,6 +210,7 @@ subset of the issues:
 * package-uses-deprecated-dpatch-patch-system
 * package-uses-old-debhelper-compat-version
 * patch-file-present-but-not-mentioned-in-series
+* pear-package-without-pkg-php-tools-builddep
 * pkg-js-tools-test-is-missing
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
@@ -221,7 +235,9 @@ subset of the issues:
 * skip-systemd-native-flag-missing-pre-depends
 * space-in-std-shortname-in-dep5-copyright
 * spelling-error-in-rules-requires-root
+* superfluous-clutter-in-homepage
 * superfluous-file-pattern
+* synopsis-is-a-sentence
 * systemd-service-alias-without-extension
 * systemd-service-file-refers-to-obsolete-bindto
 * systemd-service-file-refers-to-obsolete-target
@@ -254,6 +270,7 @@ subset of the issues:
 * uses-debhelper-compat-file
 * uses-deprecated-adttmp
 * vcs-field-bitrotted
+* vcs-field-has-unexpected-spaces
 * vcs-field-invalid-branch
 * vcs-field-mismatch
 * vcs-field-not-canonical
