@@ -1,4 +1,4 @@
-debian-codemods (0.188) UNRELEASED; urgency=medium
+debian-codemods (0.188) unstable; urgency=medium
 
   * dh-exec-script-without-dh-exec-features: Skip directories, such as
     debian/examples/. Closes: #1149695
@@ -8,7 +8,7 @@ debian-codemods (0.188) UNRELEASED; urgency=medium
   * ancient-python-version-field: Support the python versions data
     format used by lintian >= 2.142. Closes: #1151138
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 02 Oct 2026 14:31:27 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Oct 2026 16:49:30 +0100
 
 debian-codemods (0.187) unstable; urgency=medium
 
