@@ -5,6 +5,8 @@ debian-codemods (0.188) UNRELEASED; urgency=medium
   * Add fixer for declare-python-versions-for-test
   * Add fixer for ored-build-depends-on-obsolete-package
   * Add fixer for dh-exec-useless-usage
+  * ancient-python-version-field: Support the python versions data
+    format used by lintian >= 2.142. Closes: #1151138
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 02 Oct 2026 14:31:27 +0100
 
