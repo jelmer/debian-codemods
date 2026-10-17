@@ -34,6 +34,15 @@ fn load_python_versions() -> Result<HashMap<String, (u8, u8)>, FixerError> {
     Ok(versions)
 }
 
+/// Look up the "old" threshold; lintian >= 2.142 uses a single "old-python"
+/// key, older versions had separate "old-python2" and "old-python3" keys.
+fn old_threshold(versions: &HashMap<String, (u8, u8)>, legacy_key: &str) -> Option<(u8, u8)> {
+    versions
+        .get("old-python")
+        .or_else(|| versions.get(legacy_key))
+        .copied()
+}
+
 pub fn detect(
     ws: &dyn Workspace,
     _preferences: &FixerPreferences,
@@ -54,7 +63,7 @@ pub fn detect(
     };
 
     let mut diagnostics: Vec<Diagnostic> = Vec::new();
-    for (field, threshold_key) in &[
+    for (field, legacy_key) in &[
         ("X-Python-Version", "old-python2"),
         ("X-Python3-Version", "old-python3"),
     ] {
@@ -68,7 +77,7 @@ pub fn detect(
         let Ok(version) = parse_version(rest.trim()) else {
             continue;
         };
-        let Some(&threshold) = python_versions.get(*threshold_key) else {
+        let Some(threshold) = old_threshold(&python_versions, legacy_key) else {
             continue;
         };
         if version > threshold {
@@ -179,6 +188,25 @@ mod tests {
     }
 
     #[test]
+    fn test_old_threshold() {
+        let legacy = HashMap::from([
+            ("old-python2".to_string(), (2, 6)),
+            ("old-python3".to_string(), (3, 4)),
+        ]);
+        assert_eq!(old_threshold(&legacy, "old-python2"), Some((2, 6)));
+        assert_eq!(old_threshold(&legacy, "old-python3"), Some((3, 4)));
+
+        let current = HashMap::from([
+            ("old-python".to_string(), (3, 13)),
+            ("ancient-python".to_string(), (3, 11)),
+        ]);
+        assert_eq!(old_threshold(&current, "old-python2"), Some((3, 13)));
+        assert_eq!(old_threshold(&current, "old-python3"), Some((3, 13)));
+
+        assert_eq!(old_threshold(&HashMap::new(), "old-python3"), None);
+    }
+
+    #[test]
     fn test_no_change_when_no_field() {
         let tmp = TempDir::new().unwrap();
         let debian = tmp.path().join("debian");
@@ -199,12 +227,12 @@ mod tests {
         let control = debian.join("control");
         fs::write(
             &control,
-            "Source: lintian-brush\nX-Python3-Version: >= 3.8\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
+            "Source: lintian-brush\nX-Python3-Version: >= 3.99\n\nPackage: lintian-brush\nDescription: Testing\n Test test\n",
         )
         .unwrap();
         assert!(matches!(run_apply(tmp.path()), Err(FixerError::NoChanges)));
         assert!(fs::read_to_string(&control)
             .unwrap()
-            .contains("X-Python3-Version: >= 3.8"));
+            .contains("X-Python3-Version: >= 3.99"));
     }
 }
