@@ -1,3 +1,9 @@
+debian-codemods (0.189) UNRELEASED; urgency=medium
+
+  * Support pyo3 0.29. Closes: #1151282
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Oct 2026 16:25:27 +0100
+
 debian-codemods (0.188) unstable; urgency=medium
 
   * dh-exec-script-without-dh-exec-features: Skip directories, such as
