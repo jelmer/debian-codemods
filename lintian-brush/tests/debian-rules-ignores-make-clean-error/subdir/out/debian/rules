@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	[ ! -f build/Makefile ] || $(MAKE) -C build clean
+	[ ! -f docs/Makefile ] || $(MAKE) -C docs distclean
