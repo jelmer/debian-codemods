@@ -1,0 +1,11 @@
+Source: blah
+
+Package: blah
+Description: A normal synopsis
+ Bindings for
+ .NET applications.
+  .
+ Features:
+   * one
+  .
+   * two

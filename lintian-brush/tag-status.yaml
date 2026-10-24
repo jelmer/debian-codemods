@@ -1268,8 +1268,9 @@
     Extract URL from Description and move it to the Homepage field
     in debian/control.
 - tag: description-contains-invalid-control-statement
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Remove invalid control characters from Description in
     debian/control.
