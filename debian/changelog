@@ -1,3 +1,9 @@
+debian-codemods (0.189) UNRELEASED; urgency=medium
+
+  * Add fixer for description-contains-invalid-control-statement
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Oct 2026 12:11:40 +0100
+
 debian-codemods (0.188) unstable; urgency=medium
 
   * dh-exec-script-without-dh-exec-features: Skip directories, such as
