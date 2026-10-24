@@ -1,0 +1,8 @@
+Source: blah
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper-compat (= 13), quilt
+
+Package: blah
+Architecture: all
+Description: blah blah
+ Blah blah

@@ -4641,8 +4641,9 @@
     Fix the version number in debian/changelog for QA uploads. The version
     should follow the NMU versioning convention. Parse and edit changelog.
 - tag: quilt-build-dep-but-no-series-file
-  detector: false
+  detector: true
   difficulty: easy
+  status: implemented
   comment: |
     Create an empty debian/patches/series file, or remove the quilt
     build dependency if no patches exist.

@@ -1,0 +1,4 @@
+Drop unused build-dependency on quilt.
+Certainty: likely
+Fixed-Lintian-Issues:
+ source: quilt-build-dep-but-no-series-file
