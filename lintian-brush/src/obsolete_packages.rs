@@ -12,8 +12,8 @@ mod tests {
         // from data/fields/obsolete-packages.
         assert_eq!(obsolete_package_replacement("exim"), Some(Some("exim4")));
         assert_eq!(
-            obsolete_package_replacement("mysql-client"),
-            Some(Some("default-mysql-client"))
+            obsolete_package_replacement("libgd-gd2-perl"),
+            Some(Some("libgd-perl"))
         );
         // Present but no replacement listed.
         assert!(obsolete_package_replacement("cdrecord").is_some());
