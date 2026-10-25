@@ -90,6 +90,7 @@ mod depends_on_obsolete_package;
 mod depends_on_old_emacs;
 mod depends_on_python_minimal;
 mod description_contains_homepage;
+mod description_contains_invalid_control_statement;
 mod description_contains_tabs;
 mod description_possibly_contains_homepage;
 mod description_starts_with_leading_spaces;

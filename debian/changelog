@@ -1,9 +1,9 @@
 debian-codemods (0.189) UNRELEASED; urgency=medium
 
-  * Support pyo3 0.29. Closes: #1151282
-  * Support PyO3 0.30.
+  * Support pyo3 0.30. Closes: #1151282
+  * Add fixer for description-contains-invalid-control-statement
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Oct 2026 16:25:27 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Oct 2026 12:11:40 +0100
 
 debian-codemods (0.188) unstable; urgency=medium
 

@@ -1,0 +1,4 @@
+Replace indented paragraph separators in Description.
+Certainty: likely
+Fixed-Lintian-Issues:
+ blah binary: description-contains-invalid-control-statement line 2
