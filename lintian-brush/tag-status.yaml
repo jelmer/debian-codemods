@@ -928,11 +928,9 @@
     Reorder debhelper calls in debian/rules to the canonical order.
     Requires parsing Makefile targets and understanding dependencies.
 - tag: debian-rules-ignores-make-clean-error
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove "- " prefix or "|| true" from make clean invocation in
-    debian/rules clean target.
+  status: implemented
 - tag: debian-rules-is-dh_make-template
   detector: false
   difficulty: easy

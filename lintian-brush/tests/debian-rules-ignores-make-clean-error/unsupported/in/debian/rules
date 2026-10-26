@@ -1,0 +1,9 @@
+#!/usr/bin/make -f
+
+clean:
+	dh_testdir
+	-$(MAKE) -f Makefile.custom clean
+	-$(MAKE) clean || true
+	-$(MAKE) V=1 distclean
+	$(MAKE) -i distclean
+	dh_clean

@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+
+build:
+	dh_testdir
+	./configure
+	$(MAKE)
+
+clean:
+	dh_testdir
+	[ ! -f Makefile ] || $(MAKE) distclean
+	dh_clean

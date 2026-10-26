@@ -52,6 +52,7 @@ mod debian_news_entry_uses_asterisk;
 mod debian_pycompat_is_obsolete;
 mod debian_pyversions_is_obsolete;
 mod debian_rules_contains_unnecessary_get_orig_source_target;
+mod debian_rules_ignores_make_clean_error;
 mod debian_rules_missing_recommended_target;
 mod debian_rules_not_executable;
 mod debian_rules_parses_dpkg_parsechangelog;

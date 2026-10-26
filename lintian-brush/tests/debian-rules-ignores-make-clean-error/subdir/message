@@ -1,0 +1,5 @@
+debian/rules: Only skip make clean when the Makefile is missing, rather than ignoring all errors.
+Certainty: likely
+Fixed-Lintian-Issues:
+ source: debian-rules-ignores-make-clean-error [debian/rules:7]
+ source: debian-rules-ignores-make-clean-error [debian/rules:8]
