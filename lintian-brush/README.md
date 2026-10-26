@@ -219,6 +219,7 @@ subset of the issues:
 * public-upstream-keys-in-multiple-locations
 * pypi-homepage
 * python-teams-merged
+* quilt-build-dep-but-no-series-file
 * quilt-series-but-no-build-dep
 * quilt-series-without-trailing-newline
 * recommended-field

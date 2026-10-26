@@ -195,6 +195,7 @@ mod public_upstream_key_not_minimal;
 #[cfg(feature = "pgp")]
 mod public_upstream_keys_in_multiple_locations;
 mod python_teams_merged;
+mod quilt_build_dep_but_no_series_file;
 mod quilt_series_but_no_build_dep;
 mod quilt_series_without_trailing_newline;
 mod redundant_bugs_field;
