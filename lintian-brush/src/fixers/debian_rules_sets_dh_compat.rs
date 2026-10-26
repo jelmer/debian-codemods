@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(result.description, LABEL);
         assert_eq!(
             fs::read_to_string(&rules).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
         assert_eq!(
             fs::read_to_string(&control).unwrap(),
@@ -251,7 +251,7 @@ mod tests {
         run_apply(tmp.path()).unwrap();
         assert_eq!(
             fs::read_to_string(&rules).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
         // compat file should not be overwritten
         assert_eq!(fs::read_to_string(debian.join("compat")).unwrap(), "10\n");
@@ -277,7 +277,7 @@ mod tests {
         run_apply(tmp.path()).unwrap();
         assert_eq!(
             fs::read_to_string(&rules).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
     }
 
@@ -340,7 +340,7 @@ mod tests {
         run_apply(tmp.path()).unwrap();
         assert_eq!(
             fs::read_to_string(&rules).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
         assert_eq!(
             fs::read_to_string(&control).unwrap(),
@@ -365,7 +365,7 @@ mod tests {
         run_apply(tmp.path()).unwrap();
         assert_eq!(
             fs::read_to_string(&rules).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
         // control unchanged - nothing to migrate
         assert_eq!(fs::read_to_string(&control).unwrap(), control_content);
