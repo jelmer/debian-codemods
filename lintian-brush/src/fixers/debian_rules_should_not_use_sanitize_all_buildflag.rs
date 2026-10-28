@@ -162,7 +162,7 @@ mod tests {
         run_apply(tmp.path()).unwrap();
         assert_eq!(
             fs::read_to_string(&path).unwrap(),
-            "#!/usr/bin/make -f\n\n\n%:\n\tdh $@\n",
+            "#!/usr/bin/make -f\n\n%:\n\tdh $@\n",
         );
     }
 
