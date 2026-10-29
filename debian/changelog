@@ -1,11 +1,11 @@
-debian-codemods (0.189) UNRELEASED; urgency=medium
+debian-codemods (0.189) unstable; urgency=medium
 
   * Support pyo3 0.30. Closes: #1151282
   * Add fixer for description-contains-invalid-control-statement
   * Add fixer for debian-rules-ignores-make-clean-error.
   * Add fixer for quilt-build-dep-but-no-series-file
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Oct 2026 12:48:58 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 28 Oct 2026 01:44:30 +0000
 
 debian-codemods (0.188) unstable; urgency=medium
 
