@@ -6618,11 +6618,9 @@
   detector: false
   status: build-stage
 - tag: upstream-metadata-field-unknown
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Remove or fix unknown fields in debian/upstream/metadata.
-    Similar to existing upstream-metadata-has-obsolete-field fixer.
 - tag: wrong-team
   detector: false
   difficulty: easy
