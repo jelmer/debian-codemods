@@ -1,6 +1,7 @@
 use crate::declare_detector;
 use crate::diagnostic::{Action, Diagnostic, TriggersAction};
 use crate::{FixerError, FixerPreferences, LintianIssue, Visibility};
+use debian_workspace::triggers_file;
 use debian_workspace::Workspace;
 use std::path::{Path, PathBuf};
 
@@ -8,33 +9,6 @@ use std::path::{Path, PathBuf};
 /// so. Renaming to the explicit `-await` form preserves behaviour and
 /// silences `uses-implicit-await-trigger`.
 const IMPLICIT_AWAIT_TYPES: &[&str] = &["activate", "interest"];
-
-/// A single trigger line, with the type extracted for inspection.
-struct TriggerLine {
-    /// 1-based line number in the source file.
-    line_no: usize,
-    /// Trigger type (first whitespace-delimited token).
-    trigger_type: String,
-}
-
-fn parse_triggers(content: &str) -> Vec<TriggerLine> {
-    let mut out = Vec::new();
-    for (idx, line) in content.lines().enumerate() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-        let trigger_type = trimmed.split_whitespace().next().unwrap_or("").to_string();
-        if trigger_type.is_empty() {
-            continue;
-        }
-        out.push(TriggerLine {
-            line_no: idx + 1,
-            trigger_type,
-        });
-    }
-    out
-}
 
 /// Resolve the binary package name a `debian/<name>` triggers file applies
 /// to. Returns `None` if the single-package `debian/triggers` form is used
@@ -79,7 +53,7 @@ pub fn detect(
             continue;
         };
 
-        for trigger in parse_triggers(content) {
+        for trigger in triggers_file::parse(content) {
             if !IMPLICIT_AWAIT_TYPES.contains(&trigger.trigger_type.as_str()) {
                 continue;
             }
@@ -157,26 +131,6 @@ mod tests {
             ),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn parse_skips_comments_and_blank_lines() {
-        let content = "# a comment\n\n  interest /usr/share/foo\nactivate /usr/share/bar\n";
-        let lines = parse_triggers(content);
-        assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0].line_no, 3);
-        assert_eq!(lines[0].trigger_type, "interest");
-        assert_eq!(lines[1].line_no, 4);
-        assert_eq!(lines[1].trigger_type, "activate");
-    }
-
-    #[test]
-    fn parse_ignores_leading_whitespace() {
-        let content = "   activate /path\n\t\tinterest /other\n";
-        let lines = parse_triggers(content);
-        assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0].trigger_type, "activate");
-        assert_eq!(lines[1].trigger_type, "interest");
     }
 
     #[test]

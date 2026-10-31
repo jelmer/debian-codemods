@@ -3522,6 +3522,8 @@ fn apply_maintscript_group(base: &Path, rel: &Path, group: &[&Action]) -> Result
 }
 
 fn apply_triggers_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    use crate::triggers_file;
+
     let abs = base.join(rel);
     if !abs.exists() {
         return Err(FixerError::Other(format!(
@@ -3534,6 +3536,10 @@ fn apply_triggers_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
         .split_inclusive('\n')
         .map(|s| s.to_string())
         .collect();
+    let parsed: std::collections::HashMap<usize, triggers_file::TriggerLine> =
+        triggers_file::parse(&original)
+            .map(|t| (t.line_no, t))
+            .collect();
 
     let mut any_change = false;
     for action in group {
@@ -3553,33 +3559,25 @@ fn apply_triggers_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bo
                 lines.len()
             )));
         }
-        let idx = *line_no - 1;
-        let current = &lines[idx];
-        let (trimmed, trailing_newline) = match current.strip_suffix('\n') {
-            Some(stripped) => (stripped, true),
-            None => (current.as_str(), false),
+        let Some(parsed_line) = parsed.get(line_no) else {
+            return Err(FixerError::Other(format!(
+                "triggers line {} is blank or a comment",
+                line_no
+            )));
         };
-        let leading_ws_len = trimmed.len() - trimmed.trim_start().len();
-        let after_ws = &trimmed[leading_ws_len..];
-        let (type_token, rest) = match after_ws.find(char::is_whitespace) {
-            Some(pos) => (&after_ws[..pos], &after_ws[pos..]),
-            None => (after_ws, ""),
-        };
-        if type_token != from {
+        if parsed_line.trigger_type != *from {
             return Err(FixerError::Other(format!(
                 "triggers line {} has type {:?}, expected {:?}",
-                line_no, type_token, from
+                line_no, parsed_line.trigger_type, from
             )));
         }
-        let leading_ws = &trimmed[..leading_ws_len];
-        let mut new_line = String::with_capacity(trimmed.len() + to.len());
-        new_line.push_str(leading_ws);
-        new_line.push_str(to);
-        new_line.push_str(rest);
+        let idx = *line_no - 1;
+        let trailing_newline = lines[idx].ends_with('\n');
+        let mut new_line = parsed_line.render_with_type(to);
         if trailing_newline {
             new_line.push('\n');
         }
-        if new_line != *current {
+        if new_line != lines[idx] {
             lines[idx] = new_line;
             any_change = true;
         }
