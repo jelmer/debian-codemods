@@ -209,6 +209,7 @@ pub use renamed_tag::get_renamed_tags;
 mod rules_not_executable;
 mod rules_requires_root_missing;
 mod skip_systemd_native_flag_missing_pre_depends;
+mod source_contains_debian_substvars;
 mod source_format;
 mod space_in_std_shortname_in_dep5_copyright;
 mod spelling_error_in_rules_requires_root;
