@@ -6467,11 +6467,9 @@
     Delete the CMakeCache.txt file from the source tree. It should not
     be included in the source package.
 - tag: source-contains-debian-substvars
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Delete the debian/substvars file from the source tree. It is generated
-    during build and should not be committed.
 - tag: source-contains-editor-backup-file
   detector: false
   difficulty: easy
