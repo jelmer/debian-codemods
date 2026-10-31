@@ -1,0 +1,4 @@
+Use `+dfsg` instead of `.dfsg` in debian/watch dversionmangle.
+Fixed-Lintian-Issues:
+ source: dfsg-version-with-period 1.2.3.dfsg1-1
+Certainty: confident
