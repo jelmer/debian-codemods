@@ -110,6 +110,7 @@ mod dm_upload_allowed;
 mod documentation_package_not_arch_all;
 mod dpatch_build_dep_but_no_patch_list;
 mod duplicate_contact;
+mod duplicate_globbing_patterns;
 mod duplicate_override_context;
 mod empty_debian_patches_series;
 mod empty_debian_source_options;

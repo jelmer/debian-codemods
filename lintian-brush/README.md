@@ -81,6 +81,7 @@ subset of the issues:
 * debian-pyversions-is-obsolete
 * debian-rules-calls-pwd
 * debian-rules-contains-unnecessary-get-orig-source-target
+* debian-rules-ignores-make-clean-error
 * debian-rules-missing-recommended-target
 * debian-rules-not-executable
 * debian-rules-parses-dpkg-parsechangelog
@@ -109,6 +110,7 @@ subset of the issues:
 * debian-watch-not-mangling-version
 * debian-watch-uses-insecure-uri
 * debug-symbol-migration-possibly-complete
+* declare-python-versions-for-test
 * declares-possibly-conflicting-debhelper-compat-versions
 * default-mta-dependency-does-not-specify-mail-transport-agent
 * default-mta-dependency-not-listed-first
@@ -118,6 +120,7 @@ subset of the issues:
 * depends-on-old-emacs
 * depends-on-python-minimal
 * description-contains-homepage
+* description-contains-invalid-control-statement
 * description-contains-tabs
 * description-possibly-contains-homepage
 * description-starts-with-leading-spaces
@@ -128,6 +131,7 @@ subset of the issues:
 * desktop-entry-file-has-crs
 * dh-clean-k-is-deprecated
 * dh-exec-script-without-dh-exec-features
+* dh-exec-useless-usage
 * dh-install-instead-of-dh-installmodules
 * dh-quilt-addon-but-quilt-source-format
 * dh_installmanpages-is-obsolete
@@ -135,6 +139,7 @@ subset of the issues:
 * documentation-package-not-architecture-independent
 * dpatch-build-dep-but-no-patch-list
 * duplicate-contact
+* duplicate-globbing-patterns
 * duplicate-override-context
 * empty-debian-tests-control
 * empty-rust-library-declares-provides
@@ -201,6 +206,7 @@ subset of the issues:
 * old-source-override-location
 * older-debian-watch-file-standard
 * older-source-format
+* ored-build-depends-on-obsolete-package
 * ored-depends-on-obsolete-package
 * out-of-date-copyright-format-uri
 * out-of-date-standards-version
