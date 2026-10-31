@@ -6,13 +6,18 @@ use std::path::PathBuf;
 
 /// Replace pipe disjunctions (`A | B`) in a license synopsis with
 /// `A or B`, which is what DEP-5 requires. Returns `None` if the
-/// synopsis is already pipe-free.
+/// synopsis is pipe-free, or if the rewrite would not produce a
+/// well-formed DEP-5 license expression (e.g. nested or
+/// unparseable constructs where we can't be sure the rewrite is
+/// correct).
 fn fix_pipe_in_synopsis(synopsis: &str) -> Option<String> {
     let re = regex::Regex::new(r"\s+\|\s+").unwrap();
     if !re.is_match(synopsis) {
         return None;
     }
-    Some(re.replace_all(synopsis, " or ").into_owned())
+    let rewritten = re.replace_all(synopsis, " or ").into_owned();
+    debian_copyright::LicenseExpr::parse_strict(&rewritten).ok()?;
+    Some(rewritten)
 }
 
 /// Build the lintian-style info field matching how lintian reports
@@ -206,6 +211,23 @@ mod tests {
         // A pipe without surrounding whitespace isn't the disjunction
         // syntax lintian flags.
         assert_eq!(fix_pipe_in_synopsis("GPL-2+|MIT"), None);
+    }
+
+    #[test]
+    fn fix_pipe_in_synopsis_rejects_malformed_result() {
+        // After rewriting, the result must parse as a valid DEP-5
+        // license expression - otherwise we might be mangling a
+        // construct we don't understand.
+        assert_eq!(fix_pipe_in_synopsis("GPL-2+ | MIT |"), None);
+        assert_eq!(fix_pipe_in_synopsis("| GPL-2+ | MIT"), None);
+    }
+
+    #[test]
+    fn fix_pipe_in_synopsis_handles_with_exception() {
+        assert_eq!(
+            fix_pipe_in_synopsis("GPL-2+ with OpenSSL-exception | MIT"),
+            Some("GPL-2+ with OpenSSL-exception or MIT".to_string())
+        );
     }
 
     #[test]
