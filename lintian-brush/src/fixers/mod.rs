@@ -260,6 +260,7 @@ mod vcs_field_uses_not_recommended_uri_format;
 mod vcs_git_uses_invalid_user_uri;
 mod wrong_debian_qa_group_name;
 mod wrong_section_according_to_package_name;
+mod wrong_section_for_udeb;
 mod xc_package_type_in_debian_control;
 mod xs_testsuite_field_in_debian_control;
 mod xs_vcs_field_in_debian_control;
