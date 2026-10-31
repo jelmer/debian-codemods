@@ -1,0 +1,3 @@
+Replace `|` with `or` in debian/copyright license disjunction.
+Fixed-Lintian-Issues:
+ source: pipe-symbol-used-as-license-disjunction gpl-2+ | mit [debian/copyright:6]
