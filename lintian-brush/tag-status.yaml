@@ -556,11 +556,9 @@
     Strip absolute paths (e.g. /usr/bin/foo -> foo) from commands in
     maintainer scripts. needs-shell-parser
 - tag: composer-package-without-pkg-php-tools-builddep
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Add pkg-php-tools to Build-Depends in debian/control.
-    Straightforward relation addition.
 - tag: compressed-documentation
   detector: false
   status: build-stage
@@ -4400,12 +4398,9 @@
   detector: false
   status: build-stage
 - tag: pipe-symbol-used-as-license-disjunction
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Replace pipe "|" with "or" in debian/copyright license fields. The DEP-5
-    format uses "or" for license disjunctions, not "|". Parse and edit with
-    debian-copyright crate.
 - tag: pkg-config-bad-directive
   detector: false
   status: build-stage

@@ -1,0 +1,12 @@
+Source: mycomposerpackage
+Section: php
+Priority: optional
+Maintainer: Joe Maintainer <joe@example.com>
+Build-Depends: debhelper (>= 13)
+Standards-Version: 4.6.2
+
+Package: mycomposerpackage
+Architecture: all
+Depends: ${misc:Depends}
+Description: Test package
+ A test package.
