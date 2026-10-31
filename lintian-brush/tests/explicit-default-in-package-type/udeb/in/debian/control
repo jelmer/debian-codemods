@@ -1,0 +1,10 @@
+Source: example
+Section: debian-installer
+Priority: optional
+
+Package: example-udeb
+Architecture: any
+Package-Type: udeb
+Section: debian-installer
+Description: test
+ test description
