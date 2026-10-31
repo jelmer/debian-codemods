@@ -182,6 +182,7 @@ mod package_uses_deprecated_debhelper_compat_version;
 mod package_uses_deprecated_dpatch_patch_system;
 mod package_uses_deprecated_source_override_location;
 mod patch_file_present_but_not_mentioned_in_series;
+mod patch_system_but_no_source_readme;
 mod pear_package_without_pkg_php_tools_builddep;
 mod pipe_symbol_used_as_license_disjunction;
 mod pkg_js_tools_test_is_missing;

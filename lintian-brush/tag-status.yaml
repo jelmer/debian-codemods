@@ -4342,11 +4342,9 @@
     Convert direct source changes into quilt patches. Requires extracting
     the diff and creating proper quilt patches, then reverting the direct changes.
 - tag: patch-system-but-no-source-readme
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Create a debian/README.source file describing the patch system in use.
-    Template text depends on whether quilt, dpatch, etc. is used.
+  status: implemented
 - tag: patched-file-without-utf8-name
   detector: false
   difficulty: hard
