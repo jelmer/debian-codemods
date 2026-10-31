@@ -47,6 +47,7 @@ subset of the issues:
 * chown-with-dot
 * circular-installation-prerequisite
 * comma-separated-files-in-dep5-copyright
+* composer-package-without-pkg-php-tools-builddep
 * control-file-contains-dh-make-vcs-comment
 * copyright-does-not-refer-to-common-license-file
 * copyright-file-contains-full-apache-2-license

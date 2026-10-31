@@ -1,5 +1,6 @@
 debian-codemods (0.190) UNRELEASED; urgency=medium
 
+  * Add fixer for composer-package-without-pkg-php-tools-builddep
   * Add fixer for duplicate-globbing-patterns
   * Add fixer for dfsg-version-with-period.
   * Add fixer for source-contains-debian-substvars
