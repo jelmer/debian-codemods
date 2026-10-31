@@ -248,6 +248,7 @@ mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
 mod uses_dh_addons;
+mod uses_implicit_await_trigger;
 #[cfg(feature = "upstream")]
 mod vcs_broken_uri;
 mod vcs_field_bitrotted;

@@ -1,0 +1,15 @@
+Source: multi
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Standards-Version: 4.6.0
+
+Package: bar
+Architecture: all
+Description: bar
+ Bar package.
+
+Package: baz
+Architecture: all
+Description: baz
+ Baz package.

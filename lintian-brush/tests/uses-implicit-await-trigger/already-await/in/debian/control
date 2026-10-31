@@ -1,0 +1,10 @@
+Source: foo
+Section: misc
+Priority: optional
+Maintainer: Test User <test@example.com>
+Standards-Version: 4.6.0
+
+Package: foo
+Architecture: all
+Description: test
+ Test package.
