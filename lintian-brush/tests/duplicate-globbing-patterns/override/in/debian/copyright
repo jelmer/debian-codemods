@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: blah
+
+Files: *
+Copyright: 2020 Somebody <somebody@example.com>
+License: GPL-2
+
+Files: src/* man/* src/*
+Copyright: 2020 Somebody Else <else@example.com>
+License: GPL-2
+
+License: GPL-2
+ On Debian systems, the full text of the GNU General Public License
+ version 2 can be found in `/usr/share/common-licenses/GPL-2'.

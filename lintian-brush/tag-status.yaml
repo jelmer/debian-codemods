@@ -6319,11 +6319,9 @@
   detector: false
   status: build-stage
 - tag: duplicate-globbing-patterns
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Remove duplicate globbing patterns from debian/copyright or lintian
-    overrides.
 - tag: globbing-patterns-out-of-order
   detector: true
   status: implemented

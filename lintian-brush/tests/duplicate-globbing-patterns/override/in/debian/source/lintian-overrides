@@ -1,0 +1,1 @@
+duplicate-globbing-patterns src/* (lines *) [debian/copyright:*]
