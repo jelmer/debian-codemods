@@ -101,6 +101,7 @@ mod description_synopsis_starts_with_article;
 mod desktop_entry_contains_deprecated_key;
 mod desktop_entry_contains_encoding_key;
 mod desktop_entry_file_has_crs;
+mod dfsg_version_misspelled;
 mod dfsg_version_with_period;
 mod dh_clean_k_is_deprecated;
 mod dh_exec_script_without_dh_exec_features;

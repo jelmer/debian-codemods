@@ -1423,11 +1423,11 @@
     Would need to remove +dfsg suffix from version in native package.
     Risky to auto-change version numbers.
 - tag: dfsg-version-misspelled
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
   comment: |
-    Fix misspelled dfsg suffix in debian/watch dversionmangle
-    (e.g. "dsfg" -> "dfsg").
+    Replace misspelled "dsfg" with "dfsg" in the package version.
 - tag: dfsg-version-with-period
   detector: true
   status: implemented

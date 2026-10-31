@@ -1,0 +1,4 @@
+Replace misspelled `dsfg` with `dfsg` in the package version.
+Fixed-Lintian-Issues:
+ source: dfsg-version-misspelled 1.2.3+dsfg1-1
+Certainty: certain
