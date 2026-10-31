@@ -218,6 +218,7 @@ subset of the issues:
 * package-uses-old-debhelper-compat-version
 * patch-file-present-but-not-mentioned-in-series
 * pear-package-without-pkg-php-tools-builddep
+* pipe-symbol-used-as-license-disjunction
 * pkg-js-tools-test-is-missing
 * possible-missing-colon-in-closes
 * priority-extra-is-replaced-by-priority-optional
