@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: foo
+
+Files: *
+Copyright: 2024 Foo
+License: GPL-2+ | MIT
+
+License: GPL-2+
+ Text here.
+
+License: MIT
+ Text here.
