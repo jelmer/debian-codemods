@@ -556,11 +556,9 @@
     Strip absolute paths (e.g. /usr/bin/foo -> foo) from commands in
     maintainer scripts. needs-shell-parser
 - tag: composer-package-without-pkg-php-tools-builddep
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Add pkg-php-tools to Build-Depends in debian/control.
-    Straightforward relation addition.
 - tag: compressed-documentation
   detector: false
   status: build-stage

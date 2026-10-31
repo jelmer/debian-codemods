@@ -1,7 +1,8 @@
 debian-codemods (0.190) UNRELEASED; urgency=medium
 
+  * Add fixer for composer-package-without-pkg-php-tools-builddep
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Oct 2026 14:47:07 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Oct 2026 14:50:17 +0000
 
 debian-codemods (0.189) unstable; urgency=medium
 
