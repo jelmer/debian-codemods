@@ -1,5 +1,6 @@
 debian-codemods (0.190) UNRELEASED; urgency=medium
 
+  * Add fixer for dfsg-version-with-period.
   * Add fixer for source-contains-debian-substvars
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Oct 2026 14:09:40 +0000
