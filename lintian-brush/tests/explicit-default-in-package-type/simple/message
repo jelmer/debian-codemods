@@ -1,0 +1,4 @@
+Remove redundant Package-Type: deb from example.
+Certainty: certain
+Fixed-Lintian-Issues:
+ example binary: explicit-default-in-package-type

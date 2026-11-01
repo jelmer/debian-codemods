@@ -1,0 +1,15 @@
+Source: example
+Section: net
+Priority: optional
+
+Package: example-one
+Architecture: any
+Package-Type: deb
+Description: one
+ one description
+
+Package: example-two
+Architecture: any
+Package-Type: deb
+Description: two
+ two description
