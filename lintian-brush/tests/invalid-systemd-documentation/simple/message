@@ -1,0 +1,3 @@
+Prefix www.foo.example.com/manual with https:// scheme.
+Fixed-Lintian-Issues:
+ source: invalid-systemd-documentation debian/foo.service www.foo.example.com/manual

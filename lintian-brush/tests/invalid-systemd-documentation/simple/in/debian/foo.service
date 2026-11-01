@@ -1,0 +1,6 @@
+[Unit]
+Description=Foo daemon
+Documentation=www.foo.example.com/manual
+
+[Service]
+ExecStart=/usr/sbin/foo

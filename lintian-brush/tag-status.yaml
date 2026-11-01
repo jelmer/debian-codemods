@@ -6728,10 +6728,9 @@
   detector: true
   status: implemented
 - tag: invalid-systemd-documentation
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Documentation= URL in systemd service file to be a valid URI.
+  status: implemented
 - tag: kill-mode-none
   detector: false
   difficulty: medium
