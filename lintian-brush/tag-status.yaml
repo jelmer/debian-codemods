@@ -2020,11 +2020,8 @@
     the package moved from experimental to unstable. Hard to
     determine whether the upload was intentional.
 - tag: explicit-default-in-package-type
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove "Package-Type: deb" from debian/control since "deb"
-    is the default.
 - tag: explicitly-armored-upstream-signature
   detector: false
   status: build-stage

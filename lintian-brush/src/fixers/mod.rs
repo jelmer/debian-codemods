@@ -122,6 +122,7 @@ mod empty_rust_library_declares_provides;
 mod essential_no_not_needed;
 mod excessive_priority_for_library_package;
 mod executable_desktop_file;
+mod explicit_default_in_package_type;
 mod extended_description_contains_empty_paragraph;
 mod faulty_debian_qa_group_address;
 mod field_name_typo_in_control;

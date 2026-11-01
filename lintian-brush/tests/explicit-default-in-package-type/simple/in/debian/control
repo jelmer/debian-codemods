@@ -1,0 +1,9 @@
+Source: example
+Section: net
+Priority: optional
+
+Package: example
+Architecture: any
+Package-Type: deb
+Description: test
+ test description
