@@ -5979,11 +5979,9 @@
   detector: false
   status: build-stage
 - tag: wrong-section-for-udeb
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Section field for udeb packages in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: zero-byte-executable-in-path
   detector: false
   status: build-stage

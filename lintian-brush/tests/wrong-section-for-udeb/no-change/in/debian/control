@@ -1,0 +1,9 @@
+Source: foo
+Section: admin
+Maintainer: Example <example@example.com>
+
+Package: foo
+Section: admin
+Architecture: all
+Description: foo
+ foo package
