@@ -128,7 +128,6 @@ mod faulty_debian_qa_group_address;
 mod field_name_typo_in_control;
 mod field_name_typo_in_dep5_copyright;
 mod field_name_typo_in_tests_control;
-mod field_name_typo_in_upstream_metadata;
 mod file_contains_trailing_whitespace;
 mod font_package_not_multi_arch_foreign;
 mod global_files_wildcard_not_first_paragraph_in_dep5_copyright;
@@ -244,6 +243,7 @@ mod unused_license_paragraph_in_dep5_copyright;
 mod unused_override;
 mod unversioned_copyright_format_uri;
 #[cfg(feature = "upstream")]
+mod upstream_metadata_field_check;
 mod upstream_metadata_file;
 mod upstream_metadata_has_obsolete_field;
 mod upstream_metadata_in_native_source;

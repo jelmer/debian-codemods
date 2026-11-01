@@ -1,0 +1,4 @@
+Prefix unknown field in debian/upstream/metadata with X- (Totally-Unknown ⇒ X-Totally-Unknown).
+Certainty: possible
+Fixed-Lintian-Issues:
+ source: upstream-metadata-field-unknown Totally-Unknown [debian/upstream/metadata]

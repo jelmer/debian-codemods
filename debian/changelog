@@ -8,6 +8,7 @@ debian-codemods (0.190) UNRELEASED; urgency=medium
   * Add fixer for wrong-section-for-udeb
   * Add fixer for dfsg-version-misspelled.
   * Add fixer for pipe-symbol-used-as-license-disjunction.
+  * Add fixer for upstream-metadata-field-unknown.
   * Add fixer for uses-implicit-await-trigger.
   * Add fixer for patch-system-but-no-source-readme.
   * Add fixer for explicit-default-in-package-type.
