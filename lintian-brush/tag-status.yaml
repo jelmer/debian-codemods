@@ -3456,11 +3456,9 @@
     Add versioned init-system-helpers to Pre-Depends in
     debian/control.
 - tag: missing-xs-go-import-path-for-golang-package
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Add XS-Go-Import-Path field to source stanza of debian/control
-    based on the Go import path.
+  status: implemented
 - tag: mknod-in-maintainer-script
   detector: false
   difficulty: hard

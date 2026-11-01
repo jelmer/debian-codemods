@@ -153,6 +153,7 @@ mod missing_debian_watch_file_standard;
 mod missing_prerequisite_for_pyproject_backend;
 mod missing_static_built_using_for_golang;
 mod missing_vcs_browser_field;
+mod missing_xs_go_import_path_for_golang_package;
 mod needlessly_depends_on_awk;
 mod new_package_uses_date_based_version_number;
 mod newer_debconf_templates;
