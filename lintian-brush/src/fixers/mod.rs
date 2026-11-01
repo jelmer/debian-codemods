@@ -141,6 +141,7 @@ mod invalid_dep3_format_patch_wrong_bug_debian_url;
 mod invalid_dep3_format_patch_wrong_last_update;
 mod invalid_short_name_in_dep5_copyright;
 mod invalid_standards_version;
+mod invalid_systemd_documentation;
 mod libmodule_build_perl_needs_to_be_in_build_depends;
 mod libmodule_build_tiny_perl_needs_to_be_in_build_depends;
 mod license_file_listed_in_debian_copyright;
