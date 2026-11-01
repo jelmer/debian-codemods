@@ -2020,11 +2020,8 @@
     the package moved from experimental to unstable. Hard to
     determine whether the upload was intentional.
 - tag: explicit-default-in-package-type
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Remove "Package-Type: deb" from debian/control since "deb"
-    is the default.
 - tag: explicitly-armored-upstream-signature
   detector: false
   status: build-stage
@@ -5980,11 +5977,9 @@
   detector: false
   status: build-stage
 - tag: wrong-section-for-udeb
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Section field for udeb packages in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: zero-byte-executable-in-path
   detector: false
   status: build-stage

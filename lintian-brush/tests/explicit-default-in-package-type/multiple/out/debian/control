@@ -1,0 +1,13 @@
+Source: example
+Section: net
+Priority: optional
+
+Package: example-one
+Architecture: any
+Description: one
+ one description
+
+Package: example-two
+Architecture: any
+Description: two
+ two description
