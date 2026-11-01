@@ -1,0 +1,8 @@
+Source: blah
+Build-Depends: golang-go
+Maintainer: Jane Developer <jane@example.com>
+
+Package: blah
+Architecture: any
+Description: a Go package
+ Some description.

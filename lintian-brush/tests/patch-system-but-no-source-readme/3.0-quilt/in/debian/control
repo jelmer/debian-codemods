@@ -1,0 +1,7 @@
+Source: blah
+Maintainer: Joe Example <joe@example.com>
+Build-Depends: debhelper, quilt
+
+Package: blah
+Description: blah blah
+ Blah blah
