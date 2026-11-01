@@ -5788,11 +5788,9 @@
   detector: false
   status: build-stage
 - tag: uses-implicit-await-trigger
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Add "await" keyword to trigger declarations in debian/triggers to
-    make the await behavior explicit.
 - tag: uses-no-compression-for-control-tarball
   detector: false
   status: build-stage

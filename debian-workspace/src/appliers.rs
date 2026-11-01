@@ -10,8 +10,8 @@ use crate::Error as FixerError;
 use crate::action::{
     Action, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action, DesktopIniAction,
     FilesystemAction, LintianOverridesAction, MaintscriptAction, MakefileAction,
-    OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, WatchAction,
-    YamlAction, YamlPathComponent, action_file,
+    OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction, TriggersAction,
+    WatchAction, YamlAction, YamlPathComponent, action_file,
 };
 use debian_analyzer::control::TemplatedControlEditor;
 use std::collections::BTreeMap;
@@ -106,6 +106,7 @@ fn apply_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<Vec<PathBuf
         Action::Dep3(_) => apply_dep3_group(base, rel, group).map(lift),
         Action::LintianOverrides(_) => apply_lintian_overrides_group(base, rel, group).map(lift),
         Action::Maintscript(_) => apply_maintscript_group(base, rel, group).map(lift),
+        Action::Triggers(_) => apply_triggers_group(base, rel, group).map(lift),
         Action::Debcargo(_) => apply_debcargo_group(base, rel, group).map(lift),
         Action::RunCommand(_) => apply_run_command_group(base, rel, group),
         Action::Filesystem(_) => apply_filesystem_group(base, rel, group),
@@ -3520,6 +3521,77 @@ fn apply_maintscript_group(base: &Path, rel: &Path, group: &[&Action]) -> Result
     Ok(true)
 }
 
+fn apply_triggers_group(base: &Path, rel: &Path, group: &[&Action]) -> Result<bool, FixerError> {
+    use crate::triggers_file;
+
+    let abs = base.join(rel);
+    if !abs.exists() {
+        return Err(FixerError::Other(format!(
+            "triggers action targets missing file {}",
+            rel.display()
+        )));
+    }
+    let original = std::fs::read_to_string(&abs)?;
+    let mut lines: Vec<String> = original
+        .split_inclusive('\n')
+        .map(|s| s.to_string())
+        .collect();
+    let parsed: std::collections::HashMap<usize, triggers_file::TriggerLine> =
+        triggers_file::parse(&original)
+            .map(|t| (t.line_no, t))
+            .collect();
+
+    let mut any_change = false;
+    for action in group {
+        let Action::Triggers(TriggersAction::ReplaceType {
+            line: line_no,
+            from,
+            to,
+            ..
+        }) = action
+        else {
+            unreachable!("apply_triggers_group called with non-triggers action");
+        };
+        if *line_no == 0 || *line_no > lines.len() {
+            return Err(FixerError::Other(format!(
+                "triggers action targets line {} but file has only {} lines",
+                line_no,
+                lines.len()
+            )));
+        }
+        let Some(parsed_line) = parsed.get(line_no) else {
+            return Err(FixerError::Other(format!(
+                "triggers line {} is blank or a comment",
+                line_no
+            )));
+        };
+        if parsed_line.trigger_type != *from {
+            return Err(FixerError::Other(format!(
+                "triggers line {} has type {:?}, expected {:?}",
+                line_no, parsed_line.trigger_type, from
+            )));
+        }
+        let idx = *line_no - 1;
+        let trailing_newline = lines[idx].ends_with('\n');
+        let mut new_line = parsed_line.render_with_type(to);
+        if trailing_newline {
+            new_line.push('\n');
+        }
+        if new_line != lines[idx] {
+            lines[idx] = new_line;
+            any_change = true;
+        }
+    }
+
+    if !any_change {
+        return Ok(false);
+    }
+
+    let out: String = lines.concat();
+    std::fs::write(&abs, out)?;
+    Ok(true)
+}
+
 fn snapshot_scope(
     scope_abs: &Path,
 ) -> std::io::Result<std::collections::BTreeMap<PathBuf, Vec<u8>>> {
@@ -5822,6 +5894,82 @@ mod tests {
         assert!(apply_action(tmp.path(), &action).unwrap());
         // The script is now empty -> file removed (`script.is_empty()` branch).
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn triggers_replace_type_rewrites_matching_line() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("triggers");
+        fs::write(
+            &path,
+            "# header\n\nactivate /usr/share/foo\ninterest /etc/bar\n",
+        )
+        .unwrap();
+        let action = Action::Triggers(TriggersAction::ReplaceType {
+            file: PathBuf::from("debian/triggers"),
+            line: 3,
+            from: "activate".into(),
+            to: "activate-await".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "# header\n\nactivate-await /usr/share/foo\ninterest /etc/bar\n",
+        );
+    }
+
+    #[test]
+    fn triggers_replace_type_preserves_leading_whitespace() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("triggers");
+        fs::write(&path, "   interest\t/etc/foo\n").unwrap();
+        let action = Action::Triggers(TriggersAction::ReplaceType {
+            file: PathBuf::from("debian/triggers"),
+            line: 1,
+            from: "interest".into(),
+            to: "interest-await".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).unwrap());
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "   interest-await\t/etc/foo\n",
+        );
+    }
+
+    #[test]
+    fn triggers_replace_type_mismatched_from_errors() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("triggers");
+        fs::write(&path, "interest-await /etc/foo\n").unwrap();
+        let action = Action::Triggers(TriggersAction::ReplaceType {
+            file: PathBuf::from("debian/triggers"),
+            line: 1,
+            from: "interest".into(),
+            to: "interest-await".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).is_err());
+    }
+
+    #[test]
+    fn triggers_replace_type_out_of_range_errors() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        let path = debian.join("triggers");
+        fs::write(&path, "activate /etc/foo\n").unwrap();
+        let action = Action::Triggers(TriggersAction::ReplaceType {
+            file: PathBuf::from("debian/triggers"),
+            line: 5,
+            from: "activate".into(),
+            to: "activate-await".into(),
+        });
+        assert!(apply_action(tmp.path(), &action).is_err());
     }
 
     fn write_changelog(tmp: &TempDir, content: &str) -> PathBuf {

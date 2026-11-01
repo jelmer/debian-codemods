@@ -17,6 +17,9 @@ pub mod fs_workspace;
 /// Allow notification on certain events.
 pub mod trigger;
 
+/// Parser for the `debian/triggers` file format.
+pub mod triggers_file;
+
 /// Heuristics for classifying binary packages (transitional/meta-package).
 pub mod package_class;
 

@@ -1,0 +1,3 @@
+Make interest trigger explicit by using interest-await instead.
+Fixed-Lintian-Issues:
+ bar binary: uses-implicit-await-trigger triggers:2 interest
