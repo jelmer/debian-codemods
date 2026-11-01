@@ -140,6 +140,7 @@ mod invalid_dep3_format_patch_wrong_bug_debian_url;
 mod invalid_dep3_format_patch_wrong_last_update;
 mod invalid_short_name_in_dep5_copyright;
 mod invalid_standards_version;
+mod invalid_systemd_documentation;
 mod libmodule_build_perl_needs_to_be_in_build_depends;
 mod libmodule_build_tiny_perl_needs_to_be_in_build_depends;
 mod license_file_listed_in_debian_copyright;
@@ -251,6 +252,7 @@ mod useless_autoreconf_build_depends;
 mod uses_debhelper_compat_file;
 mod uses_deprecated_adttmp;
 mod uses_dh_addons;
+mod uses_implicit_await_trigger;
 #[cfg(feature = "upstream")]
 mod vcs_broken_uri;
 mod vcs_field_bitrotted;

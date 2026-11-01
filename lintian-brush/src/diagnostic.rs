@@ -13,7 +13,7 @@ pub use debian_workspace::action::{
     Action, ActionPlan, ChangelogAction, Deb822Action, DebcargoAction, Dep3Action,
     DesktopIniAction, FilesystemAction, IndentPattern, LintianOverridesAction, MaintscriptAction,
     MakefileAction, OverrideLineSelector, ParagraphSelector, RunCommandAction, SystemdAction,
-    TextRange, WatchAction, YamlAction, YamlPathComponent,
+    TextRange, TriggersAction, WatchAction, YamlAction, YamlPathComponent,
 };
 
 /// A single issue found by a detector, together with the actions that would

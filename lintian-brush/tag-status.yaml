@@ -5535,11 +5535,11 @@
   detector: false
   status: build-stage
 - tag: unknown-copyright-format-uri
-  detector: false
+  detector: true
   difficulty: easy
   comment: |
     Fix the Format URI in debian/copyright to use the correct DEP-5 URI.
-    Similar to existing out-of-date-copyright-format-uri fixer.
+    Folded into the copyright-format-uri detector.
 - tag: unknown-debconf-priority
   detector: false
   difficulty: easy
@@ -5788,11 +5788,9 @@
   detector: false
   status: build-stage
 - tag: uses-implicit-await-trigger
-  detector: false
+  detector: true
+  status: implemented
   difficulty: easy
-  comment: |
-    Add "await" keyword to trigger declarations in debian/triggers to
-    make the await behavior explicit.
 - tag: uses-no-compression-for-control-tarball
   detector: false
   status: build-stage
@@ -6726,10 +6724,9 @@
   detector: true
   status: implemented
 - tag: invalid-systemd-documentation
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Documentation= URL in systemd service file to be a valid URI.
+  status: implemented
 - tag: kill-mode-none
   detector: false
   difficulty: medium

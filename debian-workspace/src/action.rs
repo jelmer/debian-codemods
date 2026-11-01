@@ -55,6 +55,8 @@ pub enum Action {
     /// An edit to a maintscript file (`debian/maintscript` or
     /// `debian/<pkg>.maintscript`).
     Maintscript(MaintscriptAction),
+    /// An edit to a `debian/triggers` file.
+    Triggers(TriggersAction),
     /// An edit to a `debian/debcargo.toml` file. Used for Rust crate
     /// packages where the control file is generated.
     Debcargo(DebcargoAction),
@@ -193,6 +195,9 @@ pub(crate) fn action_file(action: &Action) -> &Path {
         },
         Action::Maintscript(a) => match a {
             MaintscriptAction::DropEntry { file, .. } => file,
+        },
+        Action::Triggers(a) => match a {
+            TriggersAction::ReplaceType { file, .. } => file,
         },
         Action::Debcargo(a) => match a {
             DebcargoAction::SetSourceField { file, .. }
@@ -1215,6 +1220,29 @@ pub enum MaintscriptAction {
         /// Entry text to drop, matched after trimming surrounding
         /// whitespace.
         entry: String,
+    },
+}
+
+/// Edits to a `debian/triggers` file.
+///
+/// The file is line-based: each non-comment, non-blank line declares a
+/// trigger as `<type> <name>`. We address lines by 1-based line number
+/// (as lintian reports them) and validate the current trigger type to
+/// make the action safe against stale snapshots.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum TriggersAction {
+    /// Replace the trigger-type on a given 1-based line. The applier
+    /// fails if the line's current type does not match `from`.
+    ReplaceType {
+        /// File to edit, relative to the package root.
+        file: PathBuf,
+        /// 1-based line number of the trigger line.
+        line: usize,
+        /// Trigger type expected on the line, matched after whitespace trim.
+        from: String,
+        /// New trigger type to write in its place.
+        to: String,
     },
 }
 

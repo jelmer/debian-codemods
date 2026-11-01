@@ -1,0 +1,3 @@
+Make activate trigger explicit by using activate-await instead.
+Fixed-Lintian-Issues:
+ foo binary: uses-implicit-await-trigger triggers:1 activate

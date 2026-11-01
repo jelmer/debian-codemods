@@ -1,0 +1,3 @@
+Use correct machine-readable copyright file URI.
+Fixed-Lintian-Issues:
+ source: unknown-copyright-format-uri https://www.debian.org/copyright-format/1.0/
