@@ -5539,11 +5539,11 @@
   detector: false
   status: build-stage
 - tag: unknown-copyright-format-uri
-  detector: false
+  detector: true
   difficulty: easy
   comment: |
     Fix the Format URI in debian/copyright to use the correct DEP-5 URI.
-    Similar to existing out-of-date-copyright-format-uri fixer.
+    Folded into the copyright-format-uri detector.
 - tag: unknown-debconf-priority
   detector: false
   difficulty: easy
