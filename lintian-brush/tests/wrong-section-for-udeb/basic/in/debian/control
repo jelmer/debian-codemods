@@ -1,0 +1,10 @@
+Source: foo
+Section: admin
+Maintainer: Example <example@example.com>
+
+Package: foo-udeb
+Package-Type: udeb
+Section: admin
+Architecture: all
+Description: foo udeb
+ udeb for foo

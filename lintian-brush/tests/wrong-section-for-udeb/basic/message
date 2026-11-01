@@ -1,0 +1,4 @@
+Set Section to debian-installer for udeb package foo-udeb.
+Certainty: certain
+Fixed-Lintian-Issues:
+ foo-udeb binary: wrong-section-for-udeb admin

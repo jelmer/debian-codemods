@@ -1,0 +1,9 @@
+Source: blah
+Build-Depends: golang-any
+Maintainer: Jane Developer <jane@example.com>
+XS-Go-Import-Path: github.com/example/blah
+
+Package: blah
+Architecture: any
+Description: a Go package
+ Some description.
