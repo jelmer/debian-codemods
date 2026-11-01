@@ -1,0 +1,4 @@
+Set XS-Go-Import-Path in debian/control.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: missing-xs-go-import-path-for-golang-package

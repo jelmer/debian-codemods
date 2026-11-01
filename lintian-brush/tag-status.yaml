@@ -3456,11 +3456,9 @@
     Add versioned init-system-helpers to Pre-Depends in
     debian/control.
 - tag: missing-xs-go-import-path-for-golang-package
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Add XS-Go-Import-Path field to source stanza of debian/control
-    based on the Go import path.
+  status: implemented
 - tag: mknod-in-maintainer-script
   detector: false
   difficulty: hard
@@ -4339,11 +4337,9 @@
     Convert direct source changes into quilt patches. Requires extracting
     the diff and creating proper quilt patches, then reverting the direct changes.
 - tag: patch-system-but-no-source-readme
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Create a debian/README.source file describing the patch system in use.
-    Template text depends on whether quilt, dpatch, etc. is used.
+  status: implemented
 - tag: patched-file-without-utf8-name
   detector: false
   difficulty: hard
@@ -5977,11 +5973,9 @@
   detector: false
   status: build-stage
 - tag: wrong-section-for-udeb
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Section field for udeb packages in debian/control.
-    Uses TemplatedControlEditor.
+  status: implemented
 - tag: zero-byte-executable-in-path
   detector: false
   status: build-stage
@@ -6732,10 +6726,9 @@
   detector: true
   status: implemented
 - tag: invalid-systemd-documentation
-  detector: false
+  detector: true
   difficulty: easy
-  comment: |
-    Fix the Documentation= URL in systemd service file to be a valid URI.
+  status: implemented
 - tag: kill-mode-none
   detector: false
   difficulty: medium

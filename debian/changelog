@@ -4,10 +4,14 @@ debian-codemods (0.190) UNRELEASED; urgency=medium
   * Add fixer for duplicate-globbing-patterns.
   * Add fixer for dfsg-version-with-period.
   * Add fixer for source-contains-debian-substvars.
+  * Add fixer for missing-xs-go-import-path-for-golang-package.
+  * Add fixer for wrong-section-for-udeb
   * Add fixer for dfsg-version-misspelled.
   * Add fixer for pipe-symbol-used-as-license-disjunction.
   * Add fixer for uses-implicit-await-trigger.
+  * Add fixer for patch-system-but-no-source-readme.
   * Add fixer for explicit-default-in-package-type.
+  * Add fixer for invalid-systemd-documentation.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 31 Oct 2026 14:11:46 +0000
 

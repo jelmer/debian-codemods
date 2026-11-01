@@ -1,0 +1,4 @@
+Add debian/README.source referring to /usr/share/doc/quilt/README.source.
+Certainty: certain
+Fixed-Lintian-Issues:
+ source: patch-system-but-no-source-readme
