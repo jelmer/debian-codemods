@@ -117,7 +117,7 @@ fn main() -> Result<(), i32> {
         }
     }
 
-    let svp = svp_client::Reporter::new(versions_dict());
+    let mut svp = svp_client::Reporter::new(versions_dict());
 
     let mut update_changelog = args.update_changelog;
     let mut allow_reformatting = args.allow_reformatting;
@@ -259,6 +259,12 @@ fn main() -> Result<(), i32> {
         }
     }
 
+    let mut releases = result.itemized().into_keys().collect::<Vec<_>>();
+    releases.sort();
+    svp.set_description(format!(
+        "Remove constraints unnecessary since {}.",
+        releases.join(" and ")
+    ));
     svp.report_success_debian(Some(result.value()), Some(result), None);
 
     Ok(())

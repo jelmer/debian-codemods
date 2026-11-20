@@ -504,7 +504,7 @@ fn main() -> Result<(), i32> {
             std::process::exit(0);
         }
 
-        let svp = svp_client::Reporter::new(versions_dict());
+        let mut svp = svp_client::Reporter::new(versions_dict());
 
         let since_revid = wt.last_revision().unwrap();
 
@@ -841,6 +841,9 @@ fn main() -> Result<(), i32> {
         if svp.enabled() {
             if let Some(base) = svp.load_resume::<ManyResult>() {
                 overall_result.success.extend(base.success);
+            }
+            if !overall_result.success.is_empty() {
+                svp.set_description(overall_result.describe());
             }
             let changelog_behaviour = overall_result.changelog_behaviour.clone();
             svp.report_success_debian(

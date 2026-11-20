@@ -148,7 +148,7 @@ fn main() -> Result<(), i32> {
         }
     };
 
-    let svp = Reporter::new(versions_dict());
+    let mut svp = Reporter::new(versions_dict());
 
     let mut update_changelog = if args.update_changelog {
         Some(true)
@@ -254,6 +254,7 @@ fn main() -> Result<(), i32> {
         }
     }
 
+    svp.set_description("Apply transition.".to_string());
     svp.report_success_debian(Some(10), Some(result), Some(changelog_behaviour));
     Ok(())
 }

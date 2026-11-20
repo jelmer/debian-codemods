@@ -846,6 +846,7 @@ pub fn main() {
             svp.set_target_branch_url(target_branch_url);
         }
 
+        svp.set_description(commit_message.clone());
         svp.set_commit_message(commit_message);
         svp.report_success_debian(
             Some(

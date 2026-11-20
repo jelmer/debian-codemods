@@ -273,7 +273,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let svp = Reporter::new(versions_dict());
+    let mut svp = Reporter::new(versions_dict());
 
     let write_lock = wt.lock_write();
 
@@ -432,6 +432,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(base) = svp.load_resume::<Vec<AppliedHint>>() {
             applied_hints.extend(base);
         }
+        svp.set_description("Applied multi-arch hints.".to_string());
         svp.report_success_debian(
             Some(result.value()),
             Some(MultiArchResult { applied_hints }),

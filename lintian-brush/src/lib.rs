@@ -1648,6 +1648,23 @@ impl ManyResult {
         calculate_value(tags.as_slice())
     }
 
+    /// One-line description of the changes made
+    pub fn describe(&self) -> String {
+        let mut tags = self.tags_count().into_keys().collect::<Vec<_>>();
+        if tags.is_empty() {
+            let mut fixers = self
+                .success
+                .iter()
+                .map(|s| s.fixer_name.as_str())
+                .collect::<Vec<_>>();
+            fixers.sort();
+            fixers.dedup();
+            return format!("Applied fixers: {}", fixers.join(", "));
+        }
+        tags.sort();
+        format!("Fixed lintian tags: {}", tags.join(", "))
+    }
+
     /// Return the minimum certainty of any successfully made change.
     pub fn minimum_success_certainty(&self) -> Certainty {
         min_certainty(
@@ -3116,6 +3133,41 @@ Arch: all
                 fixer_name: "test-fixer-2".to_string(),
             });
             assert_eq!(Certainty::Possible, result.minimum_success_certainty());
+        }
+
+        #[test]
+        fn test_describe() {
+            let mut result = ManyResult::default();
+            for (name, tags) in [
+                ("fixer-1", vec!["tag-b"]),
+                ("fixer-2", vec!["tag-a"]),
+                ("fixer-3", vec!["tag-a"]),
+                ("fixer-4", vec![]),
+            ] {
+                let issues = tags
+                    .into_iter()
+                    .map(|t| LintianIssue::just_tag(t.to_string()))
+                    .collect();
+                result.success.push(FixerSuccess {
+                    result: FixerResult::new("Do bla".to_string(), None, None, None, issues, None),
+                    summary: "summary".to_string(),
+                    fixer_name: name.to_string(),
+                });
+            }
+            assert_eq!("Fixed lintian tags: tag-a, tag-b", result.describe());
+        }
+
+        #[test]
+        fn test_describe_without_tags() {
+            let mut result = ManyResult::default();
+            for name in ["fixer-b", "fixer-a", "fixer-b"] {
+                result.success.push(FixerSuccess {
+                    result: FixerResult::new("Do bla".to_string(), None, None, None, vec![], None),
+                    summary: "summary".to_string(),
+                    fixer_name: name.to_string(),
+                });
+            }
+            assert_eq!("Applied fixers: fixer-a, fixer-b", result.describe());
         }
     }
 }

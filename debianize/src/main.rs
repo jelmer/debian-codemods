@@ -783,6 +783,7 @@ fn main() -> Result<(), i32> {
     }
 
     if svp.enabled() {
+        svp.set_description("Debianized package".to_string());
         svp.report_success_debian(Some(100), Some(debianize_result), None);
     }
 
