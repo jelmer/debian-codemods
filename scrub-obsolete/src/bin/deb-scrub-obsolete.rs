@@ -248,8 +248,8 @@ fn main() -> Result<(), i32> {
         }
     };
 
-    if result.any_changes() {
-        svp.report_nothing_to_do(Some("no obsolete constraints"), None);
+    if let Some(reason) = nothing_to_do(&result) {
+        svp.report_nothing_to_do(Some(reason), None);
     }
 
     log::info!("Scrub obsolete settings.");
@@ -262,6 +262,15 @@ fn main() -> Result<(), i32> {
     svp.report_success_debian(Some(result.value()), Some(result), None);
 
     Ok(())
+}
+
+/// Why there is nothing to report, or None if the scrub made changes.
+fn nothing_to_do(result: &ScrubObsoleteResult) -> Option<&'static str> {
+    if result.any_changes() {
+        None
+    } else {
+        Some("no obsolete constraints")
+    }
 }
 
 fn note_changelog_policy(policy: bool, msg: &str) {
@@ -407,4 +416,33 @@ fn scrub_obsolete(
     }
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use scrub_obsolete::MaintscriptAction;
+
+    #[test]
+    fn test_nothing_to_do_without_changes() {
+        let result = ScrubObsoleteResult::new(vec![], vec![]);
+        assert_eq!(Some("no obsolete constraints"), nothing_to_do(&result));
+    }
+
+    #[test]
+    fn test_nothing_to_do_with_changes() {
+        let result = ScrubObsoleteResult::new(
+            vec![],
+            vec![(
+                PathBuf::from("debian/demo.maintscript"),
+                vec![MaintscriptAction {
+                    package: "demo".to_string(),
+                    version: "1.0".parse().unwrap(),
+                    lineno: 1,
+                }],
+                "bookworm".to_string(),
+            )],
+        );
+        assert_eq!(None, nothing_to_do(&result));
+    }
 }
