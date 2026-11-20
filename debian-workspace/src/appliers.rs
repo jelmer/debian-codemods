@@ -1194,6 +1194,11 @@ fn drop_deb822_field_comments(
     }
 }
 
+/// Whether a relations field has nothing left in it, not even a substvar.
+fn relations_empty(relations: &debian_control::lossless::relations::Relations) -> bool {
+    relations.is_empty() && relations.substvars().next().is_none()
+}
+
 /// Set the version constraint on every relation in `field` that names
 /// `package`, preserving alternatives within the same entry. `None` strips
 /// the constraint. Returns true iff the field was modified.
@@ -1228,7 +1233,7 @@ fn set_relation_version_constraint_in_paragraph(
         return false;
     }
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1250,7 +1255,7 @@ fn drop_relation_in_paragraph(
         return false;
     }
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1267,13 +1272,13 @@ fn drop_relation_entry_in_paragraph(
     field: &str,
     entry: &str,
 ) -> bool {
-    use debian_control::lossless::relations::{Entry, Relations};
-    use std::str::FromStr;
+    use debian_control::lossless::relations::Relations;
 
     let Some(value) = p.get(field) else {
         return false;
     };
-    let Ok(target) = Entry::from_str(entry) else {
+    let (target, _errors) = Relations::parse_relaxed(entry, true);
+    let Some(target) = target.entries().next() else {
         return false;
     };
     let target = target.to_string();
@@ -1283,7 +1288,7 @@ fn drop_relation_entry_in_paragraph(
     };
     relations.remove_entry(idx);
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1333,7 +1338,7 @@ fn replace_relation_in_paragraph(
     }
 
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1451,7 +1456,7 @@ fn drop_alternative_in_paragraph(
     }
 
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1584,7 +1589,7 @@ fn drop_substvar_in_paragraph(
     }
     relations.drop_substvar(substvar);
     let new_value = relations.to_string();
-    if new_value.trim().is_empty() || relations.is_empty() {
+    if new_value.trim().is_empty() || relations_empty(&relations) {
         p.remove(field);
     } else {
         p.set(field, &new_value);
@@ -1968,7 +1973,7 @@ fn move_relation_in_paragraph(
     }
 
     // Update or remove the source field.
-    if from_relations.is_empty() || from_relations.to_string().trim().is_empty() {
+    if relations_empty(&from_relations) || from_relations.to_string().trim().is_empty() {
         p.remove(from_field);
     } else {
         p.set(from_field, &from_relations.to_string());
@@ -4078,6 +4083,33 @@ mod tests {
         assert_eq!(
             fs::read_to_string(debian.join("control")).unwrap(),
             "Source: foo\n\nPackage: bar\n",
+        );
+    }
+
+    #[test]
+    fn deb822_drop_relation_entry_keeps_substvar() {
+        let tmp = TempDir::new().unwrap();
+        let debian = tmp.path().join("debian");
+        fs::create_dir_all(&debian).unwrap();
+        fs::write(
+            debian.join("control"),
+            "Source: foo\n\nPackage: bar\nDepends: libfoo-perl (= ${binary:Version}) | perl, ${misc:Depends}\n",
+        )
+        .unwrap();
+
+        let action = Action::Deb822(Deb822Action::DropRelationEntry {
+            file: PathBuf::from("debian/control"),
+            paragraph: ParagraphSelector::Binary {
+                package: "bar".into(),
+            },
+            field: "Depends".into(),
+            entry: "libfoo-perl (= ${binary:Version}) | perl".into(),
+        });
+        let changed = apply_action(tmp.path(), &action).unwrap();
+        assert!(changed);
+        assert_eq!(
+            fs::read_to_string(debian.join("control")).unwrap(),
+            "Source: foo\n\nPackage: bar\nDepends: ${misc:Depends}\n",
         );
     }
 

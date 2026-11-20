@@ -180,6 +180,13 @@ fn update_depends(
     actions
 }
 
+/// Parse a relations field, which may contain substvars such as `${misc:Depends}`.
+fn parse_relations(text: &str) -> Relations {
+    let (relations, errors) = Relations::parse_relaxed(text, true);
+    assert!(errors.is_empty(), "{}", errors.join("\n"));
+    relations
+}
+
 /// Drop alternative entries that have become redundant.
 ///
 /// After version constraints are stripped, an alternative entry such as
@@ -191,7 +198,7 @@ fn drop_redundant_entries(base: &mut Paragraph, field: &str) -> Vec<Action> {
     let Some(old_contents) = base.get(field) else {
         return vec![];
     };
-    let mut relations: Relations = old_contents.parse().unwrap();
+    let mut relations = parse_relations(&old_contents);
 
     // Entries that unconditionally require a single package (no alternatives,
     // no version constraint). These can subsume an alternative elsewhere.
@@ -219,7 +226,7 @@ fn drop_redundant_entries(base: &mut Paragraph, field: &str) -> Vec<Action> {
             .iter()
             .any(|s| s != &entry && debian_analyzer::relations::is_relation_implied(s, &entry))
         {
-            actions.push(Action::DropRedundant(entry.to_string().parse().unwrap()));
+            actions.push(Action::DropRedundant(entry));
             to_remove.push(i);
         }
     }
@@ -247,7 +254,7 @@ fn filter_relations(
 ) -> Vec<Action> {
     let old_contents = base.get(field).unwrap_or_default();
 
-    let relations: Relations = old_contents.parse().unwrap();
+    let relations = parse_relations(&old_contents);
 
     let mut all_actions = vec![];
     for mut entry in relations.entries() {
@@ -1145,9 +1152,14 @@ mod tests {
         #[test]
         fn test_redundant_alternative() {
             let mut control = Paragraph::new();
-            control.set("Depends", "perl, libfoo-perl | perl");
+            control.set("Depends", "perl, libfoo-perl (= ${binary:Version}) | perl");
             assert_eq!(
-                vec![Action::DropRedundant("libfoo-perl | perl".parse().unwrap())],
+                vec![Action::DropRedundant(
+                    parse_relations("libfoo-perl (= ${binary:Version}) | perl")
+                        .entries()
+                        .next()
+                        .unwrap()
+                )],
                 drop_redundant_entries(&mut control, "Depends")
             );
             assert_eq!(control.get("Depends").as_deref(), Some("perl"));
@@ -1188,7 +1200,10 @@ mod tests {
                 transitions: HashMap::new(),
             };
             let mut control = Paragraph::new();
-            control.set("Depends", "perl, libfoo-perl | perl (>> 5.6.0)");
+            control.set(
+                "Depends",
+                "${misc:Depends}, perl, libfoo-perl | perl (>> 5.6.0)",
+            );
             let actions = update_depends(&mut control, "Depends", &checker, false);
             assert_eq!(
                 vec![
@@ -1197,7 +1212,10 @@ mod tests {
                 ],
                 actions
             );
-            assert_eq!(control.get("Depends").as_deref(), Some("perl"));
+            assert_eq!(
+                control.get("Depends").as_deref(),
+                Some("${misc:Depends}, perl")
+            );
         }
     }
 }
