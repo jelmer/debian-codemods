@@ -182,3 +182,22 @@ pub trait PackageChecker {
 
     async fn is_essential(&self, package: &str) -> Result<Option<bool>, sqlx::Error>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_unreachable_udd() {
+        let checker = UddPackageChecker {
+            release: "trixie".to_string(),
+            build: false,
+            transitions: Arc::new(Mutex::new(None)),
+            conn: sqlx::postgres::PgPoolOptions::new()
+                .acquire_timeout(std::time::Duration::from_secs(1))
+                .connect_lazy("postgresql://udd-mirror@127.0.0.1:1/udd")
+                .unwrap(),
+        };
+        assert!(checker.package_version("dpkg").await.is_err());
+    }
+}
